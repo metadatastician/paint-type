@@ -1,14 +1,30 @@
-SPDX-License-Identifier: AGPL-3.0-or-later
+SPDX-License-Identifier: CC-BY-SA-4.0
 SPDX-FileCopyrightText: 2024-2026 Joshua Jewell (JoshuaJewell) <paint-type@pm.me>
 
-paint.type is licensed by scope:
+paint.type — Licensing
+
+paint.type's own work is dual-licensed by scope:
 
   * SOURCE CODE — GNU Affero General Public License v3.0 or later
-    (AGPL-3.0-or-later). Full text: https://www.gnu.org/licenses/agpl-3.0.html
+    (AGPL-3.0-or-later).
+    Full text: LICENSES/AGPL-3.0-or-later.txt · https://www.gnu.org/licenses/agpl-3.0.html
 
   * DOCUMENTATION & CONTENT — Creative Commons Attribution-ShareAlike 4.0
     International (CC-BY-SA-4.0).
-    Full text: https://creativecommons.org/licenses/by-sa/4.0/
+    Full text: LICENSES/CC-BY-SA-4.0.txt · https://creativecommons.org/licenses/by-sa/4.0/
 
-The per-file `SPDX-License-Identifier` header is authoritative for each file.
-Third-party and inherited components retain their original licences.
+Copyright (c) 2024-2026 Joshua Jewell (JoshuaJewell) <developer@joshuajewell.dev>
+
+The per-file SPDX-License-Identifier header is authoritative for each file.
+Full licence texts live in LICENSES/ per the REUSE Specification
+(https://reuse.software).
+
+------------------------------------------------------------------------------
+COMPONENTS
+
+paint.type is built on components from the hyperpolymath estate — Gossamer,
+Ephapax, AffineScript, typed-wasm, Burble, Groove, and others. They are
+maintained in their own repositories and are provided under MPL-2.0 (with
+CC-BY-SA-4.0 for their documentation; full text LICENSES/MPL-2.0.txt) by
+Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>, contributed to
+help this project.
