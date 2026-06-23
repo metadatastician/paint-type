@@ -1,19 +1,18 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# Hypatia Neurosymbolic CI/CD Security Scan
+# SPDX-License-Identifier: PMPL-1.0-or-later
 name: Hypatia Security Scan
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [main, master, develop]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
   schedule:
-    - cron: '0 0 * * 0'  # Weekly on Sunday
+    - cron: '0 0 * * 0'
   workflow_dispatch:
 
 permissions:
   contents: read
-  issues: write
+  security-events: read
 
 jobs:
   scan:
