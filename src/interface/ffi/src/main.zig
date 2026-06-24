@@ -251,6 +251,99 @@ export fn pt_tile_read_pixel(
     return @intFromEnum(Result.ok);
 }
 
+/// Write one pixel inside the tile.
+/// Channel arguments carry the bit patterns of f16 values.
+/// Returns 0 on success, non-zero on null/out-of-bounds.
+export fn pt_tile_write_pixel(
+    tile_ptr: u64,
+    px: u32,
+    py: u32,
+    r: u16,
+    g: u16,
+    b: u16,
+    a: u16,
+) u32 {
+    if (tile_ptr == 0) {
+        setError("pt_tile_write_pixel: null tile");
+        return @intFromEnum(Result.invalid_param);
+    }
+    if (px >= TILE_SIZE or py >= TILE_SIZE) {
+        setError("pt_tile_write_pixel: pixel out of bounds");
+        return @intFromEnum(Result.invalid_param);
+    }
+
+    const tile: *PtTile = @ptrFromInt(tile_ptr);
+    if (!tile.isLive()) {
+        setError("pt_tile_write_pixel: invalid tile (bad magic)");
+        return @intFromEnum(Result.invalid_param);
+    }
+
+    const base: usize = (@as(usize, py) * TILE_SIZE + @as(usize, px)) * TILE_CHANNELS;
+    tile.pixels[base + 0] = @bitCast(r);
+    tile.pixels[base + 1] = @bitCast(g);
+    tile.pixels[base + 2] = @bitCast(b);
+    tile.pixels[base + 3] = @bitCast(a);
+
+    clearError();
+    return @intFromEnum(Result.ok);
+}
+
+/// Copy the whole RGBA16F tile buffer into `out_ptr`.
+/// `out_ptr` must address at least TILE_PIXEL_SCALARS u16 elements.
+export fn pt_tile_read_buffer(tile_ptr: u64, out_ptr: u64) u32 {
+    if (tile_ptr == 0) {
+        setError("pt_tile_read_buffer: null tile");
+        return @intFromEnum(Result.invalid_param);
+    }
+    if (out_ptr == 0) {
+        setError("pt_tile_read_buffer: null output pointer");
+        return @intFromEnum(Result.invalid_param);
+    }
+
+    const tile: *const PtTile = @ptrFromInt(tile_ptr);
+    if (!tile.isLive()) {
+        setError("pt_tile_read_buffer: invalid tile (bad magic)");
+        return @intFromEnum(Result.invalid_param);
+    }
+
+    const out: [*]u16 = @ptrFromInt(out_ptr);
+    var i: usize = 0;
+    while (i < TILE_PIXEL_SCALARS) : (i += 1) {
+        out[i] = @bitCast(tile.pixels[i]);
+    }
+
+    clearError();
+    return @intFromEnum(Result.ok);
+}
+
+/// Copy the whole RGBA16F tile buffer from `in_ptr`.
+/// `in_ptr` must address at least TILE_PIXEL_SCALARS u16 elements.
+export fn pt_tile_write_buffer(tile_ptr: u64, in_ptr: u64) u32 {
+    if (tile_ptr == 0) {
+        setError("pt_tile_write_buffer: null tile");
+        return @intFromEnum(Result.invalid_param);
+    }
+    if (in_ptr == 0) {
+        setError("pt_tile_write_buffer: null input pointer");
+        return @intFromEnum(Result.invalid_param);
+    }
+
+    const tile: *PtTile = @ptrFromInt(tile_ptr);
+    if (!tile.isLive()) {
+        setError("pt_tile_write_buffer: invalid tile (bad magic)");
+        return @intFromEnum(Result.invalid_param);
+    }
+
+    const input: [*]const u16 = @ptrFromInt(in_ptr);
+    var i: usize = 0;
+    while (i < TILE_PIXEL_SCALARS) : (i += 1) {
+        tile.pixels[i] = @bitCast(input[i]);
+    }
+
+    clearError();
+    return @intFromEnum(Result.ok);
+}
+
 //==============================================================================
 // Idris2 Out-Parameter Slot Helpers
 //==============================================================================
