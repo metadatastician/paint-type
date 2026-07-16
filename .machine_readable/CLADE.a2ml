@@ -3,9 +3,44 @@
 # See: https://github.com/hyperpolymath/gv-clade-index
 
 [identity]
-uuid = "a5ea1382-a34c-5334-8a46-a2ebe904c810"
+# CORRECTED 2026-07-17 — the uuid here was never paint-type's.
+#
+# a5ea1382-a34c-5334-8a46-a2ebe904c810 is rsr-template-repo's own genuine
+# identity, inherited verbatim because `just init` never touches CLADE.a2ml. So
+# paint-type was wearing the template's name and telling every arriving agent it
+# WAS the template. (chronicles-of-slavia was corrected for the same bug on
+# 2026-07-16; scaffoldia on 2026-07-16.)
+#
+# THE UUID IS DERIVED, NOT ALLOCATED. The registry spec (gv-clade-index:
+# docs/SPEC-clade-verisim-portal.adoc §Identity Model) defines it as:
+#
+#     uuid = UUIDv5(namespace = URL, name = "github.com/<owner>/<name>")
+#     uuidgen --sha1 --namespace @url --name "github.com/metadatastician/paint-type"
+#     -> 9028605a-f12b-59ca-850e-74dd4e2f0bdd
+#
+# Method verified by reproducing the registry's own worked examples byte-for-byte
+# before it was trusted (januskey -> e216170e-…, gv-clade-index -> c88e9ff3-…,
+# rsr-template-repo -> a5ea1382-…).
+#
+# `primary-owner` is the FORGE PATH, not the copyright holder — it is the <owner>
+# segment of github.com/<owner>/<name> that the uuid is derived from. It moved
+# from JoshuaJewell to metadatastician because the repo now lives in the
+# organisation, for easier mutual access and team collaboration. That is a
+# hosting fact, and this file records what is TRUE TODAY (confirmed against
+# `git remote get-url origin`).
+#
+# COPYRIGHT AND LICENCE ARE UNCHANGED AND ARE NOT THIS FILE'S TO STATE.
+# paint-type is (c) 2024-2026 Joshua Jewell <paint-type@pm.me>, AGPL-3.0-or-later.
+# Both are correct as they stand. Nothing in this commit touches LICENSE,
+# LICENSES/, LICENSE-STATUS.adoc, or any SPDX header — licence edits are manual
+# and owner-only, never automated.
+#
+# Copies also exist at JoshuaJewell/paint-type and hyperpolymath/paint-type.
+# Whether those are mirrors, upstream, or stale is the owner's to declare; they
+# are deliberately not asserted here as [forges] entries.
+uuid = "9028605a-f12b-59ca-850e-74dd4e2f0bdd"
 primary-forge = "github"
-primary-owner = "JoshuaJewell"
+primary-owner = "metadatastician"
 canonical-name = "paint-type"
 prefixed-name = "pt-paint-type"
 
@@ -16,7 +51,7 @@ assigned = "2026-05-11"
 rationale = "paint-type image editor — pt prefix"
 
 [forges]
-github = "JoshuaJewell/paint-type"
+github = "metadatastician/paint-type"   # the repo's home; matches `git remote get-url origin`
 
 [lineage]
 type = "standalone"
