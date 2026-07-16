@@ -42,13 +42,25 @@ uuid = "9028605a-f12b-59ca-850e-74dd4e2f0bdd"
 primary-forge = "github"
 primary-owner = "metadatastician"
 canonical-name = "paint-type"
-prefixed-name = "pt-paint-type"
+prefixed-name = "ap-paint-type"
 
 [clade]
-primary = "pt"
-secondary = ["gv"]
-assigned = "2026-05-11"
-rationale = "paint-type image editor — pt prefix"
+# CORRECTED 2026-07-17: was primary = "pt", rationale "paint-type image editor —
+# pt prefix". That rationale says the quiet part out loud — `pt` was chosen as
+# the "PainT-type" prefix. But the two letters abbreviate the NAME OF THE CLADE,
+# never the name of the repo, and `pt` is Protocols & Interop: "internet
+# standards, protocol implementations". paint-type is a cross-platform image
+# editor. It had nothing to do with its filed category, and nothing caught it —
+# `pt` is a valid code, so every check passed. (gossamer had the same failure
+# with `gv`, read as "Graphical/Visual", which is actually GoVernance &
+# Standards.) The 12 codes: gv-clade-index verisim/seed/clades.a2ml.
+primary = "ap"
+primary-name = "Applications"
+# secondary was ["gv"] — inherited verbatim from rsr-template-repo along with the
+# uuid, never chosen. paint-type is not a governance project.
+secondary = []
+assigned = "2026-07-17"
+rationale = "Applications (`ap`): \"end-user applications, web apps, desktop apps, services\". The core value proposition is a cross-platform image editor people run — \"the open, cross-platform image editor Paint.NET users are actually asking for\". Per the spec the primary clade reflects the value proposition, not implementation details, so the Rust/Zig/Idris2 inside does not make it `fv` or `nl`."
 
 [forges]
 github = "metadatastician/paint-type"   # the repo's home; matches `git remote get-url origin`
