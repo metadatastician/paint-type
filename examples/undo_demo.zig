@@ -3,14 +3,14 @@
 // paint.type — undo / redo demo (MVP-10).
 //
 // Sequence:
-//   t0  blank canvas               → undo_t0_blank.png
+//   t0  blank canvas               → examples/images/undo_t0_blank.png
 //   t1  paint a red curve
-//        record("stroke.brush 1")  → undo_t1_red.png
+//        record("stroke.brush 1")  → examples/images/undo_t1_red.png
 //   t2  paint a green curve
-//        record("stroke.brush 2")  → undo_t2_red+green.png
-//   t3  undo                       → undo_t3_after_undo.png   (back to t1)
-//   t4  undo                       → undo_t4_after_2x_undo.png (back to t0)
-//   t5  redo                       → undo_t5_after_redo.png   (forward to t1)
+//        record("stroke.brush 2")  → examples/images/undo_t2_red+green.png
+//   t3  undo                       → examples/images/undo_t3_after_undo.png   (back to t1)
+//   t4  undo                       → examples/images/undo_t4_after_2x_undo.png (back to t0)
+//   t5  redo                       → examples/images/undo_t5_after_redo.png   (forward to t1)
 //
 // The four expected-pairs:
 //   t1 PNG  ==  t3 PNG  ==  t5 PNG   (state-after-red-stroke)
@@ -85,47 +85,47 @@ pub fn main() !void {
     const green_state = dispatcher.BrushStateC{ .radius = 14.0, .hardness = 0.7, .opacity = 1.0, .spacing = 0.1, .profile = 1 };
 
     // t0 — initial blank state.
-    try savePng(canvas, "undo_t0_blank.png");
-    std.debug.print("t0 blank        -> undo_t0_blank.png\n", .{});
+    try savePng(canvas, "examples/images/undo_t0_blank.png");
+    std.debug.print("t0 blank        -> examples/images/undo_t0_blank.png\n", .{});
 
     // t1 — paint red, record.
     try paintCurve(canvas, layer, &red_state, .{ 1.0, 0.0, 0.0, 1.0 }, 64.0);
     _ = dispatcher.pt_history_record(canvas, "stroke.brush 1 (red)", 0, &[_]u8{}, 0);
-    try savePng(canvas, "undo_t1_red.png");
-    std.debug.print("t1 red+record   -> undo_t1_red.png\n", .{});
+    try savePng(canvas, "examples/images/undo_t1_red.png");
+    std.debug.print("t1 red+record   -> examples/images/undo_t1_red.png\n", .{});
 
     // t2 — paint green, record.
     try paintCurve(canvas, layer, &green_state, .{ 0.0, 0.7, 0.0, 1.0 }, 128.0);
     _ = dispatcher.pt_history_record(canvas, "stroke.brush 2 (green)", 0, &[_]u8{}, 0);
-    try savePng(canvas, "undo_t2_red_green.png");
-    std.debug.print("t2 green+record -> undo_t2_red_green.png\n", .{});
+    try savePng(canvas, "examples/images/undo_t2_red_green.png");
+    std.debug.print("t2 green+record -> examples/images/undo_t2_red_green.png\n", .{});
 
     // t3 — undo once.
     _ = dispatcher.pt_history_undo(canvas);
-    try savePng(canvas, "undo_t3_after_undo.png");
-    std.debug.print("t3 after undo   -> undo_t3_after_undo.png\n", .{});
+    try savePng(canvas, "examples/images/undo_t3_after_undo.png");
+    std.debug.print("t3 after undo   -> examples/images/undo_t3_after_undo.png\n", .{});
 
     // t4 — undo again (back to t0).
     _ = dispatcher.pt_history_undo(canvas);
-    try savePng(canvas, "undo_t4_after_2x_undo.png");
-    std.debug.print("t4 after 2xundo -> undo_t4_after_2x_undo.png\n", .{});
+    try savePng(canvas, "examples/images/undo_t4_after_2x_undo.png");
+    std.debug.print("t4 after 2xundo -> examples/images/undo_t4_after_2x_undo.png\n", .{});
 
     // t5 — redo (forward to t1).
     _ = dispatcher.pt_history_redo(canvas);
-    try savePng(canvas, "undo_t5_after_redo.png");
-    std.debug.print("t5 after redo   -> undo_t5_after_redo.png\n", .{});
+    try savePng(canvas, "examples/images/undo_t5_after_redo.png");
+    std.debug.print("t5 after redo   -> examples/images/undo_t5_after_redo.png\n", .{});
 
     // Verify equivalences via PNG byte equality.
     const alloc = std.heap.c_allocator;
-    const t0 = try readAll(alloc, "undo_t0_blank.png");
+    const t0 = try readAll(alloc, "examples/images/undo_t0_blank.png");
     defer alloc.free(t0);
-    const t1 = try readAll(alloc, "undo_t1_red.png");
+    const t1 = try readAll(alloc, "examples/images/undo_t1_red.png");
     defer alloc.free(t1);
-    const t3 = try readAll(alloc, "undo_t3_after_undo.png");
+    const t3 = try readAll(alloc, "examples/images/undo_t3_after_undo.png");
     defer alloc.free(t3);
-    const t4 = try readAll(alloc, "undo_t4_after_2x_undo.png");
+    const t4 = try readAll(alloc, "examples/images/undo_t4_after_2x_undo.png");
     defer alloc.free(t4);
-    const t5 = try readAll(alloc, "undo_t5_after_redo.png");
+    const t5 = try readAll(alloc, "examples/images/undo_t5_after_redo.png");
     defer alloc.free(t5);
 
     std.debug.print("\nbyte-equality checks:\n", .{});
