@@ -25,7 +25,7 @@ on:
       - 'verification/proofs/**'
       - '.github/workflows/proofs.yml'
   workflow_dispatch:
-# Agda is built from source via cabal (slow, cold); cancel superseded runs to
+# Agda installs fast via apt (prebuilt binary); cancel superseded runs to
 # keep concurrency headroom for other workflows.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -71,33 +71,22 @@ jobs:
   agda:
     name: Agda proof (INV-3)
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-    env:
-      AGDA_VERSION: '2.8.0'
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
-      - name: Cache cabal store + Agda binary
-        id: cache-agda
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        with:
-          path: |
-            ~/.cabal/store
-            ~/.local/bin/agda
-            ~/.local/bin/agda-mode
-          key: agda-${{ env.AGDA_VERSION }}-${{ runner.os }}
-      - name: Install Agda 2.8.0 (cabal)
-        # ubuntu-latest ships ghc + cabal pre-installed. We build the exact Agda
-        # version from Hackage rather than apt (which lags well behind 2.8.0) so
-        # the runner matches the locally-proven toolchain. This is the slow,
-        # robust, fully-pinned path; the cache above makes warm runs cheap.
-        if: steps.cache-agda.outputs.cache-hit != 'true'
+      - name: Install Agda (apt — prebuilt, GHC-compatible)
+        # DO NOT revert to `cabal install Agda-2.8.0`: Agda 2.8.0 requires
+        # base<4.22, but ubuntu-latest's pre-installed GHC now ships
+        # base-4.22.0.0, so cabal fails at dependency resolution (Cabal-7107) —
+        # not a timeout. These proofs are --no-libraries / builtin-only and
+        # type-check under the apt-provided Agda (verified locally on 2.6.4.3),
+        # so the exact version is not load-bearing. apt ships a prebuilt binary
+        # already linked against a compatible base: fast and deterministic.
         run: |
           set -euo pipefail
-          cabal update
-          cabal install Agda-${AGDA_VERSION} --install-method=copy --overwrite-policy=always
-      - name: Add Agda to PATH
-        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          sudo apt-get update
+          sudo apt-get install -y agda
       - name: Show Agda version
         run: agda --version
       - name: Type-check Agda proof
@@ -115,5 +104,5 @@ jobs:
             echo "## Agda Proof Results"
             echo ""
             echo "- **INV-3**: Compositing.agda (compositing totality)"
-            echo "- **Agda version**: ${AGDA_VERSION}"
+            echo "- **Agda version**: $(agda --version 2>/dev/null | head -1)"
           } >> "$GITHUB_STEP_SUMMARY"
