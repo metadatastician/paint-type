@@ -6,7 +6,7 @@
 # Then hands off to `just setup` for project-specific configuration.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/JoshuaJewell/paint-type/main/setup.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/metadatastician/paint-type/main/setup.sh | sh
 #   # or after cloning:
 #   ./setup.sh
 #
@@ -198,7 +198,7 @@ main() {
     # Step 2: Check if we're in the repo directory
     if [ ! -f "Justfile" ] && [ ! -f "justfile" ]; then
         warn "Not in a repo directory (no Justfile found)"
-        info "Clone first: git clone https://github.com/JoshuaJewell/paint-type.git"
+        info "Clone first: git clone https://github.com/metadatastician/paint-type.git"
         info "Then: cd paint-type && ./setup.sh"
         exit 1
     fi

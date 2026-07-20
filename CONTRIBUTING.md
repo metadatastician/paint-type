@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 # Contributing to paint-type
 
-1. Fork the repository at https://github.com/JoshuaJewell/paint-type
+1. Fork the repository at https://github.com/metadatastician/paint-type
 2. Create a feature branch (`feat/short-description`, `fix/issue-number`, etc.)
 3. Ensure SPDX headers on all new files (`// SPDX-License-Identifier: AGPL-3.0-or-later`)
 4. Run `just test` — all tests must pass

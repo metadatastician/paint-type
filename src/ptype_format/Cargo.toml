@@ -19,7 +19,7 @@ version = "0.1.0"
 edition = "2021"
 license = "AGPL-3.0-or-later"
 description = "Reference encoder/decoder for paint-type's native RGBA16F .ptype container (draft v1)."
-repository = "https://github.com/JoshuaJewell/paint-type"
+repository = "https://github.com/metadatastician/paint-type"
 
 [lib]
 name = "ptype_format"

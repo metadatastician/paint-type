@@ -13,16 +13,16 @@ image:https://img.shields.io/badge/license-AGPL--3.0--or--later-red[License: AGP
 image:https://img.shields.io/badge/CRG-D-orange?style=flat-square[CRG D,link=https://github.com/hyperpolymath/standards/tree/main/component-readiness-grades]
 image:https://img.shields.io/badge/status-pre--alpha%20(v0.2.0%20closing)-yellow[Status: pre-alpha — v0.2.0 closing]
 image:https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey[Platforms]
-image:https://github.com/JoshuaJewell/paint-type/actions/workflows/rust.yml/badge.svg[Rust CI,link=https://github.com/JoshuaJewell/paint-type/actions/workflows/rust.yml]
-image:https://github.com/JoshuaJewell/paint-type/actions/workflows/idris-ci.yml/badge.svg[Idris2 CI,link=https://github.com/JoshuaJewell/paint-type/actions/workflows/idris-ci.yml]
-image:https://github.com/JoshuaJewell/paint-type/actions/workflows/e2e.yml/badge.svg[E2E,link=https://github.com/JoshuaJewell/paint-type/actions/workflows/e2e.yml]
-image:https://github.com/JoshuaJewell/paint-type/actions/workflows/coverage.yml/badge.svg[Coverage,link=https://github.com/JoshuaJewell/paint-type/actions/workflows/coverage.yml]
+image:https://github.com/metadatastician/paint-type/actions/workflows/rust.yml/badge.svg[Rust CI,link=https://github.com/metadatastician/paint-type/actions/workflows/rust.yml]
+image:https://github.com/metadatastician/paint-type/actions/workflows/idris-ci.yml/badge.svg[Idris2 CI,link=https://github.com/metadatastician/paint-type/actions/workflows/idris-ci.yml]
+image:https://github.com/metadatastician/paint-type/actions/workflows/e2e.yml/badge.svg[E2E,link=https://github.com/metadatastician/paint-type/actions/workflows/e2e.yml]
+image:https://github.com/metadatastician/paint-type/actions/workflows/coverage.yml/badge.svg[Coverage,link=https://github.com/metadatastician/paint-type/actions/workflows/coverage.yml]
 image:https://img.shields.io/badge/docs-CC--BY--SA--4.0-blue[Docs: CC-BY-SA-4.0,link=https://creativecommons.org/licenses/by-sa/4.0/]
 image:https://img.shields.io/badge/Idris-Inside-5E5086?logo=idris&logoColor=white[Idris Inside,link=https://www.idris-lang.org]
 image:https://img.shields.io/badge/RSR-Bronze-cd7f32[RSR Standard,link=https://github.com/hyperpolymath/standards]
-image:https://api.securityscorecards.dev/projects/github.com/JoshuaJewell/paint-type/badge[OpenSSF Scorecard,link=https://securityscorecards.dev/viewer/?uri=github.com/JoshuaJewell/paint-type]
+image:https://api.securityscorecards.dev/projects/github.com/metadatastician/paint-type/badge[OpenSSF Scorecard,link=https://securityscorecards.dev/viewer/?uri=github.com/metadatastician/paint-type]
 
-TIP: For quick project orientation, see the link:https://github.com/JoshuaJewell/paint-type/wiki[Project Wiki].
+TIP: For quick project orientation, see the link:https://github.com/metadatastician/paint-type/wiki[Project Wiki].
 
 We will advertise the release schedule shortly, which allows for easy install.
 
@@ -240,7 +240,7 @@ The proximal seams (within paint-type) are size-checked, layout-proven, and pani
 
 == Quick links
 
-* https://github.com/JoshuaJewell/paint-type/wiki[Wiki Home] — single-page routing hub pointing at the in-repo source of truth
+* https://github.com/metadatastician/paint-type/wiki[Wiki Home] — single-page routing hub pointing at the in-repo source of truth
 * link:EXPLAINME.adoc[EXPLAINME.adoc] — repository structure guide
 * link:TOPOLOGY.adoc[TOPOLOGY.adoc] — component architecture
 * link:ROADMAP.adoc[ROADMAP.adoc] — milestone plan
@@ -270,7 +270,7 @@ AGPL-3.0-or-later — see link:LICENSE[LICENSE]
 
 == Author
 
-Joshua Jewell — https://github.com/JoshuaJewell[JoshuaJewell]
+Joshua Jewell — https://github.com/metadatastician[JoshuaJewell]
 Jonathan D.A. Jewell - https://github.com/hyperpolymath[hyperpolymath]
 
 Built within the https://github.com/hyperpolymath[hyperpolymath] ecosystem.

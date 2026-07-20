@@ -52,7 +52,7 @@ release schedules, contributor access, and community standards.
 
 ### BDFL (Benevolent Dictator For Life)
 
-- Joshua Jewell ([@JoshuaJewell](https://github.com/JoshuaJewell)), the project
+- Joshua Jewell ([@metadatastician](https://github.com/metadatastician)), the project
   creator and ultimate decision-maker.
 - Sets the project's technical direction and long-term vision.
 - Has final say on all matters, including maintainer appointments and removals.

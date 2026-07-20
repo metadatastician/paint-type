@@ -16,11 +16,11 @@ packaged as a verified cerro-torre .ctp bundle with ML-DSA-87 signing and
 full provenance tracking.
 """
 license = "AGPL-3.0-or-later"
-homepage = "https://github.com/JoshuaJewell/paint-type"
+homepage = "https://github.com/metadatastician/paint-type"
 maintainer = "Joshua Jewell <paint-type@pm.me>"
 
 [provenance]
-upstream = "https://github.com/JoshuaJewell/paint-type"
+upstream = "https://github.com/metadatastician/paint-type"
 import_date = 2026-05-11T00:00:00Z
 
 [dependencies]

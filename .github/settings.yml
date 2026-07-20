@@ -14,7 +14,7 @@
 repository:
   name: "paint-type"
   description: "Cross-platform open-source image editor — capable enough for real work, simple enough to reach for without thinking"
-  homepage: "https://github.com/JoshuaJewell/paint-type"
+  homepage: "https://github.com/metadatastician/paint-type"
   private: false
   has_issues: true
   has_projects: true

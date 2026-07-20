@@ -10,7 +10,7 @@ environment, submit changes, and navigate the codebase.
 
 ```bash
 # Clone the repository
-git clone https://github.com/JoshuaJewell/paint-type.git
+git clone https://github.com/metadatastician/paint-type.git
 cd paint-type
 
 # Using Guix (preferred)
@@ -111,9 +111,9 @@ Use the [feature request template](.github/ISSUE_TEMPLATE/feature_request.yml) a
 
 Look for issues labelled:
 
-- [`good first issue`](https://github.com/JoshuaJewell/paint-type/labels/good%20first%20issue) — Simple Perimeter 3 tasks
-- [`help wanted`](https://github.com/JoshuaJewell/paint-type/labels/help%20wanted) — Community help needed
-- [`documentation`](https://github.com/JoshuaJewell/paint-type/labels/documentation) — Docs improvements
+- [`good first issue`](https://github.com/metadatastician/paint-type/labels/good%20first%20issue) — Simple Perimeter 3 tasks
+- [`help wanted`](https://github.com/metadatastician/paint-type/labels/help%20wanted) — Community help needed
+- [`documentation`](https://github.com/metadatastician/paint-type/labels/documentation) — Docs improvements
 
 ---
 
@@ -164,5 +164,5 @@ just panic-scan # No new security issues
 
 ## Contact
 
-- Issue tracker: https://github.com/JoshuaJewell/paint-type/issues
+- Issue tracker: https://github.com/metadatastician/paint-type/issues
 - Security issues: paint-type@pm.me (see SECURITY.md)

@@ -12,7 +12,7 @@ This document lists the maintainers of this project and their responsibilities.
 
 | Joshua Jewell
 | Lead Maintainer
-| https://github.com/JoshuaJewell[@JoshuaJewell]
+| https://github.com/metadatastician[@metadatastician]
 |===
 
 == Responsibilities

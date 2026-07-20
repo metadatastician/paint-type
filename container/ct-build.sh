@@ -19,7 +19,7 @@
 #
 # Environment variables:
 #   CT_KEY_ID       — Signing key identifier (default: paint-type-release)
-#   CT_REGISTRY     — OCI registry to push to (default: ghcr.io/JoshuaJewell)
+#   CT_REGISTRY     — OCI registry to push to (default: ghcr.io/metadatastician)
 #   CT_TAG          — Image tag (default: latest)
 
 set -euo pipefail
@@ -39,7 +39,7 @@ for arg in "$@"; do
 done
 
 CT_KEY_ID="${CT_KEY_ID:-paint-type-release}"
-CT_REGISTRY="${CT_REGISTRY:-ghcr.io/JoshuaJewell}"
+CT_REGISTRY="${CT_REGISTRY:-ghcr.io/metadatastician}"
 CT_TAG="${CT_TAG:-latest}"
 
 IMAGE_NAME="paint-type"

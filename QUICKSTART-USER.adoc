@@ -54,10 +54,10 @@ This checks all dependencies, permissions, and paths.
 
 == Get Notified
 
-Watch the https://github.com/JoshuaJewell/paint-type[paint-type repository] on
+Watch the https://github.com/metadatastician/paint-type[paint-type repository] on
 GitHub to be notified when v0.3.0 (first runnable release) lands.
 
 == Contact
 
-* **Issues**: https://github.com/JoshuaJewell/paint-type/issues
+* **Issues**: https://github.com/metadatastician/paint-type/issues
 * **Security**: paint-type@pm.me

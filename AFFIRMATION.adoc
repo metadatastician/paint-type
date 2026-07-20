@@ -184,7 +184,7 @@ colour management. None are built.
 [cols="1,3"]
 |===
 | Project | paint.type (GitHub repo slug: `paint-type`)
-| Repository | https://github.com/JoshuaJewell/paint-type
+| Repository | https://github.com/metadatastician/paint-type
 | Branch | `main`
 | Commit (SHA) | the signed commit that introduces this file (parent: `57bfbd93fdbd6434c818a7bd0d4068bdb1b82701`)
 | Timestamp (UTC) | 2026-07-04

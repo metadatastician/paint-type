@@ -30,5 +30,5 @@ is targeted for v0.3.0.
 - License: AGPL-3.0-or-later (open source)
 - Owner: Joshua Jewell (JoshuaJewell on GitHub)
 - Contact: paint-type@pm.me
-- GitHub: https://github.com/JoshuaJewell/paint-type
+- GitHub: https://github.com/metadatastician/paint-type
 - See `ROADMAP.adoc` for the milestone plan

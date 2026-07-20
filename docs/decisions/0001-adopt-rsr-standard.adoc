@@ -51,7 +51,7 @@ The RSR template provides:
 New repositories are created by cloning the template:
 
 ```bash
-git clone https://github.com/JoshuaJewell/paint-type new-repo-name
+git clone https://github.com/metadatastician/paint-type new-repo-name
 cd new-repo-name
 rm -rf .git && git init
 ```

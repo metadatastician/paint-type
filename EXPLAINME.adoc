@@ -16,8 +16,8 @@ ____
 
 How this is implemented::
 Project vision documented in link:0-AI-MANIFEST.a2ml[0-AI-MANIFEST.a2ml] line 9-10.
-Source repository at link:https://github.com/JoshuaJewell/paint-type[JoshuaJewell/paint-type].
-Community discussion at link:https://github.com/JoshuaJewell/paint-type/discussions[Discussions].
+Source repository at link:https://github.com/metadatastician/paint-type[metadatastician/paint-type].
+Community discussion at link:https://github.com/metadatastician/paint-type/discussions[Discussions].
 
 Caveat::
 Pre-alpha status — not yet runnable as an application. First runnable version is v0.3.0 (Gossamer shell).
@@ -32,7 +32,7 @@ ____
 ____
 
 How this is implemented::
-Repository is public at link:https://github.com/JoshuaJewell/paint-type[GitHub].
+Repository is public at link:https://github.com/metadatastician/paint-type[GitHub].
 License: AGPL-3.0-or-later (see link:LICENSE[LICENSE]).
 Governance model in link:.github/GOVERNANCE.adoc[GOVERNANCE.adoc].
 Contribution guidelines in link:CONTRIBUTING.md[CONTRIBUTING.md].
@@ -183,7 +183,7 @@ ____
 How this is implemented::
 Scope definition in link:README.adoc#_what_it_will_not_try_to_be[README "What it will not try to be" section].
 Comparison table in link:README.adoc#_comparison[README Comparison section].
-Owner: Joshua Jewell (link:https://github.com/JoshuaJewell[JoshuaJewell]), Paint.NET user.
+Owner: Joshua Jewell (link:https://github.com/metadatastician[JoshuaJewell]), Paint.NET user.
 
 Caveat::
 Scope contract is aspirational and will be validated by community feedback.

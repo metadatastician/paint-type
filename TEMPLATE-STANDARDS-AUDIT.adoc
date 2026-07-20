@@ -10,7 +10,7 @@ v1.1, 2026-06-01
 
 Audit scope:
 
-* Repository: `paint-type` (JoshuaJewell/paint-type)
+* Repository: `paint-type` (metadatastician/paint-type)
 * Focus: root authority docs/manifests, Justfile integration, session bindings, ABI/FFI sources
 * Recursive inventory method: `rg --files -g '!.git' | sort`
 

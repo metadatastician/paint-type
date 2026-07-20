@@ -22,7 +22,7 @@ We take security seriously. We appreciate your efforts to responsibly disclose v
 
 The preferred method for reporting security vulnerabilities is through GitHub's Security Advisory feature:
 
-1. Navigate to [Report a Vulnerability](https://github.com/JoshuaJewell/paint-type/security/advisories/new)
+1. Navigate to [Report a Vulnerability](https://github.com/metadatastician/paint-type/security/advisories/new)
 2. Click **"Report a vulnerability"**
 3. Complete the form with as much detail as possible
 4. Submit — we'll receive a private notification
@@ -41,12 +41,12 @@ If you cannot use GitHub Security Advisories, you may email us directly:
 | | |
 |---|---|
 | **Email** | paint-type@pm.me |
-| **PGP Key** | [Download Public Key](https://github.com/JoshuaJewell.gpg) |
+| **PGP Key** | [Download Public Key](https://github.com/metadatastician.gpg) |
 | **Fingerprint** | `(PGP key not yet published)` |
 
 ```bash
 # Import our PGP key
-curl -sSL https://github.com/JoshuaJewell.gpg | gpg --import
+curl -sSL https://github.com/metadatastician.gpg | gpg --import
 
 # Verify fingerprint
 gpg --fingerprint paint-type@pm.me
@@ -185,7 +185,7 @@ If we cannot reach agreement on disclosure timing, we default to 90 days from yo
 
 The following are within scope for security research:
 
-- This repository (`JoshuaJewell/paint-type`) and all its code
+- This repository (`metadatastician/paint-type`) and all its code
 - Official releases and packages published from this repository
 - Documentation that could lead to security issues
 - Build and deployment configurations in this repository
@@ -304,7 +304,7 @@ Recognition includes:
 To stay informed about security updates:
 
 - **Watch this repository**: Click "Watch" → "Custom" → Select "Security alerts"
-- **GitHub Security Advisories**: Published at [Security Advisories](https://github.com/JoshuaJewell/paint-type/security/advisories)
+- **GitHub Security Advisories**: Published at [Security Advisories](https://github.com/metadatastician/paint-type/security/advisories)
 - **Release notes**: Security fixes noted in [CHANGELOG](CHANGELOG.md)
 
 ### Update Policy
@@ -352,8 +352,8 @@ When using paint-type, we recommend:
 
 ## Additional Resources
 
-- [Our PGP Public Key](https://github.com/JoshuaJewell.gpg)
-- [Security Advisories](https://github.com/JoshuaJewell/paint-type/security/advisories)
+- [Our PGP Public Key](https://github.com/metadatastician.gpg)
+- [Security Advisories](https://github.com/metadatastician/paint-type/security/advisories)
 - [Changelog](CHANGELOG.md)
 - [Contributing Guidelines](CONTRIBUTING.md)
 - [CVE Database](https://cve.mitre.org/)
@@ -365,8 +365,8 @@ When using paint-type, we recommend:
 
 | Purpose | Contact |
 |---------|---------|
-| **Security issues** | [Report via GitHub](https://github.com/JoshuaJewell/paint-type/security/advisories/new) or paint-type@pm.me |
-| **General questions** | [GitHub Discussions](https://github.com/JoshuaJewell/paint-type/discussions) |
+| **Security issues** | [Report via GitHub](https://github.com/metadatastician/paint-type/security/advisories/new) or paint-type@pm.me |
+| **General questions** | [GitHub Discussions](https://github.com/metadatastician/paint-type/discussions) |
 | **Other enquiries** | See [README](../README.adoc) for contact information |
 
 ---

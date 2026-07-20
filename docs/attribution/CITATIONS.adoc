@@ -10,26 +10,26 @@
   author = {Jewell, Joshua},
   title = {paint-type},
   year = {2026},
-  url = {https://github.com/JoshuaJewell/paint-type},
+  url = {https://github.com/metadatastician/paint-type},
   license = {AGPL-3.0-or-later with PMPL-1.0-or-later fallback}
 }
 ----
 
 == Harvard Style
 
-Jewell, J. (2026) _paint-type_ [Computer software]. Available at: https://github.com/JoshuaJewell/paint-type
+Jewell, J. (2026) _paint-type_ [Computer software]. Available at: https://github.com/metadatastician/paint-type
 
 == OSCOLA
 
-Joshua Jewell, 'paint-type' (2026) <https://github.com/JoshuaJewell/paint-type>
+Joshua Jewell, 'paint-type' (2026) <https://github.com/metadatastician/paint-type>
 
 == MLA
 
-Jewell, Joshua. "paint-type." 2026, github.com/JoshuaJewell/paint-type.
+Jewell, Joshua. "paint-type." 2026, github.com/metadatastician/paint-type.
 
 == APA 7
 
-Jewell, J. (2026). _paint-type_ [Computer software]. GitHub. https://github.com/JoshuaJewell/paint-type
+Jewell, J. (2026). _paint-type_ [Computer software]. GitHub. https://github.com/metadatastician/paint-type
 
 == See Also
 

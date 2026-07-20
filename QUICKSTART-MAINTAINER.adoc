@@ -30,7 +30,7 @@ For build dependencies, see: `guix.scm`.
 
 [source,bash]
 ----
-git clone https://github.com/JoshuaJewell/paint-type.git
+git clone https://github.com/metadatastician/paint-type.git
 cd paint-type
 just build-release
 ----
@@ -104,6 +104,6 @@ Gossamer shell integration lands.
 
 == Reporting Issues
 
-* Upstream: https://github.com/JoshuaJewell/paint-type/issues
+* Upstream: https://github.com/metadatastician/paint-type/issues
 * With diagnostic: `just help-me` (pre-fills context)
 * Security: paint-type@pm.me

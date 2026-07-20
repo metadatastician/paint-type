@@ -12,7 +12,7 @@ only remaining v0.2.0 box is the AffineScript → typed-wasm bridge — draft
 compile with `tw build` via hardcoded IR; full general front-end → IR lowering
 still gated upstream on `hyperpolymath/typed-wasm#127` (D1 codegen coverage) +
 `#130` (D2 round-trip soundness), tracked from this side in
-`JoshuaJewell/paint-type#39`.
+`metadatastician/paint-type#39`.
 Architecture remains locked.
 
 == Milestones

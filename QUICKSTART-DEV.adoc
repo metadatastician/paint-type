@@ -32,7 +32,7 @@ Prerequisites:
 
 [source,bash]
 ----
-git clone https://github.com/JoshuaJewell/paint-type.git
+git clone https://github.com/metadatastician/paint-type.git
 cd paint-type
 just setup-dev
 ----
@@ -156,5 +156,5 @@ Or read `0-AI-MANIFEST.a2ml` and `llm-warmup-dev.adoc` directly.
 * **Architecture**: link:EXPLAINME.adoc[EXPLAINME.adoc]
 * **Topology**: link:TOPOLOGY.adoc[TOPOLOGY.adoc]
 * **Roadmap**: link:ROADMAP.adoc[ROADMAP.adoc]
-* **Report issue**: https://github.com/JoshuaJewell/paint-type/issues
+* **Report issue**: https://github.com/metadatastician/paint-type/issues
 * **Contact**: paint-type@pm.me
