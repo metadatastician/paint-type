@@ -1,0 +1,89 @@
+= Architecture Decision Record: 0004-consolidate-paint-type-estates
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+<!-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk> -->
+
+# 4. Consolidate paint-type into a single canonical estate
+
+Date: 2026-07-20
+
+## Status
+
+Accepted
+
+## Context
+
+`paint-type` had drifted across three GitHub owners, and it was no longer
+obvious which one was authoritative:
+
+- **`metadatastician/paint-type`** — the canonical home (this repository).
+- **`JoshuaJewell/paint-type`** — the upstream fork this repo was forked from.
+  After the fork it continued to receive a CI/security-fix track (PRs
+  #107–#113) that never came across.
+- **`hyperpolymath/paint-queue`** — a *stopgap* repository used as an interim
+  landing zone for `paint-type` milestones (`paint-type-shell/`,
+  `paint-type-collab/`) at a time when write access to the upstream fork was
+  unavailable. It was never a real second copy of `paint-type`.
+
+The fork is shallow: `metadatastician` and `JoshuaJewell` share history up to
+`2f4e2d4` (just above PR #108); each then grew a thin top layer — a rebrand +
+governance track here, a CI-fix track there. `paint-queue` held one genuinely
+unique, unlanded payload (the v0.5.0 collaboration crate, issue #15) amid
+otherwise duplicated or template-stub content.
+
+## Decision
+
+**`metadatastician/paint-type` is the single canonical home for the project.**
+The valuable, unmigrated work from the other two estates was salvaged into it:
+
+From **`JoshuaJewell/paint-type@ba4fd84`** (merged PR #113), the CI/security track:
+
+- `.github/workflows/verify-manifests.yml` — `find -prune` depth-count rewrite
+  (the previous version descended into `.git/objects`/`node_modules` and
+  undercounted component depth).
+- `.github/workflows/cross-platform.yml` — Windows `pt.dll`-on-`$GITHUB_PATH`
+  step + poisoned-cache skip.
+- `third_party/gossamer/site/index.html` — Content-Security-Policy hardening.
+- `docs/proof-debt.md` — the proof-debt ledger this repo already *referenced*
+  (see `AFFIRMATION.adoc`) but had never authored.
+- `.trusted-base-ignore` — the RSR vendored-base carve-out (registered in
+  `root-hygiene.scm`; paired with `verify-manifests` and `dogfood-gate`).
+- `docs/developer/native-platform-testing.adoc` — native tester runbook.
+- Toolchain pins required no change: `mise.toml` already carries the tight
+  CI-lockstepped versions (`zig 0.15.1`, `idris2 0.8.0`, `just 1.40.0`,
+  `rust nightly`).
+
+From **`hyperpolymath/paint-queue`** (this repo, PR #23):
+
+- `paint-type-collab` v0.5.0 (issue #15) — the `paint_collab` Rust CvRDT crate
+  plus its Agda (`verification/proofs/agda/TileCRDT.agda`) and TLA+
+  (`verification/proofs/tlaplus/BurbleSession.tla`) proofs and `collab-ci.yml`.
+  This was the **last surviving copy**: `paint-queue` was deleted (local and
+  remote) before its unique work had landed anywhere durable.
+
+### On `eclexiaiser.toml` (a deliberate reversal — do not re-delete)
+
+The root `eclexiaiser.toml` energy/carbon-budget manifest was **deliberately
+deleted** from this repo in commit `1e3a405` during the rebrand sweep. This
+ADR **restores it** by explicit owner decision: the manifest is a real,
+paint-type-scoped config (`name = "paint-type"`, budgets for
+`src/interface/ffi/*`), it is validated by `dogfood-gate.yml`'s
+`eclexiaiser-validate` job, and it is distinct from
+`third_party/gossamer/eclexiaiser.toml` (which is gossamer-scoped, MPL-2.0).
+The deletion `1e3a405` is intentionally reversed here; do not re-delete it.
+
+## Consequences
+
+- **`JoshuaJewell/paint-type` is abandoned.** Do not push to, pull from, or
+  merge from it. As of `ba4fd84`, everything of value has been migrated here.
+  The upstream owner will retire that repository.
+- **`hyperpolymath/paint-queue` is retired** (deleted local + remote). Its one
+  unique payload (`paint-type-collab`) now lives here.
+- **`verify-manifests` is now honest.** Replacing the always-failing buggy
+  version with Joshua's correct one turns the gate meaningful — which now
+  surfaces *pre-existing* missing component manifests (`src/ptype_format/`,
+  and the newly-landed `src/paint_collab/`). These are tracked as a follow-up
+  CI-hygiene issue and should be regenerated via the manifest tool, not
+  hand-stubbed. This ADR does not gold-plate them inline.
+- **For future agents and maintainers:** `metadatastician/paint-type` is THE
+  place to work. If you arrive at a `paint-queue` checkout or the
+  `JoshuaJewell/paint-type` fork, stop — your work belongs here.

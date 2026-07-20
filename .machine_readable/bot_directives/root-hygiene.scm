@@ -42,6 +42,7 @@
     "Makefile"                 ;; legacy, tolerated
     "flake.nix" "flake.lock"
     "guix.scm"
+    "eclexiaiser.toml"         ;; energy/carbon budget manifest (validated by dogfood-gate)
     ;; Dotfiles
     ".editorconfig"
     ".envrc"
@@ -51,6 +52,7 @@
     ".gitlab-ci.yml"
     ".guix-channel"
     ".tool-versions"
+    ".trusted-base-ignore"     ;; RSR vendored-base carve-out (paired with verify-manifests + dogfood-gate)
     ;; Language-specific build files (if project root IS the source)
     "Cargo.toml" "Cargo.lock"
     "deno.json" "deno.lock"
