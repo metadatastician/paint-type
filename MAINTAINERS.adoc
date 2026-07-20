@@ -9,12 +9,13 @@
 |===
 | Name | Role | Contact
 
-| Jonathan D.A. Jewell | Sole Maintainer | https://github.com/hyperpolymath[@hyperpolymath]
+| Jonathan D.A. Jewell | Lead Maintainer | https://github.com/hyperpolymath[@hyperpolymath]
+| metadatastician | Co-maintainer | https://github.com/metadatastician[@metadatastician]
 |===
 
 == Maintainer Responsibilities
 
-As the sole maintainer, all responsibilities apply to @hyperpolymath:
+As the primary maintainers, all responsibilities apply to @hyperpolymath and @metadatastician:
 
 * Reviewing and merging pull requests
 * Triaging issues and feature requests
@@ -56,7 +57,7 @@ Co-maintainers may be added at the discretion of the current maintainer.
 For questions about project governance:
 
 * Open a GitHub issue in this repository
-* Contact: https://github.com/hyperpolymath
+* Contact: https://github.com/hyperpolymath or https://github.com/metadatastician
 
 == See Also
 

@@ -7,12 +7,12 @@ This document describes the governance model for this repository.
 
 == Overview
 
-This repository follows a **Sole Maintainer Governance Model**:
+This repository follows a **Dual Maintainer Governance Model**:
 
-* Single maintainer (@hyperpolymath) has full authority over the project
-* All contributions are welcome and reviewed by the maintainer
+* Lead maintainer (@hyperpolymath) and co-maintainer (@metadatastician) have authority over the project
+* All contributions are welcome and reviewed by the maintainers
 * Decisions are made transparently through GitHub issues and discussions
-* The project adheres to the hyperpolymath estate policies where applicable
+* The project adheres to the hyperpolymath and metadatastician estate policies where applicable
 
 == Core Principles
 
@@ -38,7 +38,7 @@ This repository follows a **Sole Maintainer Governance Model**:
 |===
 | Role | Permissions | Assignment
 
-| **Maintainer** | Write access, merge rights, admin | @hyperpolymath
+| **Maintainer** | Write access, merge rights, admin | @hyperpolymath, @metadatastician
 | **Contributors** | Read access, fork, submit PRs | All GitHub users
 | **Users** | Use the software, report issues | All GitHub users
 

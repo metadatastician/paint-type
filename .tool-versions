@@ -1,7 +1,0 @@
-# Toolchain pins. Keep in lockstep with .github/workflows/ so local builds
-# reproduce CI exactly (see the zig skew that broke local 0.15.2 while CI on
-# 0.15.1 stayed green).
-rust nightly
-zig 0.15.1
-idris2 0.8.0
-just 1.40.0

@@ -1,14 +1,15 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: CC-BY-SA-4.0
 # GitHub code owner assignments for paint-type.
 # GitHub accepts CODEOWNERS in the repository root, .github/, or docs/.
 
-# Default owner for the whole repository.
-* @JoshuaJewell
+# Top-level owners.
+* @hyperpolymath
+* @metadatastician
 
 # Governance and security-sensitive surfaces.
-CODEOWNERS @JoshuaJewell
-SECURITY.md @JoshuaJewell
-.github/ @JoshuaJewell
-.github/workflows/ @JoshuaJewell
-.machine_readable/ @JoshuaJewell
-Trustfile.a2ml @JoshuaJewell
+CODEOWNERS @hyperpolymath @metadatastician
+SECURITY.md @hyperpolymath @metadatastician
+.github/ @hyperpolymath @metadatastician
+.github/workflows/ @hyperpolymath @metadatastician
+.machine_readable/ @hyperpolymath @metadatastician
+Trustfile.a2ml @hyperpolymath @metadatastician

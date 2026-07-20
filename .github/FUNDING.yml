@@ -1,7 +1,21 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# Funding platforms for JoshuaJewell projects
+# SPDX-License-Identifier: CC-BY-SA-4.0
+# Funding platforms for paint-type project
 # See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
 
-github: JoshuaJewell
-ko_fi: JoshuaJewell
-liberapay: JoshuaJewell
+# Primary accounts
+github: hyperpolymath
+github: metadatastician
+
+# Additional funding platforms
+ko_fi: hyperpolymath
+liberapay: hyperpolymath
+opencollective: hyperpolymath
+patreon: hyperpolymath
+buymeacoffee: hyperpolymath
+paypal: hyperpolymath
+
+# Secondary/fallback accounts
+ko_fi: metadatastician
+liberapay: metadatastician
+opencollective: metadatastician
+patreon: metadatastician

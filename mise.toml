@@ -2,12 +2,14 @@
 # Language runtimes
 node = "latest"
 python = "latest"
-rust = "latest"
+rust = "nightly"
+zig = "0.15.1"
+idris2 = "0.8.0"
 go = "latest"
-zig = "latest"
 java = "latest"
 bun = "latest"
 denojs = "latest"
+just = "1.40.0"
 
 # Package managers
 npm = "latest"

@@ -42,6 +42,11 @@ This repository follows a modular, maintainable architecture designed for clarit
 - Pull requests require review and CI checks
 - Issues and discussions are tracked transparently
 
+## Architecture Owners
+
+- **Lead Architect**: @hyperpolymath (Jonathan D.A. Jewell)
+- **Co-architect**: @metadatastician
+
 ---
 
-*Last updated: 2026-07-18*
+*Last updated: 2026-07-20*
