@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# paint_collab — the v0.5.0 collaboration core for paint.type.
+#
+# This crate is deliberately TRANSPORT-INDEPENDENT and FFI-FREE: it does not
+# link libpt (the Zig core) and has no `build.rs`. That keeps the conflict-free
+# tile-merge CRDT, the per-peer permission model, and the session/discovery
+# scaffolding buildable and `cargo test`-able on their own, independent of the
+# native render core. The live WebRTC transport (Burble) and `.well-known/groove`
+# discovery runtime are pluggable behind the `Transport`/`Discovery` traits;
+# the in-process `SimTransport` exercises the full two-peer convergence path
+# without a network.
+#
+# Standalone package (NOT part of the paint_core workspace), mirroring the
+# pattern used by `src/paint_core/fuzz/`.
+
+[package]
+name = "paint_collab"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-or-later"
+description = "Collaboration core for paint.type: CRDT tile merge, per-peer permissions, session + Groove discovery scaffolding."
+repository = "https://github.com/metadatastician/paint-type"
+
+[lib]
+name = "paint_collab"
+crate-type = ["rlib"]
+
+[dependencies]
+
+[dev-dependencies]
+proptest = "1"
