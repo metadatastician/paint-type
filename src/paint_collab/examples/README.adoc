@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+= examples
+:description: Runnable examples for paint_collab.
+
+This directory is part of the paint.type project.
+
+== Purpose
+
+Runnable examples for paint_collab.
+
+As a Level 3 directory (`src/paint_collab/examples/`), it supports the overall project structure.
+
+== Files
+
+* `emit_manifest.rs` — Rust source
+
+== AI Manifest Structure
+
+* `0.3-AI-MANIFEST.a2ml` — Level 3 manifest for `src/paint_collab/examples/`
+
+== Related Files
+
+* link:../0.2-AI-MANIFEST.a2ml[Parent AI Manifest]
+* link:../README.adoc[Parent Directory README]
+* link:../../../.machine_readable/[Machine Readable Metadata]

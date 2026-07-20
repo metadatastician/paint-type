@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+= src
+:description: Source for the paint_collab collaboration crate.
+
+This directory is part of the paint.type project.
+
+== Purpose
+
+Source for the paint_collab collaboration crate.
+
+As a Level 3 directory (`src/paint_collab/src/`), it supports the overall project structure.
+
+== Files
+
+* `crdt.rs` — Rust source
+* `groove.rs` — Rust source
+* `lib.rs` — Rust source
+* `llm.rs` — Rust source
+* `permission.rs` — Rust source
+* `session.rs` — Rust source
+* `transport.rs` — Rust source
+
+== AI Manifest Structure
+
+* `0.3-AI-MANIFEST.a2ml` — Level 3 manifest for `src/paint_collab/src/`
+
+== Related Files
+
+* link:../0.2-AI-MANIFEST.a2ml[Parent AI Manifest]
+* link:../README.adoc[Parent Directory README]
+* link:../../../.machine_readable/[Machine Readable Metadata]

@@ -1,0 +1,27 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+= tests
+:description: Integration tests for paint_collab — CRDT convergence proptests and the two-peer end-to-end session.
+
+This directory is part of the paint.type project.
+
+== Purpose
+
+Integration tests for paint_collab — CRDT convergence proptests and the two-peer end-to-end session.
+
+As a Level 3 directory (`src/paint_collab/tests/`), it supports the overall project structure.
+
+== Files
+
+* `convergence.rs` — Rust source
+* `e2e_two_peer.rs` — Rust source
+
+== AI Manifest Structure
+
+* `0.3-AI-MANIFEST.a2ml` — Level 3 manifest for `src/paint_collab/tests/`
+
+== Related Files
+
+* link:../0.2-AI-MANIFEST.a2ml[Parent AI Manifest]
+* link:../README.adoc[Parent Directory README]
+* link:../../../.machine_readable/[Machine Readable Metadata]
