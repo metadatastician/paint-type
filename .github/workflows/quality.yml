@@ -26,7 +26,7 @@ jobs:
         uses: editorconfig-checker/action-editorconfig-checker@4b6cd6190d435e7e084fb35e36a096e98506f7b9 # v2.1.0
         continue-on-error: true
       - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@master
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
   docs:
     runs-on: ubuntu-latest
     permissions:
