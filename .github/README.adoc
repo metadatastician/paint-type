@@ -1,0 +1,54 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+= .github
+:description: GitHub Actions workflows, issue/discussion templates, and repository automation for paint.type.
+
+This directory is part of the paint.type project.
+
+== Purpose
+
+GitHub Actions workflows, issue/discussion templates, and repository automation for paint.type.
+
+As a Level 1 directory (`.github/`), it supports the overall project structure.
+
+== Subdirectories
+
+[cols="1,2", options="header"]
+|===
+| Directory | Purpose
+| `DISCUSSION_TEMPLATE/` |
+| `ISSUE_TEMPLATE/` |
+| `workflows/` |
+|===
+
+== Files
+
+* `ABOUT.adoc` — AsciiDoc documentation
+* `CI-CD-CLEANUP-SUMMARY.adoc` — AsciiDoc documentation
+* `CODE_OF_CONDUCT.md` — Markdown documentation
+* `CONTRIBUTING.md` — Markdown documentation
+* `copilot-instructions.adoc` — AsciiDoc documentation
+* `copilot-instructions.md` — Markdown documentation
+* `dependabot.yml` — YAML configuration
+* `DIRECTORY.adoc` — AsciiDoc documentation
+* `funding.yml` — YAML configuration
+* `FUNDING.yml` — YAML configuration
+* `GOVERNANCE.adoc` — AsciiDoc documentation
+* `GOVERNANCE.md` — Markdown documentation
+* `.mailmap` — project file
+* `MAINTAINERS` — project file
+* `.nojekyll` — project file
+* `pull_request_template.md` — Markdown documentation
+* `SECURITY.md` — Markdown documentation
+* `settings.yml` — YAML configuration
+* `SUPPORT` — project file
+
+== AI Manifest Structure
+
+* `0.1-AI-MANIFEST.a2ml` — Level 1 manifest for `.github/`
+
+== Related Files
+
+* link:../0-AI-MANIFEST.a2ml[Parent AI Manifest]
+* link:../README.adoc[Parent Directory README]
+* link:../../.machine_readable/[Machine Readable Metadata]

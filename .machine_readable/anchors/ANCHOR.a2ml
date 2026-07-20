@@ -9,7 +9,7 @@ last-updated = "2026-05-11"
 
 [anchor]
 schema = "hyperpolymath.anchor/1"
-repo = "JoshuaJewell/paint-type"
+repo = "metadatastician/paint-type"
 authority = "upstream-canonical"
 
 purpose = [

@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# paint.type AI Manifest (Level 1)
+
+This is the AI manifest for the `brand/` directory (Level 1) of paint.type.
+
+## Purpose
+
+Brand assets — icons, social preview image, and brand guidance for paint.type.
+
+## Authority Split
+
+- **Central protocol authority:** `standards/` repository
+- **Local integration authority (this directory):** `brand/` specific configuration
+
+## Canonical Files
+
+- `BRAND.adoc` — AsciiDoc documentation
+- `icon-square.svg` — SVG asset
+- `icon.svg` — SVG asset
+- `social-preview.svg` — SVG asset
+
+## Invariants
+
+1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
+2. Each directory at layer 1 must have its own `0.1-AI-MANIFEST.a2ml`.
+3. Each directory must have a `README.adoc` describing purpose, contents, and function.
+4. SPDX license identifiers must be consistent across all files (AGPL-3.0-or-later).
+
+## Startup Checklist for Agents
+
+1. Read this file (`0.1-AI-MANIFEST.a2ml`).
+2. Read `README.adoc` for directory overview.
+3. For subdirectories, navigate to their respective manifest files.
+4. Never edit `.machine_readable/` files directly.

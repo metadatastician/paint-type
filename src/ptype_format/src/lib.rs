@@ -10,7 +10,7 @@
 //! `64 * 64 * 4` RGBA16F scalars. Crucially, those scalars are kept as the raw
 //! **`u16` bit-patterns of IEEE-754 half-floats** — never as decoded `f32`s
 //! (see `src/backends/cpu/main.zig`, `src/interface/ffi/src/main.zig` and
-//! `src/ephapax/src/lib.rs` in `JoshuaJewell/paint-type`).
+//! `src/ephapax/src/lib.rs` in `metadatastician/paint-type`).
 //!
 //! This crate serialises that model verbatim. Because we move the exact `u16`
 //! bit-patterns to and from disk and never interpret them as floats, the

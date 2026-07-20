@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+= plugin-toolset
+:description: Plugin-toolset design notes — overview, wizard, minter, provisioner, configurator, and harness.
+
+This directory is part of the paint.type project.
+
+== Purpose
+
+Plugin-toolset design notes — overview, wizard, minter, provisioner, configurator, and harness.
+
+As a Level 3 directory (`docs/issues/plugin-toolset/`), it supports the overall project structure.
+
+== Files
+
+* `00-overview.md` — Markdown documentation
+* `01-wizard.md` — Markdown documentation
+* `02-minter.md` — Markdown documentation
+* `03-provisioner.md` — Markdown documentation
+* `04-configurator.md` — Markdown documentation
+* `05-harness.md` — Markdown documentation
+
+== AI Manifest Structure
+
+* `0.3-AI-MANIFEST.a2ml` — Level 3 manifest for `docs/issues/plugin-toolset/`
+
+== Related Files
+
+* link:../0.2-AI-MANIFEST.a2ml[Parent AI Manifest]
+* link:../README.adoc[Parent Directory README]
+* link:../../.machine_readable/[Machine Readable Metadata]

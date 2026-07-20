@@ -35,9 +35,9 @@
 # LICENSES/, LICENSE-STATUS.adoc, or any SPDX header — licence edits are manual
 # and owner-only, never automated.
 #
-# Copies also exist at JoshuaJewell/paint-type and hyperpolymath/paint-type.
-# Whether those are mirrors, upstream, or stale is the owner's to declare; they
-# are deliberately not asserted here as [forges] entries.
+# metadatastician/paint-type is the sole canonical home (owner-declared). Any
+# earlier copies under other forge owners are retired; their status is the
+# owner's to declare and is deliberately not asserted here as [forges] entries.
 uuid = "9028605a-f12b-59ca-850e-74dd4e2f0bdd"
 primary-forge = "github"
 primary-owner = "metadatastician"

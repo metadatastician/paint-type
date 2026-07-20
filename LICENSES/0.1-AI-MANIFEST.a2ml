@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# paint.type AI Manifest (Level 1)
+
+This is the AI manifest for the `LICENSES/` directory (Level 1) of paint.type.
+
+## Purpose
+
+Full text of every license referenced by SPDX identifiers across this repository (REUSE-style).
+
+## Authority Split
+
+- **Central protocol authority:** `standards/` repository
+- **Local integration authority (this directory):** `LICENSES/` specific configuration
+
+## Canonical Files
+
+- `AGPL-3.0-or-later.txt` — text file
+- `CC-BY-SA-4.0.txt` — text file
+- `MPL-2.0.txt` — text file
+
+## Invariants
+
+1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
+2. Each directory at layer 1 must have its own `0.1-AI-MANIFEST.a2ml`.
+3. Each directory must have a `README.adoc` describing purpose, contents, and function.
+4. SPDX license identifiers must be consistent across all files (AGPL-3.0-or-later).
+
+## Startup Checklist for Agents
+
+1. Read this file (`0.1-AI-MANIFEST.a2ml`).
+2. Read `README.adoc` for directory overview.
+3. For subdirectories, navigate to their respective manifest files.
+4. Never edit `.machine_readable/` files directly.

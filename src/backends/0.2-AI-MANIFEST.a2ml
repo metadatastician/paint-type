@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# paint.type AI Manifest (Level 2)
+
+This is the AI manifest for the `src/backends/` directory (Level 2) of paint.type.
+
+## Purpose
+
+paint.type backends
+
+## Authority Split
+
+- **Central protocol authority:** `standards/` repository
+- **Local integration authority (this directory):** `src/backends/` specific configuration
+
+## Subdirectories
+
+| Directory | Layer | Purpose |
+|---|---|---|
+| `cpu/` | 3 | |
+| `crypto/` | 3 | |
+| `dsp/` | 3 | |
+| `fpga/` | 3 | |
+| `gpu/` | 3 | |
+| `io/` | 3 | |
+| `net/` | 3 | |
+| `peripheral/` | 3 | |
+| `physics/` | 3 | |
+| `storage/` | 3 | |
+| `tensor/` | 3 | |
+| `vector/` | 3 | |
+
+## Canonical Files
+
+- `Abstract.idr` — Idris2 source
+- `dispatcher.zig` — Zig source
+
+## Invariants
+
+1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
+2. Each directory at layer 2 must have its own `0.2-AI-MANIFEST.a2ml`.
+3. Each directory must have a `README.adoc` describing purpose, contents, and function.
+4. SPDX license identifiers must be consistent across all files (AGPL-3.0-or-later).
+
+## Startup Checklist for Agents
+
+1. Read this file (`0.2-AI-MANIFEST.a2ml`).
+2. Read `README.adoc` for directory overview.
+3. For subdirectories, navigate to their respective manifest files.
+4. Never edit `.machine_readable/` files directly.
