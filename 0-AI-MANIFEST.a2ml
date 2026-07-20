@@ -7,7 +7,7 @@ This is the root AI manifest for paint.type.
 **NAME CLARIFICATION:** The *project* is named "paint.type" (similar to Paint.NET). The *GitHub repository* is named "paint-type" (GitHub does not allow dots in repository names). All references should use "paint.type" as the project name.
 
 paint.type is a cross-platform open-source image editor in the spirit of Paint.NET.
-Repo: JoshuaJewell/paint-type. License: AGPL-3.0-or-later.
+Repo: metadatastician/paint-type. License: AGPL-3.0-or-later.
 Contact: paint-type@pm.me. Status: pre-alpha — v0.2.0 Core Image Operations
 closing (compositing primitives + UndoGraph + Layer model + brush engine +
 pt_layer_* FFI all landed; ABI category fully proven; Rust CI green on main).
