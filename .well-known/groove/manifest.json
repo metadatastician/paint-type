@@ -1,0 +1,31 @@
+{
+  "groove_version": "1",
+  "service_id": "paint-type",
+  "service_version": "0.5.0",
+  "capabilities": {
+    "collab-canvas": {
+      "type": "custom",
+      "description": "Conflict-free collaborative tile canvas (CRDT merge) over a Burble WebRTC data channel",
+      "protocol": "webrtc",
+      "endpoint": "/collab/canvas",
+      "requires_auth": true,
+      "panel_compatible": true
+    },
+    "edit-stream": {
+      "type": "custom",
+      "description": "Realtime tile-edit op stream; CRDT-merged and permission-gated per peer",
+      "protocol": "webrtc",
+      "endpoint": "/collab/edits",
+      "requires_auth": true,
+      "panel_compatible": false
+    }
+  },
+  "consumes": ["voice", "text", "presence", "integrity"],
+  "endpoints": {
+    "groove": "/.well-known/groove",
+    "health": "/health",
+    "schema": "/schema/groove-manifest.schema.json"
+  },
+  "health": "/health",
+  "applicability": ["individual", "team"]
+}

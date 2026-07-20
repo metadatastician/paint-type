@@ -1,0 +1,92 @@
+= Collaboration (v0.5.0)
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// Tracks issue #15.
+
+v0.5.0 makes paint-type multi-peer. This document records the architecture,
+what is *proven*, what is *implemented and tested*, and what is honestly
+*scaffolded pending upstream*, so the milestone's status is unambiguous.
+
+== Layered design
+
+[cols="1,3",options="header"]
+|===
+| Layer | Role
+| CRDT tile merge (`src/paint_collab/src/crdt.rs`)
+| Conflict-free state-based CRDT: a product of last-writer-wins registers, one
+  per pixel. Merge keeps the cell with the greater key under the total order on
+  `(lamport, peer, value)`. Join-semilattice ⇒ commutative + associative +
+  idempotent ⇒ Strong Eventual Consistency.
+| Permission model (`permission.rs`)
+| Per-peer capability bitset over `read / paint / layer-mutate / invite / kick`.
+  Every mutating action passes one gate; denials return `CapabilityError`,
+  never silent success.
+| Session (`session.rs`)
+| One peer's view: Lamport clock, CRDT replica, permission table, pluggable
+  transport. Local edits are gated then broadcast; remote ops are re-gated on
+  the originator then merged. Order- and duplicate-insensitive by construction.
+| Transport (`transport.rs`)
+| `Transport` trait. `session::sim::SimTransport` is the runnable in-process
+  implementation; `BurbleTransport` is the live WebRTC-over-Burble binding
+  (scaffold — see below).
+| Discovery (`groove.rs`)
+| `.well-known/groove/` manifest so peers find each other without a central
+  broker. Conforms to the estate Groove v1 manifest schema.
+| LLM channel (`llm.rs`)
+| Optional AI assistant, OFF by default; the assistant is a peer whose actions
+  pass the same permission gate. Live backend is the boj-server MCP gateway
+  (scaffold).
+|===
+
+== Proof obligations — all discharged
+
+[cols="1,2,2,2",options="header"]
+|===
+| ID | Statement | Prover | File
+| CONC-1 | tile merge commutativity `A⊕B = B⊕A` | Agda (builtin-only) | `verification/proofs/agda/TileCRDT.agda`
+| CONC-2 | tile merge associativity `A⊕(B⊕C) = (A⊕B)⊕C` | Agda (builtin-only) | `verification/proofs/agda/TileCRDT.agda`
+| CONC-3 | session liveness: every committed mutation eventually visible to every peer | TLA+ / TLC | `verification/proofs/tlaplus/BurbleSession.tla`
+| INV-2 | undo-graph monotonicity re-verified under concurrent commits (no silent discard) | TLA+ `Monotone` + Agda `⊔-upper-*` | as above
+|===
+
+The Agda proofs are builtin-only with no `postulate` / `{-# TERMINATING #-}` /
+`believe_me`, verified with `agda --no-libraries`. The TLA+ liveness property
+was adversarially probed: removing delivery fairness produces a TLC
+counter-example, confirming the property is not vacuous and that the Burble
+DataChannel's reliable delivery is the load-bearing assumption.
+
+`merge associativity reduces to blend totality plus structural lemmas` (issue
+#15): here the structural lemmas are the join-semilattice laws of the per-cell
+`⊔` (max over the total order), and totality is the totality of that
+comparison — both proved in `TileCRDT.agda §1`, lifted pointwise in `§3`.
+
+== What is runnable and tested now
+
+* `cargo test --manifest-path src/paint_collab/Cargo.toml --all-targets` —
+  29 unit tests + 5 `proptest` convergence properties (2000 cases each for the
+  merge laws) + the two-peer e2e scenario.
+* `tests/e2e/collaboration_session_test.sh` — discovery → grant → concurrent
+  paint → reordered+duplicated exchange → convergence → denied-paint-is-loud →
+  LLM-off-by-default, per TEST-NEEDS P3.
+* The three proofs above, enforced in CI by `.github/workflows/collab-ci.yml`.
+
+== What is scaffolded pending upstream (NOT claimed done)
+
+These require infrastructure that cannot be stood up or measured in CI, and are
+implemented as honest stubs behind the traits above rather than faked:
+
+* *Live WebRTC session + <10ms p95 latency acceptance.* Needs a running Burble
+  bridge + browser/native WebRTC stack and two real peers. `BurbleTransport`
+  returns `NotWired`; no method panics. The session *semantics* are fully
+  validated over `SimTransport`.
+* *Live Groove discovery runtime.* The manifest and the `Discovery` trait +
+  `SimDiscovery` are implemented and tested; the mDNS / `.well-known` HTTP
+  fetch path (`MdnsBackend` / `WellKnownBackend` in `src/backends/net/`) is the
+  live binding.
+* *Live LLM via boj-server MCP gateway.* Deferred upstream until the gateway
+  exposes a stable cartridge surface for paint-type (per issue #15). The
+  permission-gating — the security-relevant part — is fully implemented and
+  tested; `BojGateway` returns `GatewayUnavailable`.
+
+Upstream Burble is at CRG Grade D (the milestone requires "at least Grade
+D-stable"), so the *design + proof* work is unblocked; the live-integration
+items above are tracked as follow-up.
