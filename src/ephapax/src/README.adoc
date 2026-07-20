@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+= src
+:description: Source for the Ephapax integration crate.
+
+This directory is part of the paint.type project.
+
+== Purpose
+
+Source for the Ephapax integration crate.
+
+As a Level 3 directory (`src/ephapax/src/`), it supports the overall project structure.
+
+== Files
+
+* `lib.rs` — Rust source
+
+== AI Manifest Structure
+
+* `0.3-AI-MANIFEST.a2ml` — Level 3 manifest for `src/ephapax/src/`
+
+== Related Files
+
+* link:../0.2-AI-MANIFEST.a2ml[Parent AI Manifest]
+* link:../README.adoc[Parent Directory README]
+* link:../../.machine_readable/[Machine Readable Metadata]

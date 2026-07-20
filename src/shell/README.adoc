@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+= shell
+:description: Desktop shell — the GTK3 / WebKitGTK host process for the paint.type application.
+
+This directory is part of the paint.type project.
+
+== Purpose
+
+Desktop shell — the GTK3 / WebKitGTK host process for the paint.type application.
+
+As a Level 2 directory (`src/shell/`), it supports the overall project structure.
+
+== Subdirectories
+
+[cols="1,2", options="header"]
+|===
+| Directory | Purpose
+| `web/` |
+|===
+
+== Files
+
+* `build.zig` — Zig source
+* `.gitignore` — project file
+* `main.zig` — Zig source
+
+== AI Manifest Structure
+
+* `0.2-AI-MANIFEST.a2ml` — Level 2 manifest for `src/shell/`
+
+== Related Files
+
+* link:../0.1-AI-MANIFEST.a2ml[Parent AI Manifest]
+* link:../README.adoc[Parent Directory README]
+* link:../../.machine_readable/[Machine Readable Metadata]

@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+= seeds
+:description: Seed corpus for the ptype_format fuzz targets.
+
+This directory is part of the paint.type project.
+
+== Purpose
+
+Seed corpus for the ptype_format fuzz targets.
+
+As a Level 4 directory (`src/ptype_format/fuzz/seeds/`), it supports the overall project structure.
+
+== Files
+
+* `empty.ptype` — project file
+
+== AI Manifest Structure
+
+* `0.4-AI-MANIFEST.a2ml` — Level 4 manifest for `src/ptype_format/fuzz/seeds/`
+
+== Related Files
+
+* link:../0.3-AI-MANIFEST.a2ml[Parent AI Manifest]
+* link:../README.adoc[Parent Directory README]
+* link:../../.machine_readable/[Machine Readable Metadata]

@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+= ptype_format
+:description: The .ptype image container format — encode/decode Rust crate with fuzzing.
+
+This directory is part of the paint.type project.
+
+== Purpose
+
+The .ptype image container format — encode/decode Rust crate with fuzzing.
+
+As a Level 2 directory (`src/ptype_format/`), it supports the overall project structure.
+
+== Subdirectories
+
+[cols="1,2", options="header"]
+|===
+| Directory | Purpose
+| `fuzz/` |
+| `src/` |
+|===
+
+== Files
+
+* `Cargo.toml` — TOML configuration
+* `.gitignore` — project file
+
+== AI Manifest Structure
+
+* `0.2-AI-MANIFEST.a2ml` — Level 2 manifest for `src/ptype_format/`
+
+== Related Files
+
+* link:../0.1-AI-MANIFEST.a2ml[Parent AI Manifest]
+* link:../README.adoc[Parent Directory README]
+* link:../../.machine_readable/[Machine Readable Metadata]

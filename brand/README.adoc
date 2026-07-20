@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+= brand
+:description: Brand assets — icons, social preview image, and brand guidance for paint.type.
+
+This directory is part of the paint.type project.
+
+== Purpose
+
+Brand assets — icons, social preview image, and brand guidance for paint.type.
+
+As a Level 1 directory (`brand/`), it supports the overall project structure.
+
+== Files
+
+* `BRAND.adoc` — AsciiDoc documentation
+* `icon-square.svg` — SVG asset
+* `icon.svg` — SVG asset
+* `social-preview.svg` — SVG asset
+
+== AI Manifest Structure
+
+* `0.1-AI-MANIFEST.a2ml` — Level 1 manifest for `brand/`
+
+== Related Files
+
+* link:../0-AI-MANIFEST.a2ml[Parent AI Manifest]
+* link:../README.adoc[Parent Directory README]
+* link:../../.machine_readable/[Machine Readable Metadata]

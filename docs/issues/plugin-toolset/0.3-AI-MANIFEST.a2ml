@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# paint.type AI Manifest (Level 3)
+
+This is the AI manifest for the `docs/issues/plugin-toolset/` directory (Level 3) of paint.type.
+
+## Purpose
+
+Plugin-toolset design notes — overview, wizard, minter, provisioner, configurator, and harness.
+
+## Authority Split
+
+- **Central protocol authority:** `standards/` repository
+- **Local integration authority (this directory):** `docs/issues/plugin-toolset/` specific configuration
+
+## Canonical Files
+
+- `00-overview.md` — Markdown documentation
+- `01-wizard.md` — Markdown documentation
+- `02-minter.md` — Markdown documentation
+- `03-provisioner.md` — Markdown documentation
+- `04-configurator.md` — Markdown documentation
+- `05-harness.md` — Markdown documentation
+
+## Invariants
+
+1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
+2. Each directory at layer 3 must have its own `0.3-AI-MANIFEST.a2ml`.
+3. Each directory must have a `README.adoc` describing purpose, contents, and function.
+4. SPDX license identifiers must be consistent across all files (AGPL-3.0-or-later).
+
+## Startup Checklist for Agents
+
+1. Read this file (`0.3-AI-MANIFEST.a2ml`).
+2. Read `README.adoc` for directory overview.
+3. For subdirectories, navigate to their respective manifest files.
+4. Never edit `.machine_readable/` files directly.

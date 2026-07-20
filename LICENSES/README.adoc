@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+= LICENSES
+:description: Full text of every license referenced by SPDX identifiers across this repository (REUSE-style).
+
+This directory is part of the paint.type project.
+
+== Purpose
+
+Full text of every license referenced by SPDX identifiers across this repository (REUSE-style).
+
+As a Level 1 directory (`LICENSES/`), it supports the overall project structure.
+
+== Files
+
+* `AGPL-3.0-or-later.txt` — text file
+* `CC-BY-SA-4.0.txt` — text file
+* `MPL-2.0.txt` — text file
+
+== AI Manifest Structure
+
+* `0.1-AI-MANIFEST.a2ml` — Level 1 manifest for `LICENSES/`
+
+== Related Files
+
+* link:../0-AI-MANIFEST.a2ml[Parent AI Manifest]
+* link:../README.adoc[Parent Directory README]
+* link:../../.machine_readable/[Machine Readable Metadata]
