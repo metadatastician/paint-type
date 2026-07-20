@@ -136,7 +136,9 @@ jobs:
         # (DYLD_* env vars are stripped under macOS SIP, so PATH-style tricks fail).
         if: runner.os == 'macOS'
         shell: bash
-        run: sudo cp "$GITHUB_WORKSPACE"/src/interface/ffi/zig-out/lib/libpt*.dylib /usr/local/lib/
+        run: |
+          sudo mkdir -p /usr/local/lib   # Apple-silicon runners don't pre-create it
+          sudo cp "$GITHUB_WORKSPACE"/src/interface/ffi/zig-out/lib/libpt*.dylib /usr/local/lib/
 
       - name: paint_core integration tests (links libpt)
         shell: bash
