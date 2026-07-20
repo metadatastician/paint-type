@@ -1,0 +1,38 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+= paint_collab
+:description: paint_collab — the CvRDT collaboration crate (tile CRDT, permission model, session, Groove transport, LLM gating) for paint.type.
+
+This directory is part of the paint.type project.
+
+== Purpose
+
+paint_collab — the CvRDT collaboration crate (tile CRDT, permission model, session, Groove transport, LLM gating) for paint.type.
+
+As a Level 2 directory (`src/paint_collab/`), it supports the overall project structure.
+
+== Subdirectories
+
+[cols="1,2", options="header"]
+|===
+| Directory | Purpose
+| `examples/` |
+| `scripts/` |
+| `src/` |
+| `tests/` |
+|===
+
+== Files
+
+* `Cargo.toml` — TOML configuration
+* `.gitignore` — Git ignore rules
+
+== AI Manifest Structure
+
+* `0.2-AI-MANIFEST.a2ml` — Level 2 manifest for `src/paint_collab/`
+
+== Related Files
+
+* link:../0.1-AI-MANIFEST.a2ml[Parent AI Manifest]
+* link:../README.adoc[Parent Directory README]
+* link:../../.machine_readable/[Machine Readable Metadata]
