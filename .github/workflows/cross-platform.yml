@@ -128,6 +128,16 @@ jobs:
         shell: bash
         run: echo "$GITHUB_WORKSPACE/src/interface/ffi/zig-out/bin" >> "$GITHUB_PATH"
 
+      - name: Put libpt.dylib on loader path (macOS)
+        # macOS twin of the Windows pt.dll step: the ffi build produces a dynamic
+        # libpt.dylib in zig-out/lib, but the paint_core test binary loads it via
+        # @rpath and dyld cannot find it ("Library not loaded: @rpath/libpt.dylib").
+        # Copy it to /usr/local/lib, which is on dyld's default search path
+        # (DYLD_* env vars are stripped under macOS SIP, so PATH-style tricks fail).
+        if: runner.os == 'macOS'
+        shell: bash
+        run: sudo cp "$GITHUB_WORKSPACE"/src/interface/ffi/zig-out/lib/libpt*.dylib /usr/local/lib/
+
       - name: paint_core integration tests (links libpt)
         shell: bash
         working-directory: src/paint_core
