@@ -48,7 +48,7 @@ region TileHeader {
 // src/paint_core/src/lib.rs.
 region Tile {
     header: @TileHeader;        // embedded
-    pixels: @RGBA16F[64 * 64];  // 4096 pixels × 8 B = 32768 B
+    pixels: @RGBA16F[4096];  // 4096 pixels × 8 B = 32768 B
 
     align 8;
 }

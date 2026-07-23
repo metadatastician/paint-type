@@ -607,6 +607,20 @@ build-release *args:
     cargo build --release --manifest-path src/paint_core/Cargo.toml {{args}}
     @echo "Release build complete"
 
+# Generate bridge schemas from Idris2 ABI.
+# Requires Idris2 and Rust.
+bridge-generate:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! command -v idris2 &>/dev/null; then
+        echo "SKIP: idris2 not installed. Cannot regenerate bridge schemas."
+        exit 0
+    fi
+    echo "Extracting ABI from Idris2..."
+    cd src/interface/Abi
+    idris2 Export.idr -x main | cargo run -q --manifest-path ../../../tools/abi-codegen/Cargo.toml
+    echo "Bridge schemas generated at src/bridges/"
+
 # Build + verify typed-wasm bridge schemas (.twasm -> .wasm via tw CLI).
 # Gate: paint-type#39 — typed-wasm#127 is CLOSED (codegen coverage) and the
 # paint-type slice of #130 (round-trip soundness) is green upstream.
