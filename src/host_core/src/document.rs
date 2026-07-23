@@ -262,7 +262,7 @@ impl Document {
             let tile_y = py / TILE_SIZE;
             let key = (tile_x, tile_y);
 
-            if !scratch.contains_key(&key) {
+            if let std::collections::hash_map::Entry::Vacant(e) = scratch.entry(key) {
                 // First touch: read the tile (or zero-initialise if absent).
                 let mut buf = [0u16; TILE_SCALARS];
                 let active = self.active;
@@ -277,7 +277,7 @@ impl Document {
                         let _ = tile.read_buffer(&mut buf);
                     }
                 }
-                scratch.insert(key, buf);
+                e.insert(buf);
                 touched_tiles.push(key);
             }
 
