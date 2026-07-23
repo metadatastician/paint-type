@@ -623,7 +623,7 @@ bridge-build *args:
     @just bridge-verify
     @echo "Bridge build complete: paint-type-tile.wasm + paint-type-layer.wasm (verifier-accepted)"
 
-# Assert the committed bridge .wasm is accepted by typed-wasm-verify (paint-type#39 gate).
+# Assert the generated bridge .wasm is accepted by typed-wasm-verify (paint-type#39 gate).
 # Covers structural wasm validation + L7/L10/L13 ownership + L2 access-site
 # (typed load/store on the RGBA16F tile region) verification.
 bridge-verify:

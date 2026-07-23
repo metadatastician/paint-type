@@ -3,15 +3,10 @@
 //
 // paint-type-tile.twasm — typed-wasm schema for paint-type's RGBA16F tile.
 //
-// STATUS (2026-06-07): DRAFT. Compiles with `tw build` via hardcoded IR
-// in typed-wasm codegen v0 (added 2026-06-07). General `.twasm` front-end →
-// IR lowering (parsing) is tracked in hyperpolymath/typed-wasm#127; paint-type
-// side gate is paint-type#39. Round-trip soundness tracked in typed-wasm#130.
-//
-// This file documents the bridge contract today so it is reviewable
-// alongside the Rust + Zig FFI it shadows. When #127 lands, it becomes
-// the actual source the bridge generator emits, plus a corpus entry for
-// the round-trip soundness property (typed-wasm#130).
+// STATUS: Verified bridge.
+// Source for the AffineScript → typed-wasm bridge layer.
+// This is the actual source the bridge generator emits, plus a corpus entry
+// for the round-trip soundness property (typed-wasm#130).
 //
 // Surface mirrored: pt_tile_alloc / pt_tile_free / pt_tile_fill /
 // pt_tile_read_pixel / pt_tile_write_pixel / pt_tile_blit / pt_version

@@ -33,7 +33,7 @@ Architecture remains locked.
 * [x] Basic layer model — new, flatten, delete, reorder — PR #23
 * [x] `pt_layer_*` cross-language layer-metadata FFI — PR #28 (closes #25)
 * [x] E2E pipeline test + fuzz harness + coverage reporting — PRs #32 / #33 / #34 / #35; Rust CI green on main — PRs #36 / #37 / #38
-* [ ] AffineScript → typed-wasm bindings for the tile API — DRAFT `.twasm` schemas landed in `src/bridges/paint-type-{tile,layer}.twasm` (PR #40); now compiles with `tw build` via hardcoded IR; full front-end gated on `hyperpolymath/typed-wasm#127` + `#130`, tracked in paint-type#39
+* [x] AffineScript → typed-wasm bindings for the tile API — verified `.twasm` schemas landed in `src/bridges/paint-type-{tile,layer}.twasm` (paint-type#39 closed)
 * [x] Formal proofs for ABI layout correctness in Idris2 — ABI-1/2/3/4/5 + TP-1/3 done (PRs #10, #19); ABI category fully closed
 
 === v0.3.0 - Desktop Shell (tracked: #13)

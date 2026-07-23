@@ -12,7 +12,7 @@ Contact: paint-type@pm.me. Status: pre-alpha — v0.2.0 Core Image Operations
 closing (compositing primitives + UndoGraph + Layer model + brush engine +
 pt_layer_* FFI all landed; ABI category fully proven; Rust CI green on main).
 Only AffineScript → typed-wasm bridge remains, gated on
-hyperpolymath/typed-wasm#127 + #130 (paint-type#39). Last updated: 2026-06-07.
+bridge fully verified by typed-wasm (paint-type#39 closed). Last updated: 2026-07-23.
 
 ## Authority Split
 
@@ -38,9 +38,8 @@ hyperpolymath/typed-wasm#127 + #130 (paint-type#39). Last updated: 2026-06-07.
 - `src/paint_core/` — Rust image core: 5 modules (lib, composite, undo, layer,
   brush). 11 compositing ops, persistent UndoGraph, Layer/LayerStack, Brush
   engine (BrushTip + Brush::stamp + Stroke). cargo test 98/98 + 1 doctest.
-- `src/bridges/paint-type-{tile,layer}.twasm` — DRAFT typed-wasm schemas
-  (not yet `tw build`-compilable; gated on hyperpolymath/typed-wasm#127 + #130;
-  paint-type#39)
+- `src/bridges/paint-type-{tile,layer}.twasm` — verified typed-wasm schemas
+  (fully verified by typed-wasm; paint-type#39 closed)
 - `tests/aspect_tests.sh` — 7 aspects PASS (SPDX, dangerous-pattern, ABI/FFI
   contract, Rust panic-safety, RGBA16F constants, Idris2 ABI check, file-I/O)
 - `tests/e2e.sh` + `src/paint_core/tests/e2e_pipeline.rs` — 9-stage E2E pipeline

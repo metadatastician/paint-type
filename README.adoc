@@ -52,7 +52,7 @@ This is not a GIMP. It is not a Krita. It is not a Photoshop. It is the tool Pai
 
 == Status
 
-Pre-alpha. v0.1.0 Foundation (tile primitive, Idris2 ABI, Zig FFI, Rust Ephapax skeleton, CI/CD) closed. v0.2.0 Core Image Operations is closing: compositing primitives (11 ops — Porter-Duff `over` + masked blend + flatten + lerp/multiply/screen/in/out/atop/xor), persistent UndoGraph, basic Layer model, brush engine (BrushTip + Brush::stamp + Stroke), and pt_layer_* cross-language FFI all landed; ABI category fully proven (ABI-1..5 done) + TP-1/TP-3; cargo test 98/98 + 1 doctest, zig 29/29, 7/7 aspect tests, E2E + fuzz + coverage CI all green. Only remaining v0.2.0 work is the AffineScript → typed-wasm bridge, gated on `hyperpolymath/typed-wasm#127` + `#130` (paint-type#39 tracks it; draft `.twasm` schemas at `src/bridges/`).
+Pre-alpha. v0.1.0 Foundation (tile primitive, Idris2 ABI, Zig FFI, Rust Ephapax skeleton, CI/CD) closed. v0.2.0 Core Image Operations is closing: compositing primitives (11 ops — Porter-Duff `over` + masked blend + flatten + lerp/multiply/screen/in/out/atop/xor), persistent UndoGraph, basic Layer model, brush engine (BrushTip + Brush::stamp + Stroke), and pt_layer_* cross-language FFI all landed; ABI category fully proven (ABI-1..5 done) + TP-1/TP-3; cargo test 98/98 + 1 doctest, zig 29/29, 7/7 aspect tests, E2E + fuzz + coverage CI all green. The AffineScript → typed-wasm bridge is now fully verified by typed-wasm (`paint-type#39` closed).
 
 The first runnable application is v0.3.0 (Gossamer shell), still ahead.
 

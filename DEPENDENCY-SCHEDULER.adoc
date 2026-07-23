@@ -55,7 +55,7 @@ updated on next sync.
 
 ### DEP-03 AffineScript — *P1: widen + generator*
 - [ ] Widen typed-wasm enforcement from L7/L10/L13 to L1–L5 (#462 access-sites, #562 fixtures).
-- [ ] Build the ABI→`.twasm` generator (paint-type#39 producer side).
+- [x] Build the ABI→`.twasm` generator (paint-type#39 producer side).
 - [ ] Compile the UI chrome (layer-panel / tool-bar / canvas-viewport).
 
 ### DEP-04 Gossamer — *P1: close drift, fix versioning*

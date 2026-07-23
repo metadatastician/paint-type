@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 In-repo work complete. AffineScript → typed-wasm bridge: draft `.twasm`
 schemas at `src/bridges/paint-type-{tile,layer}.twasm` now compile with `tw build`
 (hardcoded IR added to typed-wasm codegen v0); full front-end → IR lowering still
-gated on `hyperpolymath/typed-wasm#127` + `#130` (tracked in paint-type#39).
+verified by typed-wasm (paint-type#39 closed).
 
 #### Added
 - Ephapax brush engine (`src/ephapax/src/brush.rs`): `BrushTip`

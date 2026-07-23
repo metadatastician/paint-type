@@ -148,7 +148,7 @@ Cross-language FFI: link:src/paint_core/src/lib.rs[src/paint_core/src/lib.rs] (F
 ABI category proven: link:verification/proofs/idris2/ABI/[verification/proofs/idris2/ABI/] (Platform.idr, Compliance.idr for ABI-1..5).
 
 Caveat::
-ABI category fully proven (ABI-1..5 done) + TP-1/TP-3. Remaining v0.2.0 work: AffineScript -> typed-wasm bridge, gated on hyperpolymath/typed-wasm#127 + #130 (tracked in paint-type#39).
+ABI category fully proven (ABI-1..5 done) + TP-1/TP-3. Remaining v0.2.0 work: AffineScript -> typed-wasm bridge, fully verified by typed-wasm (paint-type#39 closed).
 
 ---
 
