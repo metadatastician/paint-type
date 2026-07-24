@@ -42,7 +42,7 @@ jobs:
       LEAN_TOOLCHAIN: leanprover/lean4:v4.13.0
     steps:
       - name: Checkout
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
       - name: Install elan + Lean 4.13.0
         run: |
           set -euo pipefail
@@ -74,7 +74,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
       - name: Install Agda (apt — prebuilt, GHC-compatible)
         # DO NOT revert to `cabal install Agda-2.8.0`: Agda 2.8.0 requires
         # base<4.22, but ubuntu-latest's pre-installed GHC now ships
