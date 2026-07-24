@@ -50,7 +50,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
       - name: Show Rust version
         run: cargo --version
       - name: Test (lib + convergence proptest + two-peer e2e)
@@ -75,7 +75,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
       - name: Install Agda (apt — prebuilt, GHC-compatible)
         # DO NOT revert to `cabal install Agda-2.8.0`: Agda 2.8.0 requires
         # base<4.22, but ubuntu-latest's pre-installed GHC now ships
@@ -119,7 +119,7 @@ jobs:
       TLA_SHA256: 'cc4803dce2a8ffaf0f5920a9dc39df4b5ee34ab4cb53fb58ac557277a7e516b3'
     steps:
       - name: Checkout
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
       - name: Show Java version
         run: java -version
       - name: Fetch + verify tla2tools.jar
