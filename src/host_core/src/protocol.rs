@@ -35,12 +35,14 @@ pub enum Command {
     SetColour { r: f32, g: f32, b: f32, a: f32 },
     SetBrush { diameter: u32, hardness: f32 },
     OpenPng { path: String },
+    OpenPtype { path: String },
     PointerDown { x: f32, y: f32 },
     PointerMove { x: f32, y: f32 },
     PointerUp,
     SelectTool { kind: ToolKind },
     FillAt { x: f32, y: f32 },
     SavePng { path: String },
+    SavePtype { path: String },
 }
 
 /// Outbound responses, serialised as the invoke result.

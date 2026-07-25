@@ -51,6 +51,26 @@ pub fn dispatch(doc: &mut Option<Document>, cmd: Command) -> Response {
                 }
             }
         }
+        Command::OpenPtype { path } => {
+            match ptype_format::decode_from_file(&path) {
+                Err(e) => Response::Error { message: format!("ptype decode: {}", e) },
+                Ok(canvas) => {
+                    let full = document.load_ptype(&canvas);
+                    let pixels = document.render_all();
+                    let rgba_base64 =
+                        base64::engine::general_purpose::STANDARD.encode(&pixels);
+                    Response::Loaded {
+                        dirty: DirtyRect {
+                            x: full.x,
+                            y: full.y,
+                            w: document.width(),
+                            h: document.height(),
+                            rgba_base64,
+                        },
+                    }
+                }
+            }
+        }
         Command::PointerDown { x, y } => {
             let rect = document.pointer_down(x, y);
             paint(document, rect)
@@ -75,6 +95,13 @@ pub fn dispatch(doc: &mut Option<Document>, cmd: Command) -> Response {
             match crate::codec::save_png(&path, &rgba, w, h) {
                 Ok(()) => Response::Saved { path },
                 Err(e) => Response::Error { message: e },
+            }
+        }
+        Command::SavePtype { path } => {
+            let canvas = document.to_ptype_canvas();
+            match ptype_format::encode_to_file(&path, &canvas) {
+                Ok(()) => Response::Saved { path },
+                Err(e) => Response::Error { message: format!("ptype encode: {}", e) },
             }
         }
     }
@@ -242,6 +269,41 @@ mod tests {
         let px = &rendered[target_offset..target_offset + 4];
         assert!(px[1] > 190, "green channel at (1,1) expected ~200, got {}", px[1]);
         assert!(px[3] > 250, "alpha at (1,1) expected ~255, got {}", px[3]);
+    }
+
+    #[test]
+    fn save_and_load_ptype_round_trips() {
+        use ptype_format;
+
+        let mut doc: Option<Document> = None;
+        assert_eq!(dispatch(&mut doc, Command::NewDoc { w: 128, h: 128 }), Response::Ack);
+        dispatch(&mut doc, Command::SetColour { r: 1.0, g: 0.0, b: 0.0, a: 1.0 });
+        dispatch(&mut doc, Command::SetBrush { diameter: 16, hardness: 0.0 });
+        dispatch(&mut doc, Command::PointerDown { x: 32.0, y: 32.0 });
+        dispatch(&mut doc, Command::PointerUp);
+
+        // Save to ptype format
+        let path = std::env::temp_dir().join("pt_dispatch_roundtrip.ptype");
+        let path_str = path.to_str().unwrap();
+        let save_resp = dispatch(&mut doc, Command::SavePtype { path: path_str.to_string() });
+        assert!(matches!(save_resp, Response::Saved { .. }), "expected Saved, got {save_resp:?}");
+
+        // Create a new document and load the ptype
+        let mut doc2: Option<Document> = None;
+        assert_eq!(dispatch(&mut doc2, Command::NewDoc { w: 128, h: 128 }), Response::Ack);
+        let load_resp = dispatch(&mut doc2, Command::OpenPtype { path: path_str.to_string() });
+        assert!(matches!(load_resp, Response::Loaded { .. }), "expected Loaded, got {load_resp:?}");
+
+        // Save the loaded document back to a different file
+        let path2 = std::env::temp_dir().join("pt_dispatch_roundtrip2.ptype");
+        let path2_str = path2.to_str().unwrap();
+        let save_resp2 = dispatch(&mut doc2, Command::SavePtype { path: path2_str.to_string() });
+        assert!(matches!(save_resp2, Response::Saved { .. }), "expected Saved, got {save_resp2:?}");
+
+        // Verify byte-equality of the round-trip
+        let bytes1 = std::fs::read(path_str).expect("read first ptype");
+        let bytes2 = std::fs::read(path2_str).expect("read second ptype");
+        assert_eq!(bytes1, bytes2, "ptype round-trip must be byte-identical");
     }
 
 }

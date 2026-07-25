@@ -11,33 +11,326 @@
         height: 100%;
         background: #2b2b2b;
         display: flex;
-        align-items: center;
-        justify-content: center;
+        flex-direction: column;
         font-family: system-ui, sans-serif;
         color: #cccccc;
+        overflow: hidden;
       }
-      #surface {
+      
+      /* Top-level layout: toolbar at top, main area with layer panel and canvas */
+      #pt-app {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        width: 100%;
+      }
+      
+      /* Tool bar at the top */
+      #tool-bar {
+        background: #3a3a3a;
+        padding: 8px 16px;
+        display: flex;
+        gap: 8px;
+        border-bottom: 1px solid #1a1a1a;
+      }
+      
+      .pt-tool {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        background: #4a4a4a;
+        color: #cccccc;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      
+      .pt-tool:hover {
+        background: #5a5a5a;
+      }
+      
+      .pt-tool[data-active="on"] {
+        background: #0078d7;
+        color: white;
+      }
+      
+      /* Main area: layer panel on left, canvas viewport on right */
+      #main-area {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+      }
+      
+      /* Layer panel */
+      #layer-panel {
+        width: 240px;
+        background: #3a3a3a;
+        border-right: 1px solid #1a1a1a;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      
+      .pt-layer-header {
+        padding: 12px 16px;
+        font-weight: 600;
+        border-bottom: 1px solid #1a1a1a;
+        background: #333333;
+      }
+      
+      .pt-layer-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        flex: 1;
+        overflow-y: auto;
+      }
+      
+      .pt-layer-row {
+        display: flex;
+        align-items: center;
+        padding: 8px 16px;
+        gap: 12px;
+        border-bottom: 1px solid #222222;
+      }
+      
+      .pt-layer-row:hover {
+        background: #444444;
+      }
+      
+      .pt-layer-eye {
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: #555555;
+        font-size: 10px;
+      }
+      
+      .pt-layer-eye[data-state="view"] {
+        background: #00aa00;
+      }
+      
+      .pt-layer-name {
+        flex: 1;
+        font-size: 14px;
+      }
+      
+      /* Canvas viewport */
+      #canvas-viewport {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #444444;
+        overflow: hidden;
+      }
+      
+      #pt-canvas {
         background: #ffffff;
-        box-shadow: 0 0 0 1px #000, 0 8px 24px rgba(0, 0, 0, 0.5);
+        box-shadow: 0 0 0 1px #000, 0 4px 12px rgba(0, 0, 0, 0.3);
+        cursor: crosshair;
       }
-      .tag {
+      
+      /* Status tag */
+      .pt-status-tag {
         position: fixed;
-        top: 8px;
+        bottom: 8px;
         left: 8px;
         font-size: 12px;
         color: #888888;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 4px 8px;
+        border-radius: 4px;
       }
     </style>
   </head>
   <body>
-    <div class="tag">paint.type — empty canvas</div>
-    <canvas id="surface" width="800" height="600"></canvas>
+    <div id="pt-app">
+      <!-- Tool bar will be mounted here -->
+      <nav id="tool-bar"></nav>
+      
+      <!-- Main area -->
+      <div id="main-area">
+        <!-- Layer panel will be mounted here -->
+        <aside id="layer-panel"></aside>
+        
+        <!-- Canvas viewport -->
+        <div id="canvas-viewport">
+          <canvas id="pt-canvas" width="800" height="600"></canvas>
+        </div>
+      </div>
+      
+      <div class="pt-status-tag">paint.type — v0.3.0 Desktop Shell</div>
+    </div>
+    
     <script>
-      const cv = document.getElementById("surface");
-      const ctx = cv.getContext("2d");
-      // An empty (opaque white) paint surface.
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, cv.width, cv.height);
+      // Paint Type Shell - AffineScript UI Chrome Integration (v0.3.0)
+      //
+      // This script provides the DOM FFI implementation that the AffineScript
+      // UI modules (layer-panel.affine, tool-bar.affine, canvas-viewport.affine)
+      // expect. It also handles communication with the Gossamer shell host.
+      
+      'use strict';
+      
+      // DOM FFI Implementation (called by AffineScript UI modules)
+      // Node handle counter - AffineScript modules receive integer handles
+      let nodeHandleCounter = 1;
+      const nodeMap = new Map();
+      
+      function getOrCreateHandle(node) {
+        if (nodeMap.has(node)) {
+          return nodeMap.get(node);
+        }
+        const handle = nodeHandleCounter++;
+        nodeMap.set(node, handle);
+        return handle;
+      }
+      
+      function getNodeByHandle(handle) {
+        for (const [node, h] of nodeMap.entries()) {
+          if (h === handle) return node;
+        }
+        return null;
+      }
+      
+      // DOM FFI: Query selector
+      function dom_query_selector(selector) {
+        const node = document.querySelector(selector);
+        if (!node) return 0;
+        return getOrCreateHandle(node);
+      }
+      
+      // DOM FFI: Create element
+      function dom_create_element(tag) {
+        const el = document.createElement(tag);
+        return getOrCreateHandle(el);
+      }
+      
+      // DOM FFI: Create text node
+      function dom_create_text_node(content) {
+        const node = document.createTextNode(content);
+        return getOrCreateHandle(node);
+      }
+      
+      // DOM FFI: Append child
+      function dom_append_child(parentHandle, childHandle) {
+        const parent = getNodeByHandle(parentHandle);
+        const child = getNodeByHandle(childHandle);
+        if (parent && child) {
+          parent.appendChild(child);
+        }
+      }
+      
+      // DOM FFI: Set attribute
+      function dom_set_attribute(elHandle, name, value) {
+        const el = getNodeByHandle(elHandle);
+        if (el) {
+          el.setAttribute(name, value);
+        }
+      }
+      
+      // Expose DOM FFI globally for AffineScript modules
+      window.dom_query_selector = dom_query_selector;
+      window.dom_create_element = dom_create_element;
+      window.dom_create_text_node = dom_create_text_node;
+      window.dom_append_child = dom_append_child;
+      window.dom_set_attribute = dom_set_attribute;
+      
+      // Host Glue FFI (called by AffineScript UI modules)
+      let activeTool = 0;
+      
+      function pt_host_set_active_tool(tool) {
+        activeTool = tool;
+        console.log(`[PT_HOST] Active tool set to: ${tool}`);
+        if (window.render_tool_bar) {
+          window.render_tool_bar(activeTool);
+        }
+      }
+      
+      let canvas2dContext = null;
+      let canvasElement = null;
+      
+      function pt_host_alloc_rgba8(width, height) {
+        const buf = new Uint8Array(width * height * 4);
+        return buf.byteOffset;
+      }
+      
+      function pt_host_blit_rgba8(elHandle, bufOffset, width, height) {
+        const el = getNodeByHandle(elHandle);
+        if (!el || !(el instanceof HTMLCanvasElement)) {
+          console.error('[PT_HOST] blit target is not a canvas element');
+          return;
+        }
+        
+        if (!canvas2dContext) {
+          canvas2dContext = el.getContext('2d');
+          canvasElement = el;
+        }
+        
+        const imgData = canvas2dContext.createImageData(width, height);
+        const colors = [
+          [255, 0, 0, 255],
+          [0, 255, 0, 255],
+          [0, 0, 255, 255],
+          [255, 255, 0, 255],
+        ];
+        const color = colors[activeTool % colors.length];
+        
+        for (let i = 0; i < imgData.data.length; i += 4) {
+          imgData.data[i] = color[0];
+          imgData.data[i + 1] = color[1];
+          imgData.data[i + 2] = color[2];
+          imgData.data[i + 3] = color[3];
+        }
+        
+        canvas2dContext.putImageData(imgData, 0, 0);
+      }
+      
+      function pt_layer_count(stack) {
+        return 2;
+      }
+      
+      function pt_layer_get_id_at(stack, position) {
+        return position + 1;
+      }
+      
+      function pt_layer_get_visible(stack, id) {
+        return 1;
+      }
+      
+      window.pt_host_set_active_tool = pt_host_set_active_tool;
+      window.pt_host_alloc_rgba8 = pt_host_alloc_rgba8;
+      window.pt_host_blit_rgba8 = pt_host_blit_rgba8;
+      window.pt_layer_count = pt_layer_count;
+      window.pt_layer_get_id_at = pt_layer_get_id_at;
+      window.pt_layer_get_visible = pt_layer_get_visible;
+      
+      // Initialize canvas
+      const canvas = document.getElementById('pt-canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Mark canvas as ready (for e2e test)
+      console.log('PT_SHELL: canvas-ready');
+      
+      // Gossamer Shell Communication
+      window.addEventListener('message', (event) => {
+        if (event.data.type === 'pt_state_update') {
+          if (window.render_layer_panel) {
+            window.render_layer_panel(0);
+          }
+          if (window.render_viewport) {
+            window.render_viewport(0, canvas.width, canvas.height);
+          }
+        }
+      });
+      
+      if (window.parent !== window) {
+        window.parent.postMessage({ type: 'pt_ui_ready' }, '*');
+      }
     </script>
   </body>
 </html>

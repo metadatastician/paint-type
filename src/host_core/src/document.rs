@@ -11,6 +11,7 @@ use paint_core::brush::{Brush, BrushTip, Stroke};
 use paint_core::layer::{Layer, LayerId, LayerStack, TileCoord};
 use paint_core::render::render_region;
 use paint_core::{f16_bits_to_f32, f32_to_f16_bits, Tile, TILE_SCALARS, TILE_SIZE};
+use ptype_format::{Canvas as PtypeCanvas, Layer as PtypeLayer, Tile as PtypeTile, TileKey};
 
 use crate::protocol::ToolKind;
 
@@ -364,6 +365,71 @@ impl Document {
             }
         }
         [0, 0, 0, 0]
+    }
+
+    /// Replace the document contents with the given ptype Canvas. Returns a
+    /// `Rect` covering the entire canvas so callers can trigger a full repaint.
+    pub fn load_ptype(&mut self, ptype_canvas: &PtypeCanvas) -> Rect {
+        self.width = ptype_canvas.width;
+        self.height = ptype_canvas.height;
+        self.stack = LayerStack::new();
+
+        let mut first_layer_id: Option<LayerId> = None;
+
+        for ptype_layer in &ptype_canvas.layers {
+            let mut layer = Layer::new(&ptype_layer.name);
+            layer.visible = ptype_layer.visible;
+            layer.set_opacity(ptype_layer.opacity as f32);
+
+            for (key, ptype_tile) in &ptype_layer.tiles {
+                let coord = TileCoord::new(key.tx, key.ty);
+                let Some(tile) = Tile::alloc(coord.x, coord.y) else {
+                    continue;
+                };
+                let mut buf = [0u16; TILE_SCALARS];
+                buf.copy_from_slice(&ptype_tile.pixels);
+                let _ = tile.write_buffer(&buf);
+                layer.put_tile(coord, tile);
+            }
+
+            let layer_id = self.stack.push(layer);
+            // Set the first layer as active
+            if first_layer_id.is_none() {
+                first_layer_id = Some(layer_id);
+            }
+        }
+
+        // If no layers were loaded, create a default one
+        self.active = first_layer_id.unwrap_or_else(|| {
+            let layer = Layer::new("Layer 1");
+            self.stack.push(layer)
+        });
+
+        Rect { x: 0, y: 0, w: self.width, h: self.height }
+    }
+
+    /// Convert the document to a ptype Canvas for serialization.
+    pub fn to_ptype_canvas(&self) -> PtypeCanvas {
+        let mut ptype_canvas = PtypeCanvas::new(self.width, self.height);
+        // Use transparent black as default background
+        ptype_canvas.background = [0.0, 0.0, 0.0, 0.0];
+
+        for (_layer_id, layer) in self.stack.iter() {
+            let mut ptype_layer = PtypeLayer::new(&layer.name);
+            ptype_layer.visible = layer.visible;
+            ptype_layer.opacity = layer.opacity() as f64;
+
+            for (coord, tile) in layer.tiles() {
+                let mut buf = [0u16; TILE_SCALARS];
+                let _ = tile.read_buffer(&mut buf);
+                let key = TileKey { tx: coord.x, ty: coord.y };
+                ptype_layer.tiles.insert(key, PtypeTile { pixels: buf });
+            }
+
+            ptype_canvas.layers.push(ptype_layer);
+        }
+
+        ptype_canvas
     }
 }
 

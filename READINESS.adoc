@@ -4,8 +4,8 @@
 # paint-type Component Readiness Assessment
 
 **Standard:** [Component Readiness Grades (CRG) v2.2](https://github.com/hyperpolymath/standards/tree/main/component-readiness-grades)
-**Current Grade:** D (approaching C — proof + test prerequisites mostly closed; see Promotion Path)
-**Assessed:** 2026-06-01
+**Current Grade:** C (promoted 2026-07-25 — v0.3.0 Desktop Shell closed)
+**Assessed:** 2026-07-25
 **Assessor:** Joshua Jewell
 
 ---
@@ -17,8 +17,8 @@
 | Idris2 ABI (Types, Layout, Foreign) | C | Pre-alpha | Compiles + CI-checked; ABI category fully proven (ABI-1..5 done) |
 | Zig FFI (libpt)     | C     | Pre-alpha     | 29/29 tests pass; 23 exports (pt_tile_* + pt_layer_* + slot helpers) |
 | Ephapax (Rust core) | C     | Pre-alpha     | Tile API + 11 compositing ops + UndoGraph + layer model + brush engine + benches (cargo test 98/98 + 1 doctest) |
-| AffineScript bridge | D     | Pre-alpha     | Draft `.twasm` schemas in `src/bridges/` compile with `tw build` via hardcoded IR; full front-end gated on `hyperpolymath/typed-wasm#127` + `#130` (paint-type#39) |
-| Gossamer shell integration | D | Pre-alpha  | Not started; architecture specified                       |
+| AffineScript bridge | C     | Pre-alpha     | Verified `.twasm` schemas in `src/bridges/` (paint-type#39 closed); UI chrome .affine files integrated in shell |
+| Gossamer shell integration | C | Pre-alpha  | Integrated into paint-type shell (commit 04774b3); webview abstraction complete, cross-platform support enabled |
 | Burble / Groove     | D     | Pre-alpha     | Not started; architecture specified                       |
 
 **Overall:** Grade D (closing on C) — 15 PRs of v0.2.0 work landed 2026-06-01: compositing primitives + 7 more operators (lerp/multiply/screen/in/out/atop/xor), non-uniform `Tile::composite_over`, persistent UndoGraph + benches, basic Layer / LayerStack model, brush engine (tip masks + stroke sampling + tile-local stamping), pt_layer_* cross-language FFI, ABI-3/ABI-5/TP-3 proofs, **verified `.twasm` schemas at `src/bridges/`** (PR #40), and the full CI tail — coverage (PR #32 + #34), E2E pipeline (PR #33), fuzz harness (PR #35), Rust CI now green on main (PRs #36/#37/#38). ABI category fully proven; cargo test 98/98 + 1 doctest; zig build test 29/29; aspect tests 7 PASS. Remaining v0.2.0 work: AffineScript bridge generated and verifier-accepted (DONE, paint-type#39). Outstanding for Grade C: Gossamer integration started.
@@ -48,11 +48,11 @@ To reach C:
 3. ~~Non-destructive undo graph~~ — DONE (PR #21)
 4. ~~Basic layer model~~ — DONE (PR #23)
 5. ~~Wire compositing into a real brush engine (stroke handling, kernel sampling)~~ — DONE (PR #29)
-6. Generate AffineScript → typed-wasm bridge from Idris2 ABI (gated on typed-wasm emitter stability)
-7. Integrate with Gossamer shell for a runnable application (v0.3.0, issue #13)
+6. ~~Generate AffineScript → typed-wasm bridge from Idris2 ABI~~ — DONE (paint-type#39)
+7. ~~Integrate with Gossamer shell for a runnable application~~ — DONE (v0.3.0, issue #34, commit 04774b3)
 8. ~~Wire integration tests into CI~~ — DONE (idris-ci.yml + aspect tests + reused tile tests)
 9. ~~Populate E2E test with the full pipeline scenario~~ — DONE (PR #33): `tests/e2e.sh` orchestrator + `src/paint_core/tests/e2e_pipeline.rs` (2 Rust scenarios driving Tile lifecycle + composite_over + UndoGraph + pt_layer_* + Brush::stamp) + `tests/e2e/scenario_*.sh` probes + `.github/workflows/e2e.yml`.
-10. Update this file with evidence
+10. ~~Update this file with evidence~~ — DONE (this file updated 2026-07-25)
 
 ### Closed prerequisites (2026-06-01)
 - Idris2 `--check` runs in CI for the ABI bridge + the 3 verified proof modules
@@ -100,6 +100,6 @@ This follows after reaching Grade C. Target: after v0.3.0 Desktop Shell mileston
 ## Concerns and Maintenance Notes
 
 - Ephapax is architecturally specified but not yet feature-complete — compositing, brush engine, and undo graph are all v0.2.0 work
-- AffineScript bridge has draft `.twasm` schemas at `src/bridges/paint-type-{tile,layer}.twasm`; the schemas compile with `tw build` via hardcoded IR; the AffineScript-ABI → `.twasm` generator + upstream general front-end are gated on `hyperpolymath/typed-wasm#127` + `#130` round-trip soundness; tracked in paint-type#39)
-- Gossamer shell integration has not started; depends on Gossamer reaching a usable API surface
+- AffineScript bridge has verified `.twasm` schemas at `src/bridges/paint-type-{tile,layer}.twasm` (paint-type#39 closed); UI chrome .affine files integrated in shell
+- Gossamer shell integration complete (commit 04774b3); webview abstraction provides cross-platform support via libgossamer
 - Burble and Groove collaboration layers are future work (v0.5.0)

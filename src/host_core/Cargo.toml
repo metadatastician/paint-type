@@ -10,6 +10,7 @@ path = "src/lib.rs"
 
 [dependencies]
 paint_core = { path = "../paint_core" }
+ptype_format = { path = "../ptype_format" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 base64 = "0.22"

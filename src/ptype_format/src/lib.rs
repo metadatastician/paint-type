@@ -650,3 +650,14 @@ mod tests {
         ));
     }
 }
+
+// File I/O convenience functions for host_core integration
+pub fn decode_from_file(path: &str) -> Result<Canvas, String> {
+    let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
+    decode(&bytes).map_err(|e| e.to_string())
+}
+
+pub fn encode_to_file(path: &str, canvas: &Canvas) -> Result<(), String> {
+    let bytes = encode(canvas);
+    std::fs::write(path, &bytes).map_err(|e| e.to_string())
+}
