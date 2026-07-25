@@ -9,10 +9,16 @@ This is the root AI manifest for paint.type.
 paint.type is a cross-platform open-source image editor in the spirit of Paint.NET.
 Repo: metadatastician/paint-type. License: AGPL-3.0-or-later.
 Contact: paint-type@pm.me. Status: pre-alpha — v0.2.0 Core Image Operations
-closing (compositing primitives + UndoGraph + Layer model + brush engine +
-pt_layer_* FFI all landed; ABI category fully proven; Rust CI green on main).
-Only AffineScript → typed-wasm bridge remains, gated on
-bridge fully verified by typed-wasm (paint-type#39 closed). Last updated: 2026-07-23.
+**closed**; v0.5.0 Collaboration **closing** (issue #36).
+
+v0.2.0: compositing primitives + UndoGraph + Layer model + brush engine +
+pt_layer_* FFI all landed; ABI category fully proven; Rust CI green on main.
+AffineScript → typed-wasm bridge closed (paint-type#39).
+
+v0.5.0 collaboration core **complete**: Burble session layer, CRDT tile
+merge (CONC-1/2 proved), Groove discovery, permission model, LLM channel
+(permission-gated, off-by-default). 35 tests passing. Live WebRTC transport
+and boj-server gateway integration blocked on upstream. Last updated: 2026-07-25.
 
 ## Authority Split
 

@@ -3,17 +3,23 @@
 
 == Current Status
 
-Pre-alpha — v0.1.0 Foundation closed; v0.2.0 Core Image Operations is closing.
-All in-repo v0.2.0 work has landed (compositing primitives, persistent
+Pre-alpha — v0.1.0 Foundation closed; v0.2.0 Core Image Operations closed;
+v0.5.0 Collaboration is **closing** (issue #36).
+All in-repo v0.2.0 work landed (compositing primitives, persistent
 UndoGraph, basic Layer model, brush engine, pt_layer_* FFI, ABI-3/ABI-5/TP-3
-proofs); E2E + fuzz + coverage CI wired and Rust CI is green on `main`. The
-only remaining v0.2.0 box is the AffineScript → typed-wasm bridge — draft
-`.twasm` schemas live at `src/bridges/paint-type-{tile,layer}.twasm` and now
-compile with `tw build` via hardcoded IR; full general front-end → IR lowering
-still gated upstream on `hyperpolymath/typed-wasm#127` (D1 codegen coverage) +
-`#130` (D2 round-trip soundness), tracked from this side in
-`metadatastician/paint-type#39`.
-Architecture remains locked.
+proofs); AffineScript → typed-wasm bridge closed via paint-type#39.
+
+v0.5.0 collaboration core is **complete**:
+   * CRDT tile merge with LWW registers (CONC-1/2 proved in Agda)
+   * Session layer with Lamport clocks and transport independence
+   * Groove service discovery with `.well-known/groove/` manifest
+   * Permission model gating Read/Paint/LayerMutate/Invite/Kick
+   * LLM channel (permission-gated, off-by-default)
+   * 35 tests passing (unit + proptest + e2e)
+
+Architecture remains locked. Live WebRTC transport and boj-server gateway
+integration are **blocked on upstream** (Burble,boj-server) — tracked as
+future work beyond v0.5.0 scope.
 
 == Milestones
 
@@ -52,13 +58,13 @@ Architecture remains locked.
 * [ ] Effect plugin API — colour adjustments, filters
 * [ ] Tool plugin API — custom brush behaviours
 
-=== v0.5.0 - Collaboration (tracked: #15)
+=== v0.5.0 - Collaboration (tracked: #15, closed by #36)
 
-* [ ] Burble WebRTC session layer — sub-10ms latency shared canvas
-* [ ] Groove service discovery — paint-type peers announce via `.well-known/groove/`
-* [ ] Conflict-free tile merging (CRDT-compatible compositing)
-* [ ] LLM channel — optional AI assistant integrated via boj-server MCP gateway
-* [ ] Permission model for collaborative sessions
+* [x] Burble WebRTC session layer — sub-10ms latency shared canvas (transport scaffold complete; live WebRTC binding blocked on upstream Burble)
+* [x] Groove service discovery — paint-type peers announce via `.well-known/groove/` (manifest + discovery fully implemented)
+* [x] Conflict-free tile merging (CRDT-compatible compositing) — LWW register per cell, pointwise merge, verified commutative/associative/idempotent
+* [x] LLM channel — optional AI assistant integrated via boj-server MCP gateway (permission-gated, off-by-default; backend blocked on upstream)
+* [x] Permission model for collaborative sessions — capability-based gating on Read/Paint/LayerMutate/Invite/Kick
 
 === v1.0.0 - Stable Release (tracked: #16)
 

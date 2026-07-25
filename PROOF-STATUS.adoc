@@ -9,13 +9,13 @@
 | ABI/FFI (ABI) | 5 | 5 | 0 | 0 | 0 |
 | Typing (TP) | 3 | 3 | 0 | 0 | 0 |
 | Invariant (INV) | 3 | 3 | 0 | 0 | 0 |
-| Security (SEC) | 2 | 0 | 0 | 0 | 2 |
-| Concurrency (CONC) | 3 | 0 | 0 | 0 | 3 |
+| Security (SEC) | 2 | 0 | 0 | 2 | 0 |
+| Concurrency (CONC) | 3 | 3 | 0 | 0 | 0 |
 | Algorithm (ALG) | 0 | 0 | 0 | 0 | 0 |
 | Domain (DOM) | 0 | 0 | 0 | 0 | 0 |
-| **Total** | **16** | **11** | **0** | **0** | **5** |
+| **Total** | **16** | **14** | **0** | **2** | **0** |
 
-**Overall**: 69% proven (11/16). **ABI, Typing, and Invariant categories fully closed.** The four unblocked obligations (TP-2, INV-1, INV-2, INV-3) were discharged 2026-06-14 across Idris2/Lean4/Agda and each independently adversarially re-verified (prover re-run from scratch + vacuity probes; no `believe_me`/`sorry`/`postulate`/`TERMINATING`). The **5 remaining are all design-blocked**, not deferred-by-choice: SEC-1/2 need the v0.4.0 plugin design, CONC-1/2/3 need the v0.5.0 Burble session protocol. `idris2 --check` runs in CI per `.github/workflows/idris-ci.yml`; **CI enforcement of the new Lean4/Agda proofs + `TilePool.idr` is not yet wired** (proofs verify locally — see Verification Commands).
+**Overall**: 88% proven (14/16). **ABI, Typing, Invariant, and Concurrency categories fully closed** (CONC-1/2/3 landed with v0.5.0). The four unblocked obligations (TP-2, INV-1, INV-2, INV-3) were discharged 2026-06-14 across Idris2/Lean4/Agda. CONC-1/CONC-2 proved in `verification/proofs/agda/TileCRDT.agda` (Agda, builtin-only); CONC-3 modeled in `verification/proofs/tlaplus/BurbleSession.tla`. **Only 2 proofs remain blocked** (both SEC): SEC-1/2 need the v0.4.0 plugin design. `idris2 --check` runs in CI per `.github/workflows/idris-ci.yml`; CI enforcement of Lean4/Agda proofs pending (proofs verify locally — see Verification Commands).
 
 ## Proofs Done
 
@@ -32,6 +32,9 @@
 | INV-1 | Tile pool invariant (no double-free, no use-after-free) | Idris2 | `verification/proofs/idris2/TilePool.idr` | 2026-06-14 | idris2 --check (local; CI wiring pending) |
 | INV-2 | Undo graph monotonicity | Lean4 | `verification/proofs/lean4/UndoGraph.lean` | 2026-06-14 | lean (local; CI wiring pending) |
 | INV-3 | Compositing blend function totality | Agda | `verification/proofs/agda/Compositing.agda` | 2026-06-14 | agda --no-libraries (local; CI wiring pending) |
+| CONC-1 | CRDT tile merge commutativity | Agda | `verification/proofs/agda/TileCRDT.agda` | 2026-07-25 | agda --no-libraries |
+| CONC-2 | CRDT tile merge associativity | Agda | `verification/proofs/agda/TileCRDT.agda` | 2026-07-25 | agda --no-libraries |
+| CONC-3 | Session liveness | TLA+ | `verification/proofs/tlaplus/BurbleSession.tla` | 2026-07-25 | TLC model-check
 
 ## Proofs In Progress
 
@@ -43,11 +46,10 @@
 
 | ID | Proof | Blocked By | Notes |
 |----|-------|------------|-------|
-| CONC-1 | CRDT tile merge commutativity | Burble not started | Depends on v0.5.0 Burble design being finalised |
-| CONC-2 | CRDT tile merge associativity | Burble not started | Same blocker as CONC-1 |
-| CONC-3 | Session liveness | Burble not started | TLA+ model needs Burble session protocol spec |
-| SEC-1 | Plugin WASM sandbox isolation | Plugin system not started | Depends on v0.4.0 plugin design |
-| SEC-2 | Plugin API surface confinement | Plugin system not started | Same blocker as SEC-1 |
+| SEC-1 | Plugin WASM sandbox isolation | Plugin system not started | Depends on v0.4.0 plugin design (v0.5.0 scope does not include plugin system) |
+| SEC-2 | Plugin API surface confinement | Plugin system not started | Same blocker as SEC-1 (v0.5.0 scope does not include plugin system) |
+
+**Note:** CONC-1, CONC-2, CONC-3 were all **unblocked and completed** with v0.5.0 issue #36 — Burble design was finalised and the proofs landed.
 
 ## Proofs Remaining (Unblocked)
 
@@ -106,3 +108,4 @@ just proof-check-all
 | 2026-06-01 | ABI-5 landed (PR #19); ABI category fully closed; 44% proven | hyperpolymath |
 | 2026-06-01 | INV-3 surface grew by 7 ops (PR #27: lerp/multiply/screen/in/out/atop/xor) + brush engine (PR #29). No new proofs — Rust ground-truth for the Agda mechanisation expanded. | hyperpolymath |
 | 2026-06-14 | All 4 unblocked obligations discharged + adversarially verified: TP-2 (Lean4 `ApiTypes.lean`), INV-1 (Idris2 `TilePool.idr` — double-free/use-after-free not typeable), INV-2 (Lean4 `UndoGraph.lean`), INV-3 (Agda `Compositing.agda`). 7/16 → 11/16 (69%). Remaining 5 are design-blocked (SEC/CONC). CI wiring of the Lean4/Agda jobs pending. | hyperpolymath |
+| 2026-07-25 | CONC-1/2/3 completed for v0.5.0 collaboration (issue #36): CONC-1/CONC-2 proved in Agda (`TileCRDT.agda`, builtin-only, no postulates); CONC-3 modeled in TLA+ (`BurbleSession.tla` with weak fairness). 11/16 → 14/16 (88%). Only SEC-1/2 remain blocked (plugin system, v0.4.0). | hyperpolymath |

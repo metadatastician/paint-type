@@ -54,9 +54,9 @@
 
 | # | Proof | Status | File |
 |---|-------|--------|------|
-| CONC-1 | CRDT tile merge commutativity (A⊕B = B⊕A) | Needed | `verification/proofs/agda/TileCRDT.agda` |
-| CONC-2 | CRDT tile merge associativity (A⊕(B⊕C) = (A⊕B)⊕C) | Needed | `verification/proofs/agda/TileCRDT.agda` |
-| CONC-3 | Session liveness (every committed tile mutation is eventually visible) | Needed | `verification/proofs/tlaplus/BurbleSession.tla` |
+| CONC-1 | CRDT tile merge commutativity (A⊕B = B⊕A) | **Done** | `verification/proofs/agda/TileCRDT.agda` |
+| CONC-2 | CRDT tile merge associativity (A⊕(B⊕C) = (A⊕B)⊕C) | **Done** | `verification/proofs/agda/TileCRDT.agda` |
+| CONC-3 | Session liveness (every committed tile mutation is eventually visible) | **Done** | `verification/proofs/tlaplus/BurbleSession.tla` |
 
 ## Dangerous Patterns (BANNED)
 
