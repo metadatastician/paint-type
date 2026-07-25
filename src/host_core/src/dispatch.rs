@@ -27,6 +27,28 @@ pub fn dispatch(doc: &mut Option<Document>, cmd: Command) -> Response {
             document.set_colour(r, g, b, a);
             Response::Ack
         }
+        Command::LoadPlugin { path } => {
+            // Plugin loading will be implemented in the plugin registry
+            Response::Error {
+                message: format!("Plugin loading not yet implemented: {}", path),
+            }
+        }
+        Command::UnloadPlugin { plugin_id } => {
+            Response::Error {
+                message: format!("Plugin unloading not yet implemented: {}", plugin_id),
+            }
+        }
+        Command::ListPlugins => {
+            Response::PluginList { plugins: vec![] }
+        }
+        Command::InvokePlugin { invocation } => {
+            Response::Error {
+                message: format!(
+                    "Plugin invocation not yet implemented: {}@{}",
+                    invocation.plugin_id, invocation.function
+                ),
+            }
+        }
         Command::SetBrush { diameter, hardness } => {
             document.set_brush(diameter, hardness);
             Response::Ack

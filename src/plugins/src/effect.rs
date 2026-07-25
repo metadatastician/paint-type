@@ -21,7 +21,7 @@ use crate::sandbox::WasmSandbox;
 use crate::manifest::PluginId;
 
 /// Effect plugin trait - defines the interface for effect plugins
-pub trait EffectPlugin {
+pub trait EffectPlugin: std::fmt::Debug + Send + Sync {
     /// Get the plugin ID
     fn id(&self) -> &PluginId;
 
@@ -109,6 +109,7 @@ impl EffectConfig {
 }
 
 /// A WASM-based effect plugin
+#[derive(Debug)]
 pub struct WasmEffectPlugin {
     sandbox: WasmSandbox,
     config: EffectConfig,
@@ -151,6 +152,10 @@ impl WasmEffectPlugin {
 }
 
 impl EffectPlugin for WasmEffectPlugin {
+    fn id(&self) -> &PluginId {
+        self.sandbox.id()
+    }
+
     fn apply(&self, input: &[u8], width: u32, height: u32) -> PluginResult<Vec<u8>> {
         if !self.sandbox.is_loaded() {
             return Err(PluginError::PluginError("Plugin not loaded".to_string()));
@@ -186,6 +191,7 @@ impl EffectPlugin for WasmEffectPlugin {
 }
 
 /// Built-in brightness/contrast effect (non-WASM, for testing)
+#[derive(Debug)]
 pub struct BrightnessContrastEffect {
     id: PluginId,
     brightness: f32,

@@ -152,7 +152,7 @@ pub enum ToolOptionType {
 }
 
 /// Tool plugin trait
-pub trait ToolPlugin {
+pub trait ToolPlugin: std::fmt::Debug + Send + Sync {
     /// Get the plugin ID
     fn id(&self) -> &PluginId;
 
@@ -226,6 +226,7 @@ impl ToolResponse {
 }
 
 /// A WASM-based tool plugin
+#[derive(Debug)]
 pub struct WasmToolPlugin {
     sandbox: WasmSandbox,
     config: ToolConfig,
@@ -280,6 +281,10 @@ impl WasmToolPlugin {
 }
 
 impl ToolPlugin for WasmToolPlugin {
+    fn id(&self) -> &PluginId {
+        self.sandbox.id()
+    }
+
     fn handle_event(&mut self, event: ToolEvent, state: &mut ToolState) -> PluginResult<ToolResponse> {
         if !self.sandbox.is_loaded() {
             return Err(PluginError::PluginError("Plugin not loaded".to_string()));
@@ -349,6 +354,7 @@ impl ToolPlugin for WasmToolPlugin {
 }
 
 /// Built-in brush tool (non-WASM, for testing)
+#[derive(Debug)]
 pub struct BrushTool {
     id: PluginId,
     size: f32,

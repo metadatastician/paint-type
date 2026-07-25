@@ -15,17 +15,26 @@ use std::sync::{Arc, RwLock};
 
 use crate::error::{PluginError, PluginResult};
 use crate::manifest::{PluginCapability, PluginId, PluginManifest, PluginType};
-use crate::sandbox::SafeWasmSandbox;
 use crate::effect::{EffectPlugin, WasmEffectPlugin, EffectConfig, BrightnessContrastEffect};
 use crate::tool::{ToolPlugin, WasmToolPlugin, ToolConfig, BrushTool};
+use std::fmt;
 
 /// Plugin entry in the registry
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum PluginEntry {
     /// Effect plugin
     Effect(Arc<dyn EffectPlugin + Send + Sync>),
     /// Tool plugin
     Tool(Arc<dyn ToolPlugin + Send + Sync>),
+}
+
+impl fmt::Debug for PluginEntry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PluginEntry::Effect(p) => f.debug_tuple("Effect").field(&p.id()).finish(),
+            PluginEntry::Tool(p) => f.debug_tuple("Tool").field(&p.id()).finish(),
+        }
+    }
 }
 
 impl PluginEntry {
@@ -123,7 +132,7 @@ impl PluginRegistry {
         }
 
         // Create the plugin
-        let plugin = WasmEffectPlugin::new(manifest.clone(), EffectConfig::new(crate::effect::EffectType::Custom))?;
+        let mut plugin = WasmEffectPlugin::new(manifest.clone(), EffectConfig::new(crate::effect::EffectType::Custom))?;
         plugin.load(&wasm_path)?;
         
         // Grant capabilities
@@ -163,7 +172,7 @@ impl PluginRegistry {
         }
 
         // Create the plugin
-        let plugin = WasmToolPlugin::new(manifest.clone(), ToolConfig::new(&manifest.name))?;
+        let mut plugin = WasmToolPlugin::new(manifest.clone(), ToolConfig::new(&manifest.name))?;
         plugin.load(&wasm_path)?;
         
         // Grant capabilities
@@ -182,7 +191,7 @@ impl PluginRegistry {
     }
 
     /// Register a built-in effect plugin
-    pub fn register_builtin_effect(&mut self, effect: impl EffectPlugin + 'static) -> PluginId {
+    pub fn register_builtin_effect(&mut self, effect: impl EffectPlugin + Send + Sync + 'static) -> PluginId {
         let id = PluginId::new(format!("builtin.effect.{}", self.next_id));
         self.next_id += 1;
         
@@ -193,7 +202,7 @@ impl PluginRegistry {
     }
 
     /// Register a built-in tool plugin
-    pub fn register_builtin_tool(&mut self, tool: impl ToolPlugin + 'static) -> PluginId {
+    pub fn register_builtin_tool(&mut self, tool: impl ToolPlugin + Send + Sync + 'static) -> PluginId {
         let id = PluginId::new(format!("builtin.tool.{}", self.next_id));
         self.next_id += 1;
         
@@ -360,7 +369,7 @@ impl SafePluginRegistry {
     }
 
     /// Register a built-in effect plugin
-    pub fn register_builtin_effect(&self, effect: impl EffectPlugin + 'static) -> PluginId {
+    pub fn register_builtin_effect(&self, effect: impl EffectPlugin + Send + Sync + 'static) -> PluginId {
         self.inner
             .write()
             .unwrap()
@@ -368,7 +377,7 @@ impl SafePluginRegistry {
     }
 
     /// Register a built-in tool plugin
-    pub fn register_builtin_tool(&self, tool: impl ToolPlugin + 'static) -> PluginId {
+    pub fn register_builtin_tool(&self, tool: impl ToolPlugin + Send + Sync + 'static) -> PluginId {
         self.inner
             .write()
             .unwrap()

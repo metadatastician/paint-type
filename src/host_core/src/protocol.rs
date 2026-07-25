@@ -5,6 +5,7 @@
 // is serialised straight back as the invoke's resolved value.
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// The active painting tool.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -13,6 +14,24 @@ pub enum ToolKind {
     Brush,
     Eraser,
     Fill,
+}
+
+/// Plugin information for listing
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PluginInfo {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub plugin_type: String,
+    pub version: String,
+}
+
+/// Plugin invocation request
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PluginInvocation {
+    pub plugin_id: String,
+    pub function: String,
+    pub args: HashMap<String, String>,
 }
 
 /// A rectangle of freshly composited pixels the UI must blit.
@@ -43,6 +62,11 @@ pub enum Command {
     FillAt { x: f32, y: f32 },
     SavePng { path: String },
     SavePtype { path: String },
+    /// Plugin commands
+    LoadPlugin { path: String },
+    UnloadPlugin { plugin_id: String },
+    ListPlugins,
+    InvokePlugin { invocation: PluginInvocation },
 }
 
 /// Outbound responses, serialised as the invoke result.
@@ -59,4 +83,9 @@ pub enum Response {
     Loaded { dirty: DirtyRect },
     /// Something failed; `message` is human-readable.
     Error { message: String },
+    /// Plugin responses
+    PluginLoaded { plugin_id: String },
+    PluginUnloaded { plugin_id: String },
+    PluginList { plugins: Vec<PluginInfo> },
+    PluginResult { result: String },
 }
