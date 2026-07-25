@@ -1,0 +1,235 @@
+= Plugin Harness Tool
+:description: Test and integrate plugins for paint.type
+:spdx-license-identifier: AGPL-3.0-or-later
+
+== Overview
+
+The Plugin Harness Tool is responsible for **testing, validating, and integrating**
+plugins with paint.type's plugin system. It serves as the runtime bridge between
+plugin artifacts and the paint.type application.
+
+This tool is the companion to the link:../plugin-minter/README.adoc[Plugin Minter Tool].
+While the minter *creates* plugins, the harness *tests and integrates* them.
+
+== Inspiration
+
+This tool is inspired by:
+
+* link:https://github.com/hyperpolymath/boj-server/tree/main/tools/panel-harness[boJ-server panel-harness/harness.js] - Node.js cartridge harness
+* link:https://github.com/hyperpolymath/panll/blob/main/schema/panll-harness-v2.schema.json[panll harness schema v2] - JSON schema for panel services
+* link:https://github.com/hyperpolymath/panll/blob/main/generated/k9iser/panel-harness.k9[panll harness contract] - K9 contract for harness
+
+== Features
+
+* **Manifest Validation**: Validates plugin.toml against the paint.type schema
+* **WASM Verification**: Checks for compiled WASM artifacts
+* **Harness Generation**: Creates paint-type-harness/v1 manifests
+* **Plugin Registration**: Registers plugins with the paint.type system
+* **JSON Output**: Exports harness manifests as JSON for integration
+* **Flexible Targets**: Supports multiple runtime targets
+* **Health Checks**: Configurable health check endpoints
+* **Capability Validation**: Verifies plugin capability declarations
+
+== Quick Start
+
+=== 1. Test a plugin
+
+[source,bash]
+----
+# Navigate to paint-type root
+cd /path/to/paint-type
+
+# Test a plugin (validates manifest and checks WASM)
+cargo run --manifest-path tools/plugin-harness/Cargo.toml -- \
+  src/plugins/available/com.example.my-plugin --test
+----
+
+=== 2. Register a plugin
+
+[source,bash]
+----
+# Register a plugin with the system
+cargo run --manifest-path tools/plugin-harness/Cargo.toml -- \
+  src/plugins/available/com.example.my-plugin --register
+----
+
+=== 3. Get harness manifest as JSON
+
+[source,bash]
+----
+# Output harness manifest for integration with other tools
+cargo run --manifest-path tools/plugin-harness/Cargo.toml -- \
+  src/plugins/available/com.example.my-plugin --harness-json
+----
+
+=== 4. Combined test and register (default)
+
+[source,bash]
+----
+# If no mode is specified, tests then registers if validation passes
+cargo run --manifest-path tools/plugin-harness/Cargo.toml -- \
+  src/plugins/available/com.example.my-plugin
+----
+
+== Command-Line Options
+
+[cols="2,3,1"]
+|===
+| Option | Description | Default
+
+| `--test` | Run plugin tests only | -
+| `--register` | Register plugin only | -
+| `--harness-json` | Output harness manifest as JSON | -
+| `--target <name>` | Target runtime | `paint-type`
+| `--registry <path>` | Path to plugin registry | `<plugin-dir>/..`
+| `--timeout <secs>` | Test timeout in seconds | `30`
+| `--help, -h` | Show help | -
+|===
+
+== Harness Manifest Schema
+
+The harness generates a `paint-type-harness/v1` manifest:
+
+[source,toml]
+----
+schema = "paint-type-harness/v1"
+service_id = "paint-type-plugin-com-example-my-plugin"
+plugin_id = "com.example.my-plugin"
+default_endpoint = "paint-type://paint-type/com.example.my-plugin"
+
+[runtime_endpoints]
+paint_type = "paint-type://paint-type/com.example.my-plugin"
+wasm = "wasm://_start"
+
+[health_check]
+path = "/health"
+interval_ms = 5000
+timeout_ms = 1000
+unhealthy_threshold = 3
+
+[metadata]
+name = "My Plugin"
+description = "A sample plugin"
+version = "0.1.0"
+author = "Plugin Author"
+license = "AGPL-3.0-or-later"
+----
+
+== Data Sources
+
+The harness manifest supports data source definitions for plugins that expose
+API endpoints:
+
+[source,toml]
+----
+[[data_sources]]
+name = "apply_filter"
+path = "/invoke/apply"
+method = "POST"
+returns = "FilteredImage"
+description = "Apply the plugin's filter to an image"
+
+[[data_sources]]
+name = "get_config"
+path = "/config"
+method = "GET"
+returns = "PluginConfig"
+description = "Get plugin configuration"
+----
+
+== Plugin Types
+
+The harness supports two plugin types (matching the plugin system):
+
+* **Effect** - Stateless transformations (filters, colour adjustments, etc.)
+* **Tool** - Stateful tools (custom brushes, selection tools, etc.)
+
+== Capabilities
+
+Plugins can declare capabilities that determine their access rights:
+
+[cols="2,3"]
+|===
+| Capability | Description
+
+| `CanvasRead` | Read access to the canvas
+| `CanvasWrite` | Write access to the canvas
+| `LayerAccess` | Access to layer stack
+| `SelectionAccess` | Access to selection
+| `FileAccess` | Access to file system (restricted paths)
+| `NetworkAccess` | Network access for fetching resources
+| `UserInterface` | Modal dialogs, notifications
+| `PersistentStorage` | Persistent storage for plugin state
+|===
+
+== Integration with CI/CD
+
+The harness tool can be integrated into CI/CD pipelines:
+
+[source,yaml]
+----
+# GitHub Actions example
+- name: Test plugin
+  run: |
+    cargo run --manifest-path tools/plugin-harness/Cargo.toml -- \
+      src/plugins/available/my-plugin --test --timeout 60
+
+- name: Register plugin
+  if: success()
+  run: |
+    cargo run --manifest-path tools/plugin-harness/Cargo.toml -- \
+      src/plugins/available/my-plugin --register --registry ./plugin-registry
+----
+
+== Build
+
+[source,bash]
+----
+# Build the harness tool itself
+cd tools/plugin-harness
+cargo build --release
+
+# The binary will be at target/release/plugin-harness
+----
+
+== Running Tests
+
+[source,bash]
+----
+cargo test --manifest-path tools/plugin-harness/Cargo.toml
+----
+
+== Relationship with Plugin Minter
+
+The Plugin Harness and Plugin Minter form a complete toolchain:
+
+1. **Minter** (link:../plugin-minter/README.adoc[plugin-minter]): Creates plugin scaffolding
+   - Generates `plugin.toml`, `Cargo.toml`, `src/lib.rs`, `README.adoc`
+   - Validates configuration
+   - Outputs to `src/plugins/available/<plugin-id>/`
+
+2. **Harness** (this tool): Tests and integrates plugins
+   - Validates `plugin.toml`
+   - Checks for WASM artifacts
+   - Generates harness manifests
+   - Registers with paint.type
+
+== Architecture
+
+The harness tool follows the same patterns as boJ-server's panel-harness:
+
+* **Configuration**: TOML-based configuration matching panll's schema approach
+* **Validation**: Strict manifest validation before any operation
+* **Registration**: Generates registration artifacts for the runtime
+* **Extensibility**: Designed to support multiple runtime targets
+
+== License
+
+AGPL-3.0-or-later
+
+== See Also
+
+* link:../../[Parent Directory (`tools/`)]
+* link:0.2-AI-MANIFEST.a2ml[This Directory AI Manifest]
+* link:../plugin-minter/README.adoc[Plugin Minter Tool] - Companion tool for creating plugins
+* link:../../../src/plugins/README.adoc[Plugin System Documentation]

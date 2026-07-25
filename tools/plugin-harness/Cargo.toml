@@ -1,0 +1,23 @@
+[package]
+name = "plugin-harness"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-or-later"
+description = "Harness tool for paint.type plugin system - tests and integrates plugins"
+
+[[bin]]
+name = "plugin-harness"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+opt-level = "s"
+strip = true

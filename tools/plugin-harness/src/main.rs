@@ -133,7 +133,7 @@ fn default_api_version() -> u32 {
 }
 
 /// Runtime-specific endpoint configuration
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
 struct RuntimeEndpoints {
     #[serde(default)]
     pub paint_type: Option<String>,
@@ -184,7 +184,7 @@ fn default_schema() -> String {
 }
 
 /// Data source definition
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
 struct DataSource {
     pub name: String,
     pub path: String,

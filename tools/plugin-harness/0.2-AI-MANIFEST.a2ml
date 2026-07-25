@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# paint.type Plugin Harness AI Manifest (Level 2)
+
+This is the AI manifest for the `tools/plugin-harness/` directory (Level 2) of paint.type.
+
+## Purpose
+
+paint.type application — Plugin Harness Tool
+
+This tool is responsible for testing, validating, and integrating plugins with the
+paint.type plugin system. It serves as the runtime bridge between plugin artifacts
+and the paint.type application, inspired by boJ-server panel-harness and panll harness patterns.
+
+## Authority Split
+
+- **Central protocol authority:** `standards/` repository
+- **Local integration authority (this directory):** `tools/plugin-harness/` specific configuration
+
+## Invariants
+
+1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
+2. Each directory at layer 2 must have its own `0.2-AI-MANIFEST.a2ml`.
+3. Each directory must have a `README.adoc` describing purpose, contents, and function.
+4. SPDX license identifiers must be consistent across all files (AGPL-3.0-or-later).
+5. Plugin manifests must be validated before loading.
+6. Harness manifests must conform to the paint-type-harness/v1 schema.
+
+## Startup Checklist for Agents
+
+1. Read this file (`0.2-AI-MANIFEST.a2ml`).
+2. Read `README.adoc` for directory overview.
+3. For subdirectories, navigate to their respective manifest files.
+4. Never edit `.machine_readable/` files directly.
+5. Always validate plugin manifests before testing.
+6. Always generate harness manifests when registering plugins.
+
+## Plugin Harness Usage
+
+To test and integrate plugins:
+
+1. Test a plugin:
+   cargo run --manifest-path tools/plugin-harness/Cargo.toml -- <plugin-dir> --test
+
+2. Register a plugin:
+   cargo run --manifest-path tools/plugin-harness/Cargo.toml -- <plugin-dir> --register
+
+3. Get harness manifest as JSON:
+   cargo run --manifest-path tools/plugin-harness/Cargo.toml -- <plugin-dir> --harness-json
+
+4. Combined test and register (default):
+   cargo run --manifest-path tools/plugin-harness/Cargo.toml -- <plugin-dir>
+
+## References
+
+- boJ-server panel-harness: hyper-repos/boj-server/tools/panel-harness/harness.js
+- panll harness schema: hyper-repos/panll/schema/panll-harness-v2.schema.json
+- panll harness contract: hyper-repos/panll/generated/k9iser/panel-harness.k9
