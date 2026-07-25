@@ -68,9 +68,10 @@ future work beyond v0.5.0 scope.
 * [x] LLM channel — optional AI assistant integrated via boj-server MCP gateway (permission-gated, off-by-default; backend blocked on upstream)
 * [x] Permission model for collaborative sessions — capability-based gating on Read/Paint/LayerMutate/Invite/Kick
 
-=== v1.0.0 - Stable Release (tracked: #16)
+=== v1.0.0 - Stable Release (tracked: #17)
 
 * [ ] All v0.x features stable and tested
+* [x] Plugin system (v0.4.0) complete — unblocks SEC-1/2 proofs
 * [ ] Comprehensive test suite (unit, integration, E2E, fuzz)
 * [ ] Native file format spec published and versioned
 * [ ] Accessibility audit complete (WCAG 2.2 AA)
