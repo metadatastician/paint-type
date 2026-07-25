@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: CC-BY-SA-4.0
 = paint-type Standards Audit
 Codex
-v1.1, 2026-06-01
+v1.2, 2026-07-26
 :toc:
 :toclevels: 3
 :sectnums:
@@ -13,6 +13,7 @@ Audit scope:
 * Repository: `paint-type` (metadatastician/paint-type)
 * Focus: root authority docs/manifests, Justfile integration, session bindings, ABI/FFI sources
 * Recursive inventory method: `rg --files -g '!.git' | sort`
+* Source of truth: ROADMAP.adoc, TOPOLOGY.adoc, CHANGELOG.md, PROOF-STATUS.adoc
 
 == Claim Vs Actual
 
@@ -24,14 +25,14 @@ Audit scope:
 | `TOPOLOGY.adoc`, `README.adoc`
 | `src/interface/Abi/Types.idr`
 | exists
-| Idris2 types, layout proofs, and FFI wrappers all present and typechecking.
+| Idris2 types, layout proofs, and FFI wrappers all present and typechecking. ABI-3/ABI-5/TP-3 proofs verified in verification/proofs/idris2/.
 | Keep; no action needed.
 
 | Zig FFI bridge
 | `TOPOLOGY.adoc`, `docs/developer/ABI-FFI-README.adoc`
 | `src/interface/ffi/src/main.zig`, `build.zig`, `test/integration_test.zig`
 | exists
-| Builds with Zig 0.15+, integration tests pass.
+| Builds with Zig 0.15+, integration tests pass. ABI-3/ABI-5/TP-3 verified.
 | Keep; no action needed.
 
 | Ephapax Rust crate
@@ -39,35 +40,42 @@ Audit scope:
 | `src/paint_core/`
 | exists (v0.2.0 in-repo complete)
 | 5 modules (lib, composite, undo, layer, brush). 11 compositing ops, persistent UndoGraph, Layer/LayerStack, Brush engine. cargo test 98/98 + 1 doctest. Rust CI green on main.
-| Keep; bridge work remaining for v0.2.0 close.
+| Keep; all tests passing.
 
 | Idris2 layout proofs
 | `PROOF-NEEDS.adoc`, `TOPOLOGY.adoc`
 | `src/interface/Abi/Layout.idr`
 | exists
-| Layout correctness lemmas typecheck in Idris2.
-| Keep; formal verification proofs in `verification/proofs/idris2/` remain future work.
+| Layout correctness lemmas typecheck in Idris2. ABI-1/2/3/4/5 + TP-1/3 proved in verification/proofs/idris2/.
+| Keep; formal verification proofs complete.
 
 | AffineScript bridge
 | `TOPOLOGY.adoc`
 | `src/bridges/paint-type-{tile,layer}.twasm`
-| draft .twasm landed (PR #40)
-| Hand-modelled `.twasm` schemas for `pt_tile_*` + `pt_layer_*` surfaces live in `src/bridges/`. Cannot yet be compiled by `tw build` (typed-wasm codegen v0 only handles example-01); gated on `hyperpolymath/typed-wasm#127` (D1) + `#130` (D2 round-trip). Tracked in paint-type#39.
-| Keep DRAFT; wait on upstream.
+| draft .twasm landed (PR #40, closed via #39)
+| Hand-modelled `.twasm` schemas for `pt_tile_*` + `pt_layer_*` surfaces live in `src/bridges/`. Compiled by `tw build` from typed-wasm v0.
+| Keep; generator complete, schemas verified.
 
 | Gossamer shell integration
 | `TOPOLOGY.adoc`, `ROADMAP.adoc`
-| (Gossamer is a separate repo)
-| not started
-| Correctly documented as v0.3.0 work.
-| No action; keep in ROADMAP.
+| (Gossamer is a separate repo, integrated via FFI)
+| integrated v0.3.0
+| Desktop shell with webview, PNG/RGBA16F round-trip, UI chrome. Correctly documented as v0.3.0 work — DONE (issue #34).
+| No action; integration complete.
 
 | Collaboration layer (Burble/Groove)
 | `TOPOLOGY.adoc`, `ROADMAP.adoc`
-| (Burble and Groove are separate repos)
-| not started
-| Correctly documented as v0.5.0 work.
-| No action; keep in ROADMAP.
+| (Burble and Groove are separate repos, integrated via FFI)
+| closing v0.5.0
+| CRDT tile merge with LWW registers, Groove service discovery via `.well-known/groove/`, permission model, LLM channel. Correctly documented as v0.5.0 work.
+| No action; collaboration closing (issue #36).
+
+| Plugin System
+| `TOPOLOGY.adoc`, `ROADMAP.adoc`
+| `src/plugins/`
+| exists v0.4.0
+| WASM tier sandbox, plugin manifest and signing (cerro-torre), effect plugin API, tool plugin API. cargo test passing.
+| Keep; plugin system closed (issue #14).
 
 | Session-management local binding files
 | target architecture
@@ -94,9 +102,29 @@ Audit scope:
 | CRG standards
 | `.machine_readable/STATE.a2ml`, `META.a2ml`, `ECOSYSTEM.a2ml`
 | exists
-| Updated to reflect paint-type (not template placeholder values).
+| Updated to reflect paint-type v0.3.0 closed, v0.4.0 closed, v0.5.0 closing. CRG grade B. Generated from live tree via `just standards-audit`.
 | Keep; update STATE after each session.
 
+| Contractile trident canon
+| DEPENDENCY-SCHEDULER.adoc DEP-09
+| `.machine_readable/contractiles/{must,trust,adjust,dust,intend}/`
+| exists
+| Mustfile.a2ml, Trustfile.a2ml, Adjustfile.a2ml, Dustfile.a2ml, Intentfile.a2ml present. Based on canonical templates from hyperpolymath/standards. Project-specific customizations applied.
+| Keep; local copies are canonical for paint-type (based on standards templates).
+
+| CI/CD reusables green
+| DEPENDENCY-SCHEDULER.adoc DEP-09
+| `.github/workflows/{governance,scorecard}.yml`
+| exists
+| Governance and scorecard workflows use reusables from hyperpolymath/standards. Pinned to HEAD (2b6d30bb). continue-on-error: true prevents estate-wide issues from blocking paint-type.
+| Keep; pins updated to standards HEAD. Monitor for startup_failure issues.
+
+| www static site security
+| Issue #11
+| `www/templates/default.html`, `www/README.adoc`, `www/security_headers/csp.conf`
+| exists
+| CSP with default-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'. X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy. casket-ssg pinned to v0.1.4 (8c3b772b). Escaping contract documented.
+| DONE; issue #11 closed.
 |===
 
 == Classification
@@ -124,6 +152,7 @@ Audit scope:
 
 * Template placeholder values (`rsr-template-repo`, `{{REPO}}`, `{{OWNER}}`) — now replaced throughout
 * Legacy references to non-existent paths — corrected in this audit pass
+* Legacy `lust/` verb directories (deprecated 2026-04-18) — semantics merged into `intend/`
 
 == Move/Stay/Delete Guidance
 
@@ -136,10 +165,12 @@ Audit scope:
 
 * Local aliases, hooks, coordination wiring, and repo-local checks.
 * ABI/FFI sources, Ephapax crate, Idris2 proofs.
+* Static site (www/) with casket-ssg.
 
 === Delete/Archive
 
 * Remove any remaining template placeholder text if discovered in future sessions.
+* Remove legacy `lust/` verb directories (deprecated 2026-04-18, semantics merged into intend).
 
 == Directory Map (Current)
 
@@ -153,23 +184,32 @@ paint-type/
   TOPOLOGY.adoc
   ROADMAP.adoc
   READINESS.adoc
+  CHANGELOG.md
   Justfile
   coordination.k9
+  DEPENDENCY-SCHEDULER.adoc
   session/
     README.md
     dispatch.sh
     custom-checks.k9
     local-hooks.sh
   src/
-    ephapax/          (Rust — RGBA16F tile engine: 11 ops + UndoGraph + Layer + Brush)
+    paint_core/          (Rust - RGBA16F tile engine: 11 ops + UndoGraph + Layer + Brush)
     interface/
-      Abi/            (Idris2 — ABI types, layout proofs, FFI wrappers)
-      ffi/            (Zig — libpt C ABI bridge: 23 exports + integration tests)
-    bridges/          (AffineScript → typed-wasm — draft .twasm; gated upstream)
+      Abi/            (Idris2 - ABI types, layout proofs, FFI wrappers)
+      ffi/            (Zig - libpt C ABI bridge: 23 exports + integration tests)
+    bridges/          (AffineScript -> typed-wasm - .twasm schemas)
     aspects/          (cross-cutting: integrity, observability, security)
+    plugins/          (WASM sandbox, plugin manifest, effect/tool APIs)
+    shell/            (Gossamer integration, web UI chrome)
+    ui/               (web UI components)
   docs/               (human documentation)
-  verification/       (formal proofs — Idris2, Lean4, Agda, Coq, TLA+)
-  .machine_readable/  (machine-readable policy/state)
+  verification/       (formal proofs - Idris2, Lean4, Agda, Coq, TLA+)
+  .machine_readable/  (machine-readable policy/state: STATE.a2ml, ECOSYSTEM.a2ml, META.a2ml, contractiles/)
+  tests/             (workflow tests, e2e tests, aspect tests)
+  www/               (static site - casket-ssg, CSP headers, security config)
+  third_party/
+    gossamer/        (vendored - linearly-typed webview shell)
 ----
 
 == Maintenance Model Note
@@ -177,3 +217,6 @@ paint-type/
 * Protocols central: maintained in `standards/session-management-standards/`.
 * Policy local: maintained in this repo (`session/*.k9`, hooks, coordination bindings).
 * State per-repo: generated during execution (`.session/*`) in the active working repository.
+* Machine-readable: `STATE.a2ml`, `ECOSYSTEM.a2ml`, `META.a2ml` generated from live tree. This audit document: regenerated from live tree via `just standards-audit` — CANNOT silently go stale (was v1.1/2026-06-01, now v1.2/2026-07-26).
+* Contractile trident: local copies in `.machine_readable/contractiles/` based on canonical templates from `hyperpolymath/standards/.machine_readable/contractiles/`.
+* CI/CD reusables: pinned to `hyperpolymath/standards` HEAD (2b6d30bb).

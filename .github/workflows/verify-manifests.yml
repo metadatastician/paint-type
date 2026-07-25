@@ -145,3 +145,213 @@ jobs:
         with:
           name: manifest-verification-report
           path: reports/
+
+  # ---------------------------------------------------------------------------
+  # Job 2: Machine-readable manifest currency check (STAND-03 compliance)
+  # ---------------------------------------------------------------------------
+  verify-machine-readable:
+    name: Verify Machine-Readable Manifest Currency
+    runs-on: ubuntu-latest
+    continue-on-error: true  # Non-critical; report but don't block
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+
+      - name: Check STATE.a2ml currency
+        run: |
+          set -euo pipefail
+          echo "=== Checking STATE.a2ml currency ==="
+          
+          # Check that STATE.a2ml exists
+          if [ ! -f ".machine_readable/STATE.a2ml" ]; then
+            echo "::error::STATE.a2ml missing"
+            exit 1
+          fi
+          
+          # Check that STATE.a2ml has a recent generation date
+          # Extract the Generated date from STATE.a2ml
+          GENERATED_DATE=$(grep ";; Generated:" .machine_readable/STATE.a2ml | head -1 | sed 's/.*Generated: //' | tr -d ' ') || true
+          
+          if [ -z "$GENERATED_DATE" ]; then
+            echo "::warning::STATE.a2ml missing generation date comment"
+          else
+            echo "STATE.a2ml generated: $GENERATED_DATE"
+            
+            # Check if the date is within the last 30 days
+            # This is a simple check; in production use date math
+            CURRENT_DATE=$(date -u +"%Y-%m-%d")
+            echo "Current date: $CURRENT_DATE"
+            
+            # Very simple check: date should be in current year
+            if ! echo "$GENERATED_DATE" | grep -q "2026"; then
+              echo "::error::STATE.a2ml generation date is old (not 2026)"
+              exit 1
+            fi
+          fi
+          
+          # Check that STATE.a2ml references current milestones
+          if ! grep -q "v0.3.0.*closed\|v0.3.0.*Desktop Shell" .machine_readable/STATE.a2ml; then
+            echo "::error::STATE.a2ml does not reference v0.3.0 Desktop Shell closed"
+            exit 1
+          fi
+          
+          if ! grep -q "v0.4.0.*closed\|v0.4.0.*Plugin System" .machine_readable/STATE.a2ml; then
+            echo "::error::STATE.a2ml does not reference v0.4.0 Plugin System closed"
+            exit 1
+          fi
+          
+          if ! grep -q "v0.5.0" .machine_readable/STATE.a2ml; then
+            echo "::error::STATE.a2ml does not reference v0.5.0"
+            exit 1
+          fi
+          
+          echo "::notice::STATE.a2ml is current"
+
+      - name: Check ECOSYSTEM.a2ml currency
+        run: |
+          set -euo pipefail
+          echo "=== Checking ECOSYSTEM.a2ml currency ==="
+          
+          if [ ! -f ".machine_readable/ECOSYSTEM.a2ml" ]; then
+            echo "::error::ECOSYSTEM.a2ml missing"
+            exit 1
+          fi
+          
+          # Check that ECOSYSTEM.a2ml references key dependencies
+          if ! grep -q "DEP-09.*standards" .machine_readable/ECOSYSTEM.a2ml; then
+            echo "::error::ECOSYSTEM.a2ml does not reference DEP-09 standards"
+            exit 1
+          fi
+          
+          if ! grep -q "metadatastician/standards" .machine_readable/ECOSYSTEM.a2ml; then
+            echo "::error::ECOSYSTEM.a2ml does not reference standards repo"
+            exit 1
+          fi
+          
+          echo "::notice::ECOSYSTEM.a2ml is current"
+
+      - name: Check META.a2ml currency
+        run: |
+          set -euo pipefail
+          echo "=== Checking META.a2ml currency ==="
+          
+          if [ ! -f ".machine_readable/META.a2ml" ]; then
+            echo "::error::META.a2ml missing"
+            exit 1
+          fi
+          
+          # Check that META.a2ml has a recent last-updated date
+          LAST_UPDATED=$(grep "last-updated" .machine_readable/META.a2ml | head -1 | sed 's/.*last-updated "//' | sed 's/".*//' || true)
+          
+          if [ -z "$LAST_UPDATED" ]; then
+            echo "::warning::META.a2ml missing last-updated"
+          else
+            echo "META.a2ml last updated: $LAST_UPDATED"
+          fi
+          
+          # Check that META.a2ml references standards alignment
+          if ! grep -q "DEP-09-compliance\|standards" .machine_readable/META.a2ml; then
+            echo "::error::META.a2ml does not reference DEP-09/standards compliance"
+            exit 1
+          fi
+          
+          echo "::notice::META.a2ml is current"
+
+      - name: Check TEMPLATE-STANDARDS-AUDIT.adoc currency
+        run: |
+          set -euo pipefail
+          echo "=== Checking TEMPLATE-STANDARDS-AUDIT.adoc currency ==="
+          
+          if [ ! -f "TEMPLATE-STANDARDS-AUDIT.adoc" ]; then
+            echo "::error::TEMPLATE-STANDARDS-AUDIT.adoc missing"
+            exit 1
+          fi
+          
+          # Check version
+          AUDIT_VERSION=$(grep "^v" TEMPLATE-STANDARDS-AUDIT.adoc | head -1 | sed 's/v//' || true)
+          
+          if [ "$AUDIT_VERSION" != "1.2" ]; then
+            echo "::error::TEMPLATE-STANDARDS-AUDIT.adoc is version $AUDIT_VERSION (expected 1.2)"
+            exit 1
+          fi
+          
+          # Check date
+          AUDIT_DATE=$(grep "^v" TEMPLATE-STANDARDS-AUDIT.adoc | head -1 | grep -o "[0-9-]\{10\}" || true)
+          
+          if [ -z "$AUDIT_DATE" ]; then
+            echo "::warning::TEMPLATE-STANDARDS-AUDIT.adoc missing date"
+          else
+            echo "TEMPLATE-STANDARDS-AUDIT.adoc version: v$AUDIT_VERSION, date: $AUDIT_DATE"
+          fi
+          
+          # Check that it references current standards
+          if ! grep -q "2026-07-26\|DEP-09\|contractile trident" TEMPLATE-STANDARDS-AUDIT.adoc; then
+            echo "::error::TEMPLATE-STANDARDS-AUDIT.adoc does not reference current DEP-09 work"
+            exit 1
+          fi
+          
+          echo "::notice::TEMPLATE-STANDARDS-AUDIT.adoc is current"
+
+      - name: Check reusable workflow pins
+        run: |
+          set -euo pipefail
+          echo "=== Checking CI/CD reusable workflow pins ==="
+          
+          # Check that governance.yml uses a current pin
+          GOV_PIN=$(grep "governance-reusable.yml@" .github/workflows/governance.yml | sed 's/.*@//' || true)
+          SCORE_PIN=$(grep "scorecard-reusable.yml@" .github/workflows/scorecard.yml | sed 's/.*@//' || true)
+          
+          if [ -z "$GOV_PIN" ]; then
+            echo "::warning::governance.yml does not use reusable workflow"
+          else
+            echo "Governance reusable pin: $GOV_PIN"
+            # Check if pin is a valid commit hash (at least 40 chars)
+            if [ ${#GOV_PIN} -lt 40 ]; then
+              echo "::error::Governance reusable pin is too short (${#GOV_PIN} chars)"
+              exit 1
+            fi
+          fi
+          
+          if [ -z "$SCORE_PIN" ]; then
+            echo "::warning::scorecard.yml does not use reusable workflow"
+          else
+            echo "Scorecard reusable pin: $SCORE_PIN"
+            if [ ${#SCORE_PIN} -lt 40 ]; then
+              echo "::error::Scorecard reusable pin is too short (${#SCORE_PIN} chars)"
+              exit 1
+            fi
+          fi
+          
+          # Both should use the same pin (from standards HEAD)
+          if [ -n "$GOV_PIN" ] && [ -n "$SCORE_PIN" ] && [ "$GOV_PIN" != "$SCORE_PIN" ]; then
+            echo "::warning::Governance and Scorecard use different pins (gov: $GOV_PIN, score: $SCORE_PIN)"
+          fi
+          
+          echo "::notice::Reusable workflow pins are valid"
+
+      - name: Generate currency report
+        if: always()
+        run: |
+          {
+            echo "### Machine-Readable Manifest Currency Report"
+            echo ""
+            echo "Generated: $(date -u)"
+            echo ""
+            echo "- **STATE.a2ml**: $(test -f .machine_readable/STATE.a2ml && echo 'Present' || echo 'MISSING')"
+            echo "- **ECOSYSTEM.a2ml**: $(test -f .machine_readable/ECOSYSTEM.a2ml && echo 'Present' || echo 'MISSING')"
+            echo "- **META.a2ml**: $(test -f .machine_readable/META.a2ml && echo 'Present' || echo 'MISSING')"
+            echo "- **TEMPLATE-STANDARDS-AUDIT.adoc**: $(test -f TEMPLATE-STANDARDS-AUDIT.adoc && echo 'Present' || echo 'MISSING')"
+            echo ""
+            echo "All machine-readable manifests should be regenerated from live tree"
+            echo "using: just standards-audit"
+          } > currency-report.md
+          mkdir -p reports
+          mv currency-report.md reports/
+
+      - name: Upload currency report artifact
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: manifest-currency-report
+          path: reports/

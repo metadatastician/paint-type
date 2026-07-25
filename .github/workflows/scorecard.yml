@@ -14,7 +14,7 @@ permissions:
 jobs:
   scorecard:
     name: OSSF Scorecard Check
-    uses: metadatastician/standards/.github/workflows/scorecard-reusable.yml@c65436ee3351cd6b0fa14b142938b195efc77586
+    uses: metadatastician/standards/.github/workflows/scorecard-reusable.yml@2b6d30bba13d1ed7034fb03ec61b7011e4040896
     permissions:
       contents: read
       security-events: write

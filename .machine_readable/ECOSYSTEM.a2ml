@@ -1,14 +1,89 @@
 ;; SPDX-License-Identifier: AGPL-3.0-or-later
 ;; Ecosystem position and relationships
+;; Generated: 2026-07-26
+;; Source of truth: ROADMAP.adoc, TOPOLOGY.adoc, DEPENDENCY-SCHEDULER.adoc
 (ecosystem
-  (version "1.0.0")
+  (version "1.1.0")
   (name "paint-type")
   (type "application")
-  (purpose "Cross-platform open-source image editor — RGBA16F tile engine, formally-verified ABI bridge, Gossamer shell integration")
+  (purpose "Cross-platform open-source image editor — RGBA16F tile engine, formally-verified ABI bridge, Gossamer shell integration, CRDT collaboration")
+  (homepage "https://github.com/metadatastician/paint-type")
+  (license "MPL-2.0")
+  (maturity "pre-alpha")
+  (crg-grade "B")
   (related-projects
-    (gossamer "linearly-typed webview shell — desktop container for paint-type UI")
-    (ephapax "Rust image core — RGBA16F tiles, compositing, brush engine")
-    (burble "WebRTC collaboration layer — sub-10ms shared canvas")
-    (groove "service discovery — .well-known/groove/ peer announcement")
-    (proven "formally verified safety library — used in ABI bridge")
-    (palimpsest "hyperpolymath ecosystem — paint-type is part of this")))
+    (gossamer
+      (description "linearly-typed webview shell — desktop container for paint-type UI")
+      (role "desktop-shell")
+      (status "integrated")
+      (version "v0.3.0")
+      (repository "https://github.com/hyperpolymath/gossamer"))
+    (ephapax
+      (description "Rust image core — RGBA16F tiles, compositing, brush engine")
+      (role "core-engine")
+      (status "stable")
+      (version "v0.2.0")
+      (repository "https://github.com/hyperpolymath/ephapax"))
+    (burble
+      (description "WebRTC collaboration layer — sub-10ms shared canvas")
+      (role "collaboration")
+      (status "standalone-repo")
+      (repository "https://github.com/hyperpolymath/burble"))
+    (groove
+      (description "service discovery — .well-known/groove/ peer announcement")
+      (role "discovery")
+      (status "standalone-repo")
+      (repository "https://github.com/hyperpolymath/groove-protocol"))
+    (proven
+      (description "formally verified safety library — used in ABI bridge")
+      (role "proof-foundation")
+      (status "in-progress")
+      (repository "https://github.com/hyperpolymath/proven"))
+    (typed-wasm
+      (description "WASM bridge generator — ABI→.twasm compilation")
+      (role "bridge")
+      (status "done")
+      (version "v0.2.0")
+      (repository "https://github.com/hyperpolymath/typed-wasm"))
+    (affinescript
+      (description "UI language — declarative UI with affine types")
+      (role "ui-language")
+      (status "in-progress")
+      (repository "https://github.com/hyperpolymath/AffineScript"))
+    (cerro-torre
+      (description "ML-DSA plugin signing — plugin manifest and signing")
+      (role "signing")
+      (status "standalone-repo")
+      (repository "https://github.com/hyperpolymath/cerro-torre"))
+    (standards
+      (description "RSR governance multiplier — CI/CD reusables, contractiles, CRG, 6a2, session management")
+      (role "governance")
+      (status "in-progress")
+      (readiness "B")
+      (repository "https://github.com/hyperpolymath/standards")))
+  (ecosystem-integration
+    (paint-type-scope "image editor core + desktop shell + collaboration")
+    (upstream-dependencies
+      (DEP-01 "Ephapax — region-calculus / linear-affine core — Readiness C")
+      (DEP-02 "typed-wasm — verified WASM bridge — Readiness A — DONE")
+      (DEP-03 "AffineScript — UI language + generator — Readiness C")
+      (DEP-04 "Gossamer — desktop shell — Readiness A — DONE")
+      (DEP-05 "cerro-torre — ML-DSA signing — Readiness B")
+      (DEP-06 "Burble — WebRTC collaboration — Readiness Unknown")
+      (DEP-07 "groove-protocol — peer discovery — Readiness B")
+      (DEP-08 "boj-server — LLM channel — Readiness B")
+      (DEP-09 "standards — governance multiplier — Readiness B")
+      (DEP-10 "proven — proof foundation — Readiness B")
+      (DEP-15 "Toolchain & formats — Readiness C"))
+    (integration-status
+      (v0.1.0 "Foundation — CLOSED — tile primitive, ABI bridge, Ephapax skeleton")
+      (v0.2.0 "Core Image Operations — CLOSED — brush engine, compositing, undo, layers, ABI-3/5/TP-3")
+      (v0.3.0 "Desktop Shell — CLOSED — Gossamer integration, web UI, PNG/RGBA16F round-trip")
+      (v0.4.0 "Plugin System — CLOSED — WASM sandbox, plugin manifest, effect/tool APIs")
+      (v0.5.0 "Collaboration — CLOSING — Burble, Groove, CRDT merge, permissions, LLM channel")
+      (v1.0.0 "Stable Release — PLANNED — all v0.x stable, test suite, accessibility, Scorecard >= 8.0")))
+  (standards-compliance
+    (contractile-trident-source "hyperpolymath/standards/.machine_readable/contractiles/")
+    (ci-reusables-source "hyperpolymath/standards/.github/workflows/")
+    (crg-grade "B")
+    (machine-readable-currency "STATE.a2ml, ECOSYSTEM.a2ml, META.a2ml generated from live tree")))

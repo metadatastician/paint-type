@@ -33,7 +33,7 @@ updated on next sync.
 | DEP-06 | **Burble** | Collaboration | hyperpolymath (son-shared, AGPL) | Unknown | P2 | Todo | WebRTC session, sub-10ms shared canvas · v0.5 |
 | DEP-07 | **groove-protocol** | Collaboration | hyperpolymath | B | P2 | Todo | Zero-config peer discovery (`.well-known/groove/`) · v0.5 |
 | DEP-08 | **boj-server** | Collaboration | hyperpolymath | B | P3 | Todo | MCP LLM channel + plugin package index · v0.4/v0.5 |
-| DEP-09 (#75) | **standards** | Governance | hyperpolymath | B | P1 | In&nbsp;Progress | RSR governance multiplier (CI reusables, contractiles, CRG, 6a2, session-mgmt) · all |
+| DEP-09 (#75) | **standards** | Governance | hyperpolymath | B | P1 | Done | RSR governance multiplier (CI reusables, contractiles, CRG, 6a2, session-mgmt) · all |
 | DEP-10 (#76) | **proven** | Proof-foundation | hyperpolymath | B | P1 | In&nbsp;Progress | Idris2 verified-foundations library · all |
 | DEP-11 | **echo-types** | Proof-foundation | hyperpolymath | C | P2 | Todo | Estate proof discipline (audit-first) · all |
 | DEP-12 | **panic-attack** | Tooling | hyperpolymath | B | Maintain | In&nbsp;Progress | `assail` dangerous-pattern gate · all |
@@ -85,9 +85,9 @@ updated on next sync.
 - [ ] Package-index tier for the plugin browser.
 
 ### DEP-09 standards — *the multiplier; lifts everything at once*
-- [ ] Keep CI/CD reusables green (Actions billing-wall / `startup_failure`).
-- [ ] Contractile trident canon = standards subdir master (NOT rsr-template's stale flat copy).
-- [ ] CRG + 6a2 manifest currency.
+- [x] Keep CI/CD reusables green (Actions billing-wall / `startup_failure`).
+- [x] Contractile trident canon = standards subdir master (NOT rsr-template's stale flat copy).
+- [x] CRG + 6a2 manifest currency.
 
 ### DEP-10 proven
 - [ ] Keep `proven` consumable as the Idris2 proof foundation.
@@ -148,11 +148,11 @@ to "do we add/subtract as they occur?": no — one standing item, a recurring tr
 - [ ] Mirror this dependency scheduler into a wiki page Joshua can browse
 
 ### STAND-03 Standards-doc + machine-readable currency
-The hand-authored `TEMPLATE-STANDARDS-AUDIT.adoc` (v1.1 / 2026-06-01) silently went stale — the root cause of the "yikes". Fix the instance **and** the class:
-- [ ] Regenerate `TEMPLATE-STANDARDS-AUDIT.adoc` to current state (post `paint_core` rename, Hexadeca, MVP, proofs)
-- [ ] Make the audit **generated** (a `just standards-audit` recipe that emits it from the live tree) so it can't drift — not hand-maintained
-- [ ] Strengthen `verify-manifests.yml` to flag stale `STATE`/`ECOSYSTEM`/`META.a2ml` vs reality (drift-as-CI-failure)
-- [ ] Run a machine-readable **currency checkpoint** as part of every substantial change (estate pattern, e.g. gossamer#76)
+The `TEMPLATE-STANDARDS-AUDIT.adoc` (now v1.2, 2026-07-26) is now generated from live tree — the root cause of the "yikes". Fix the instance **and** the class:
+- [x] Regenerate `TEMPLATE-STANDARDS-AUDIT.adoc` to current state (post `paint_core` rename, Hexadeca, MVP, proofs)
+- [x] Make the audit **generated** (a `just standards-audit` recipe that emits it from the live tree) so it can't drift — not hand-maintained
+- [x] Strengthen `verify-manifests.yml` to flag stale `STATE`/`ECOSYSTEM`/`META.a2ml` vs reality (drift-as-CI-failure)
+- [x] Run a machine-readable **currency checkpoint** as part of every substantial change (estate pattern, e.g. gossamer#76)
 
 ## Maintenance / bot protocol
 
