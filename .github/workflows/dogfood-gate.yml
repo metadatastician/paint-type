@@ -41,7 +41,7 @@ jobs:
         # Pinned to a2ml-validate-action main @55e8c28 (2026-07): the previous
         # pin (cb3c1e2) predated the estate false-positive carve-outs and
         # reported 63 spurious identity errors on canonical-template files.
-        uses: hyperpolymath/a2ml-validate-action@0f8081cdfa293663ec6b204274b4272da302e564 # main
+        uses: metadatastician/a2ml-validate-action@0f8081cdfa293663ec6b204274b4272da302e564 # main
         with:
           path: '.'
           strict: 'false'
@@ -100,7 +100,7 @@ jobs:
 
       - name: Validate K9 contracts
         if: steps.detect.outputs.k9_count > 0
-        uses: hyperpolymath/k9-validate-action@b4b4bd64851e55e003fc756ca706c19f3442e999 # main
+        uses: metadatastician/k9-validate-action@b4b4bd64851e55e003fc756ca706c19f3442e999 # main
         with:
           path: '.'
           strict: 'false'
@@ -217,13 +217,13 @@ jobs:
           fi
 
           # Check for Groove endpoint code (Rust, Elixir, Zig, V)
-          if grep -rl 'well-known/groove' --include='*.rs' --include='*.ex' --include='*.zig' --include='*.v' --include='*.res' . 2>/dev/null | head -1 | grep -q .; then
+          if grep -rq 'well-known/groove' --include='*.rs' --include='*.ex' --include='*.zig' --include='*.v' --include='*.res' . 2>/dev/null; then
             HAS_GROOVE_CODE="true"
           fi
 
           # Check if this repo likely serves HTTP (has server/listener code)
           HAS_SERVER="false"
-          if grep -rl 'TcpListener\|Bandit\|Plug.Cowboy\|httpz\|vweb\|axum::serve\|actix_web' --include='*.rs' --include='*.ex' --include='*.zig' --include='*.v' . 2>/dev/null | head -1 | grep -q .; then
+          if grep -rq 'TcpListener\|Bandit\|Plug.Cowboy\|httpz\|vweb\|axum::serve\|actix_web' --include='*.rs' --include='*.ex' --include='*.zig' --include='*.v' . 2>/dev/null; then
             HAS_SERVER="true"
           fi
 
@@ -327,7 +327,7 @@ jobs:
           MAX=6
 
           # A2ML manifest present?
-          if find . -name '*.a2ml' -not -path './.git/*' | head -1 | grep -q .; then
+          if find . -name '*.a2ml' -not -path './.git/*' -print -quit | grep -q .; then
             SCORE=$((SCORE + 1))
             A2ML_STATUS=":white_check_mark:"
           else
@@ -335,7 +335,7 @@ jobs:
           fi
 
           # K9 contracts present?
-          if find . \( -name '*.k9' -o -name '*.k9.ncl' \) -not -path './.git/*' | head -1 | grep -q .; then
+          if find . \( -name '*.k9' -o -name '*.k9.ncl' \) -not -path './.git/*' -print -quit | grep -q .; then
             SCORE=$((SCORE + 1))
             K9_STATUS=":white_check_mark:"
           else
@@ -351,7 +351,7 @@ jobs:
           fi
 
           # Groove manifest or code?
-          if [ -f ".well-known/groove/manifest.json" ] || grep -rl 'well-known/groove' --include='*.rs' --include='*.ex' --include='*.zig' . 2>/dev/null | head -1 | grep -q .; then
+          if [ -f ".well-known/groove/manifest.json" ] || grep -rq 'well-known/groove' --include='*.rs' --include='*.ex' --include='*.zig' . 2>/dev/null; then
             SCORE=$((SCORE + 1))
             GROOVE_STATUS=":white_check_mark:"
           else
@@ -359,7 +359,7 @@ jobs:
           fi
 
           # VeriSimDB integration?
-          if grep -rl 'verisimdb\|VeriSimDB' --include='*.toml' --include='*.yaml' --include='*.yml' --include='*.json' --include='*.rs' --include='*.ex' . 2>/dev/null | head -1 | grep -q .; then
+          if grep -rq 'verisimdb\|VeriSimDB' --include='*.toml' --include='*.yaml' --include='*.yml' --include='*.json' --include='*.rs' --include='*.ex' . 2>/dev/null; then
             SCORE=$((SCORE + 1))
             VSDB_STATUS=":white_check_mark:"
           else
