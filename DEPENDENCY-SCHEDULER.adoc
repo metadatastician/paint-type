@@ -91,7 +91,7 @@ updated on next sync.
 
 ### DEP-10 proven
 - [ ] Keep `proven` consumable as the Idris2 proof foundation.
-- [ ] Track-C security triage (proven#68).
+- [x] Track-C security triage (proven#68) — **Closed via PR #162**.
 
 ### DEP-11 echo-types
 - [ ] Keep the local Agda build env working (the `~/.agda/libraries` path-drift).
