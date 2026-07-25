@@ -11,7 +11,13 @@ This manifest describes the purpose and structure of the `.well-known/` director
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** .well-known/ specific configurations
 
-## Canonical Files\n\n- `humans.txt` -- humans configuration or data\n- `security.txt` -- security configuration or data\n- `ai.txt` -- ai configuration or data\n\n## Invariants
+## Canonical Files
+
+- `humans.txt` -- humans configuration or data
+- `security.txt` -- security configuration or data
+- `ai.txt` -- ai configuration or data
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 1 must have its own `0.1-AI-MANIFEST.a2ml`.

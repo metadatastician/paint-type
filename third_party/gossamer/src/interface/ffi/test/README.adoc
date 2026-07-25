@@ -13,13 +13,30 @@ Project directory.
 As a Level 6 directory (`third_party/gossamer/src/interface/ffi/test/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n=== Source Files\n\n* `startup_bench.zig` — startup_bench configuration or data\n* `dialog_test.zig` — Test file\n* `display_test.zig` — Test file\n* `webview_lifecycle_test.zig` — Test file\n* `gossamer_bench.zig` — gossamer_bench configuration or data\n* `integration_test.zig` — Test file\n\n=== Other Files\n\n* `0.4-AI-MANIFEST.a2ml` — A2ML machine-readable metadata\n\n
+== Contents by Functional Grouping
+
+=== Source Files
+
+* `startup_bench.zig` — startup_bench configuration or data
+* `dialog_test.zig` — Test file
+* `display_test.zig` — Test file
+* `webview_lifecycle_test.zig` — Test file
+* `gossamer_bench.zig` — gossamer_bench configuration or data
+* `integration_test.zig` — Test file
+
+=== Other Files
+
+* `0.4-AI-MANIFEST.a2ml` — A2ML machine-readable metadata
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Source files* implement core functionality.\n
-*Other files* support directory operations.\n
+*Source files* implement core functionality.
+
+*Other files* support directory operations.
+
 
 == AI Manifest Structure
 

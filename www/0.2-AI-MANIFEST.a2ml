@@ -1,0 +1,97 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+# www/ — Static Site for paint.type Project
+
+## Purpose
+
+The `www/` directory contains the official static website for the paint.type
+project, including documentation, guides, and project information. The site
+is generated using casket-ssg (pinned to v0.1.4, commit 8c3b772b144e59df29c66cb1a8c3d9a4b276ff11)
+with strict security headers and a documented escaping contract.
+
+## Canonical Files
+
+- `README.adoc` — Directory documentation and security information
+- `0.2-AI-MANIFEST.a2ml` — This AI manifest
+
+## Directory Structure by Functional Grouping
+
+### Templates
+
+* `templates/default.html` — Main HTML template with CSP and security headers
+
+### Security Configuration
+
+* `security_headers/csp.conf` — Content Security Policy and HTTP headers
+
+### Well-Known Resources
+
+* `.well-known/` — RFC 8615 well-known URI endpoints
+
+### Resource Records
+
+* `resource_records/` — Security manifests and resource declarations
+
+## Security Invariants
+
+### site-security-headers
+- description: www/ directory contains security_headers directory with CSP configuration
+- run: test -d "www/security_headers" && test -f "www/security_headers/csp.conf"
+- severity: critical
+
+### site-well-known
+- description: www/ directory contains .well-known directory for RFC 8615 resources
+- run: test -d "www/.well-known"
+- severity: warning
+
+### site-resource-records
+- description: www/ directory contains resource_records directory for manifests
+- run: test -d "www/resource_records"
+- severity: warning
+
+### casket-ssg-pinned
+- description: casket-ssg is pinned to a specific version in www/README.adoc
+- run: grep -q "8c3b772b144e59df29c66cb1a8c3d9a4b276ff11" www/README.adoc
+- severity: critical
+
+### csp-in-template
+- description: default.html template contains Content-Security-Policy meta tag
+- run: grep -q "Content-Security-Policy" www/templates/default.html
+- severity: critical
+
+### escaping-contract-documented
+- description: Escaping contract for casket-ssg templates is documented
+- run: grep -q "Escaping Contract" www/README.adoc
+- severity: critical
+
+## Contents by Functional Grouping
+
+### Configuration
+
+* `0.2-AI-MANIFEST.a2ml` — AI manifest for www/
+* `README.adoc` — Directory documentation
+
+### Templates
+
+* `templates/default.html` — Main site template
+
+### Security
+
+* `security_headers/csp.conf` — Security headers configuration
+
+### Well-Known
+
+* `.well-known/.gitkeep` — Placeholder for well-known URIs
+
+### Resource Records
+
+* `resource_records/.gitkeep` — Placeholder for resource manifests
+
+## Related Files
+
+- link:../features/ssg/README.adoc[SSG Feature Directory]
+- link:../features/ssg/ssg-bootstrap.sh[SSG Bootstrap Script]
+- link:../.machine_readable/[Machine Readable Metadata]
+- link:../SECURITY.md[Security Policy]
+- link:../AUDIT.adoc[Audit Documentation]
+- link:../audits/SECURITY-REVIEW-2026-06-15.md[Security Review 2026-06-15]

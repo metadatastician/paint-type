@@ -11,7 +11,16 @@ This manifest describes the purpose and structure of the `src/paint_core/src/` d
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** src/paint_core/src/ specific configurations
 
-## Canonical Files\n\n- `undo.rs` -- undo configuration or data\n- `composite.rs` -- composite configuration or data\n- `lib.rs` -- Rust library root\n- `brush.rs` -- brush configuration or data\n- `layer.rs` -- layer configuration or data\n- `render.rs` -- render configuration or data\n\n## Invariants
+## Canonical Files
+
+- `undo.rs` -- undo configuration or data
+- `composite.rs` -- composite configuration or data
+- `lib.rs` -- Rust library root
+- `brush.rs` -- brush configuration or data
+- `layer.rs` -- layer configuration or data
+- `render.rs` -- render configuration or data
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 3 must have its own `0.3-AI-MANIFEST.a2ml`.

@@ -11,7 +11,11 @@ This manifest describes the purpose and structure of the `verification/proofs/le
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** verification/proofs/lean4/ specific configurations
 
-## Canonical Files\n\n- `ApiTypes.lean` -- ApiTypes configuration or data\n\n## Invariants
+## Canonical Files
+
+- `ApiTypes.lean` -- ApiTypes configuration or data
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 3 must have its own `0.3-AI-MANIFEST.a2ml`.

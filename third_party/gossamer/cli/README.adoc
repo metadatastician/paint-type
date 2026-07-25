@@ -13,12 +13,28 @@ Project directory.
 As a Level 3 directory (`third_party/gossamer/cli/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n== Subdirectories\n\n[cols="1,2", options="header"]\n|===\n| Directory | Purpose\n| `src/` | |\n| `launcher/` | |\n|===\n\n=== Source Files\n\n* `build.zig` — Zig build file\n\n
+== Contents by Functional Grouping
+
+== Subdirectories
+
+[cols="1,2", options="header"]
+|===
+| Directory | Purpose
+| `src/` | |
+| `launcher/` | |
+|===
+
+=== Source Files
+
+* `build.zig` — Zig build file
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Source files* implement core functionality.\n
+*Source files* implement core functionality.
+
 
 == AI Manifest Structure
 

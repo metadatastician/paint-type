@@ -13,12 +13,19 @@ Project directory.
 As a Level 2 directory (`docs/wiki/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n=== Documentation\n\n* `Home.md` — Markdown documentation\n\n
+== Contents by Functional Grouping
+
+=== Documentation
+
+* `Home.md` — Markdown documentation
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Documentation files* provide guidance.\n
+*Documentation files* provide guidance.
+
 
 == AI Manifest Structure
 

@@ -13,12 +13,20 @@ Project directory.
 As a Level 4 directory (`src/interface/ffi/test/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n=== Source Files\n\n* `bench.zig` — bench configuration or data\n* `integration_test.zig` — Test file\n\n
+== Contents by Functional Grouping
+
+=== Source Files
+
+* `bench.zig` — bench configuration or data
+* `integration_test.zig` — Test file
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Source files* implement core functionality.\n
+*Source files* implement core functionality.
+
 
 == AI Manifest Structure
 

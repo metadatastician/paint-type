@@ -13,12 +13,21 @@ Project directory.
 As a Level 1 directory (`.well-known/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n=== Documentation\n\n* `humans.txt` — humans configuration or data\n* `security.txt` — security configuration or data\n* `ai.txt` — ai configuration or data\n\n
+== Contents by Functional Grouping
+
+=== Documentation
+
+* `humans.txt` — humans configuration or data
+* `security.txt` — security configuration or data
+* `ai.txt` — ai configuration or data
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Documentation files* provide guidance.\n
+*Documentation files* provide guidance.
+
 
 == AI Manifest Structure
 

@@ -1,0 +1,95 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+= www
+:description: Static site for paint.type project
+
+This directory contains the static site for the paint.type project, generated
+using link:https://github.com/hyperpolymath/casket-ssg[casket-ssg].
+
+== Purpose
+
+The `www/` directory hosts the official paint.type static website, including:
+
+- Project documentation
+- Getting started guides
+- Architecture overviews
+- API references
+
+== Tooling and Security
+
+This static site is generated using *casket-ssg*.
+
+=== Dependency Pinning
+
+* *Tool*: `casket-ssg`
+* *Version/Commit*: `v0.1.4` (commit `8c3b772b144e59df29c66cb1a8c3d9a4b276ff11`)
+* *Source*: https://github.com/hyperpolymath/casket-ssg
+* *Pin Verification*: Verify with `casket-ssg --version` or hash match during container builds.
+
+=== Escaping Contract
+
+The casket-ssg templating engine provides the following escaping guarantees:
+
+* `{{title}}` & `{{description}}`: Automatically HTML-escaped by `casket-ssg` at template compilation time to prevent XSS (Cross-Site Scripting) attacks.
+* `{{content}}`: Raw HTML block generated from Markdown. *SECURITY NOTE*: The template trust model assumes markdown content is generated from trusted repository files and contains no unescaped user-controlled input. Do NOT use `{{content}}` with untrusted user input.
+
+=== Security Headers
+
+The site enforces strict security headers:
+
+* **Content-Security-Policy (CSP)**: `default-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'self'; upgrade-insecure-requests`
+* **X-Content-Type-Options**: `nosniff` — prevents MIME-sniffing attacks
+* **X-Frame-Options**: `DENY` — prevents clickjacking
+* **X-XSS-Protection**: `1; mode=block` — enables browser XSS filter
+* **Referrer-Policy**: `no-referrer` — limits referrer information
+
+These headers are embedded in templates via `<meta>` tags and can also be served
+as HTTP response headers from the host.
+
+== Directory Structure
+
+[cols="1,2", options="header"]
+|===
+| Directory | Purpose
+| `templates/` | HTML templates for casket-ssg
+| `security_headers/` | Security header configurations
+| `.well-known/` | Well-known URI resources (RFC 8615)
+| `resource_records/` | Resource records and security manifests
+|===
+
+=== Building the Site
+
+To build the static site:
+
+. Ensure casket-ssg is installed at the pinned version:
+   - Clone: `git clone https://github.com/hyperpolymath/casket-ssg`
+   - Checkout: `git checkout 8c3b772b144e59df29c66cb1a8c3d9a4b276ff11`
+   - Verify: `casket-ssg --version`
+
+. Run the site generator (consult casket-ssg documentation for exact commands)
+
+. The generated files will be placed in the output directory
+
+== Contents by Functional Grouping
+
+*Templates*::
+- `templates/default.html` — Main HTML template with security headers
+
+*Security Configuration*::
+- `security_headers/csp.conf` — Content Security Policy and related headers
+
+*Well-Known Resources*::
+- `.well-known/` — Standard well-known URI endpoints
+
+*Resource Records*::
+- `resource_records/` — Security and resource manifests
+
+== AI Manifest Structure
+
+* `0.2-AI-MANIFEST.a2ml` — Level 2 manifest for `www/`
+
+== Related Files
+
+* link:../features/ssg/README.adoc[SSG Feature Directory]
+* link:../.machine_readable/[Machine Readable Metadata]
+* link:../SECURITY.md[Security Policy]

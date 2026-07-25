@@ -13,12 +13,33 @@ Project directory.
 As a Level 3 directory (`third_party/gossamer/src/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n== Subdirectories\n\n[cols="1,2", options="header"]\n|===\n| Directory | Purpose\n| `bridges/` | |\n| `contracts/` | |\n| `core/` | |\n| `errors/` | |\n| `aspects/` | |\n| `interface/` | |\n| `definitions/` | |\n|===\n\n=== Other Files\n\n* `0.1-AI-MANIFEST.a2ml` — A2ML machine-readable metadata\n\n
+== Contents by Functional Grouping
+
+== Subdirectories
+
+[cols="1,2", options="header"]
+|===
+| Directory | Purpose
+| `bridges/` | |
+| `contracts/` | |
+| `core/` | |
+| `errors/` | |
+| `aspects/` | |
+| `interface/` | |
+| `definitions/` | |
+|===
+
+=== Other Files
+
+* `0.1-AI-MANIFEST.a2ml` — A2ML machine-readable metadata
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Other files* support directory operations.\n
+*Other files* support directory operations.
+
 
 == AI Manifest Structure
 

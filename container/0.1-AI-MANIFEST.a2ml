@@ -11,7 +11,19 @@ This manifest describes the purpose and structure of the `container/` directory.
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** container/ specific configurations
 
-## Canonical Files\n\n- `compose.toml` -- Configuration file\n- `.gatekeeper.yaml` -- YAML configuration\n- `ct-build.sh` -- Shell script\n- `manifest.toml` -- Configuration file\n- `entrypoint.sh` -- Shell script\n- `deploy.k9.ncl` -- deploy.k9 configuration or data\n- `compose.example.toml` -- Configuration file\n- `Containerfile` -- Container image definition\n- `vordr.toml` -- Configuration file\n\n## Invariants
+## Canonical Files
+
+- `compose.toml` -- Configuration file
+- `.gatekeeper.yaml` -- YAML configuration
+- `ct-build.sh` -- Shell script
+- `manifest.toml` -- Configuration file
+- `entrypoint.sh` -- Shell script
+- `deploy.k9.ncl` -- deploy.k9 configuration or data
+- `compose.example.toml` -- Configuration file
+- `Containerfile` -- Container image definition
+- `vordr.toml` -- Configuration file
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 1 must have its own `0.1-AI-MANIFEST.a2ml`.

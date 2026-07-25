@@ -13,13 +13,34 @@ Project directory.
 As a Level 2 directory (`src/host_core/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n== Subdirectories\n\n[cols="1,2", options="header"]\n|===\n| Directory | Purpose\n| `src/` | |\n| `tests/` | |\n|===\n\n=== Configuration\n\n* `Cargo.toml` — Rust package manifest\n\n=== Other Files\n\n* `Cargo.lock` — Rust dependency lock file\n\n
+== Contents by Functional Grouping
+
+== Subdirectories
+
+[cols="1,2", options="header"]
+|===
+| Directory | Purpose
+| `src/` | |
+| `tests/` | |
+|===
+
+=== Configuration
+
+* `Cargo.toml` — Rust package manifest
+
+=== Other Files
+
+* `Cargo.lock` — Rust dependency lock file
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Configuration files* define build, test, and deployment parameters.\n
-*Other files* support directory operations.\n
+*Configuration files* define build, test, and deployment parameters.
+
+*Other files* support directory operations.
+
 
 == AI Manifest Structure
 

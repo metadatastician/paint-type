@@ -13,13 +13,26 @@ Project directory.
 As a Level 2 directory (`docs/practice/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n=== Documentation\n\n* `STATE-VISUALIZER-GUIDE.adoc` — AsciiDoc documentation\n* `AI-CONVENTIONS.adoc` — AsciiDoc documentation\n\n=== Other Files\n\n* `.gitkeep` —  configuration or data\n\n
+== Contents by Functional Grouping
+
+=== Documentation
+
+* `STATE-VISUALIZER-GUIDE.adoc` — AsciiDoc documentation
+* `AI-CONVENTIONS.adoc` — AsciiDoc documentation
+
+=== Other Files
+
+* `.gitkeep` —  configuration or data
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Documentation files* provide guidance.\n
-*Other files* support directory operations.\n
+*Documentation files* provide guidance.
+
+*Other files* support directory operations.
+
 
 == AI Manifest Structure
 

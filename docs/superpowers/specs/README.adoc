@@ -13,12 +13,20 @@ Project directory.
 As a Level 3 directory (`docs/superpowers/specs/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n=== Documentation\n\n* `2026-05-31-pareto-surface-reduction-design.md` — Markdown documentation\n* `2026-06-02-mvp-desktop-shell-design.md` — Markdown documentation\n\n
+== Contents by Functional Grouping
+
+=== Documentation
+
+* `2026-05-31-pareto-surface-reduction-design.md` — Markdown documentation
+* `2026-06-02-mvp-desktop-shell-design.md` — Markdown documentation
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Documentation files* provide guidance.\n
+*Documentation files* provide guidance.
+
 
 == AI Manifest Structure
 

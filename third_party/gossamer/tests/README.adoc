@@ -13,12 +13,27 @@ Project directory.
 As a Level 3 directory (`third_party/gossamer/tests/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n== Subdirectories\n\n[cols="1,2", options="header"]\n|===\n| Directory | Purpose\n| `idris2/` | |\n|===\n\n=== Configuration\n\n* `e2e.sh` — Shell script\n\n
+== Contents by Functional Grouping
+
+== Subdirectories
+
+[cols="1,2", options="header"]
+|===
+| Directory | Purpose
+| `idris2/` | |
+|===
+
+=== Configuration
+
+* `e2e.sh` — Shell script
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Configuration files* define build, test, and deployment parameters.\n
+*Configuration files* define build, test, and deployment parameters.
+
 
 == AI Manifest Structure
 

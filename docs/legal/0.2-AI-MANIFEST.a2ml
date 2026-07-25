@@ -11,7 +11,12 @@ This manifest describes the purpose and structure of the `docs/legal/` directory
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** docs/legal/ specific configurations
 
-## Canonical Files\n\n- `EXHIBIT-B-QUANTUM-SAFE.txt` -- EXHIBIT-B-QUANTUM-SAFE configuration or data\n- `EXHIBIT-A-ETHICAL-USE.txt` -- EXHIBIT-A-ETHICAL-USE configuration or data\n\n## Invariants
+## Canonical Files
+
+- `EXHIBIT-B-QUANTUM-SAFE.txt` -- EXHIBIT-B-QUANTUM-SAFE configuration or data
+- `EXHIBIT-A-ETHICAL-USE.txt` -- EXHIBIT-A-ETHICAL-USE configuration or data
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 2 must have its own `0.2-AI-MANIFEST.a2ml`.

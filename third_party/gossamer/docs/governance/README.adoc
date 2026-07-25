@@ -13,13 +13,43 @@ Project directory.
 As a Level 4 directory (`third_party/gossamer/docs/governance/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n== Subdirectories\n\n[cols="1,2", options="header"]\n|===\n| Directory | Purpose\n| `audit/` | |\n| `maintenance/` | |\n| `planning/` | |\n|===\n\n=== Documentation\n\n* `SOFTWARE-DEVELOPMENT-APPROACH.adoc` — AsciiDoc documentation\n* `MAINTENANCE-CHECKLIST.adoc` — AsciiDoc documentation\n* `CRG-CRITERIA.adoc` — AsciiDoc documentation\n* `CRG-AUDIT-2026-04-18.adoc` — AsciiDoc documentation\n* `TSDM.adoc` — AsciiDoc documentation\n\n=== Other Files\n\n* `CRG-CRITERIA.a2ml` — A2ML machine-readable metadata\n* `SOFTWARE-DEVELOPMENT-APPROACH.a2ml` — A2ML machine-readable metadata\n* `0.1-AI-MANIFEST.a2ml` — A2ML machine-readable metadata\n* `MAINTENANCE-CHECKLIST.a2ml` — A2ML machine-readable metadata\n* `TSDM.a2ml` — A2ML machine-readable metadata\n\n
+== Contents by Functional Grouping
+
+== Subdirectories
+
+[cols="1,2", options="header"]
+|===
+| Directory | Purpose
+| `audit/` | |
+| `maintenance/` | |
+| `planning/` | |
+|===
+
+=== Documentation
+
+* `SOFTWARE-DEVELOPMENT-APPROACH.adoc` — AsciiDoc documentation
+* `MAINTENANCE-CHECKLIST.adoc` — AsciiDoc documentation
+* `CRG-CRITERIA.adoc` — AsciiDoc documentation
+* `CRG-AUDIT-2026-04-18.adoc` — AsciiDoc documentation
+* `TSDM.adoc` — AsciiDoc documentation
+
+=== Other Files
+
+* `CRG-CRITERIA.a2ml` — A2ML machine-readable metadata
+* `SOFTWARE-DEVELOPMENT-APPROACH.a2ml` — A2ML machine-readable metadata
+* `0.1-AI-MANIFEST.a2ml` — A2ML machine-readable metadata
+* `MAINTENANCE-CHECKLIST.a2ml` — A2ML machine-readable metadata
+* `TSDM.a2ml` — A2ML machine-readable metadata
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Documentation files* provide guidance.\n
-*Other files* support directory operations.\n
+*Documentation files* provide guidance.
+
+*Other files* support directory operations.
+
 
 == AI Manifest Structure
 

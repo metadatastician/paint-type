@@ -13,7 +13,17 @@ Feature implementations and modules.
 As a Level 1 directory (`features/`), it supports the overall
 project structure.
 
-== Subdirectories\n\n[cols="1,2", options="header"]\n|===\n| Directory | Purpose\n| `boj-server/` | |\n| `panic-attacker/` | |\n| `ssg/` | |\n|===\n\n
+== Subdirectories
+
+[cols="1,2", options="header"]
+|===
+| Directory | Purpose
+| `boj-server/` | |
+| `panic-attacker/` | |
+| `ssg/` | |
+|===
+
+
 == Purpose of Each Component
 
 

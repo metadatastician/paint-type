@@ -13,7 +13,17 @@ Project directory.
 As a Level 3 directory (`third_party/gossamer/contractiles/`), it supports the overall
 project structure.
 
-== Subdirectories\n\n[cols="1,2", options="header"]\n|===\n| Directory | Purpose\n| `trust/` | |\n| `intend/` | |\n| `must/` | |\n|===\n\n
+== Subdirectories
+
+[cols="1,2", options="header"]
+|===
+| Directory | Purpose
+| `trust/` | |
+| `intend/` | |
+| `must/` | |
+|===
+
+
 == Purpose of Each Component
 
 

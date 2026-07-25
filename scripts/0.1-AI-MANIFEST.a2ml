@@ -11,7 +11,14 @@ This manifest describes the purpose and structure of the `scripts/` directory.
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** scripts/ specific configurations
 
-## Canonical Files\n\n- `build-host-local.sh` -- Shell script\n- `invariant-path.sh` -- Shell script\n- `verify-manifests.sh` -- Shell script\n- `validate-template.sh` -- Shell script\n\n## Invariants
+## Canonical Files
+
+- `build-host-local.sh` -- Shell script
+- `invariant-path.sh` -- Shell script
+- `verify-manifests.sh` -- Shell script
+- `validate-template.sh` -- Shell script
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 1 must have its own `0.1-AI-MANIFEST.a2ml`.

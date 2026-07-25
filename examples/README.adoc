@@ -13,12 +13,19 @@ Example code and usage demonstrations.
 As a Level 1 directory (`examples/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n=== Configuration\n\n* `web-project-deno.json` — JSON configuration\n\n
+== Contents by Functional Grouping
+
+=== Configuration
+
+* `web-project-deno.json` — JSON configuration
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Configuration files* define build, test, and deployment parameters.\n
+*Configuration files* define build, test, and deployment parameters.
+
 
 == AI Manifest Structure
 

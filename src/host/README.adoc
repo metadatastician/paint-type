@@ -13,12 +13,27 @@ Project directory.
 As a Level 2 directory (`src/host/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n== Subdirectories\n\n[cols="1,2", options="header"]\n|===\n| Directory | Purpose\n| `src/` | |\n|===\n\n=== Configuration\n\n* `Cargo.toml` — Rust package manifest\n\n
+== Contents by Functional Grouping
+
+== Subdirectories
+
+[cols="1,2", options="header"]
+|===
+| Directory | Purpose
+| `src/` | |
+|===
+
+=== Configuration
+
+* `Cargo.toml` — Rust package manifest
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Configuration files* define build, test, and deployment parameters.\n
+*Configuration files* define build, test, and deployment parameters.
+
 
 == AI Manifest Structure
 

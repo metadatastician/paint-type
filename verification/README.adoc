@@ -13,7 +13,22 @@ Formal proofs and verification artifacts.
 As a Level 1 directory (`verification/`), it supports the overall
 project structure.
 
-== Subdirectories\n\n[cols="1,2", options="header"]\n|===\n| Directory | Purpose\n| `tests/` | |\n| `fuzzing/` | |\n| `safety_case/` | |\n| `proofs/` | |\n| `traceability/` | |\n| `simulations/` | |\n| `coverage/` | |\n| `benchmarks/` | |\n|===\n\n
+== Subdirectories
+
+[cols="1,2", options="header"]
+|===
+| Directory | Purpose
+| `tests/` | |
+| `fuzzing/` | |
+| `safety_case/` | |
+| `proofs/` | |
+| `traceability/` | |
+| `simulations/` | |
+| `coverage/` | |
+| `benchmarks/` | |
+|===
+
+
 == Purpose of Each Component
 
 

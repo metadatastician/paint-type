@@ -11,7 +11,13 @@ This manifest describes the purpose and structure of the `src/ui/` directory.
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** src/ui/ specific configurations
 
-## Canonical Files\n\n- `index.html` -- index configuration or data\n- `style.css` -- style configuration or data\n- `app.js` -- app configuration or data\n\n## Invariants
+## Canonical Files
+
+- `index.html` -- index configuration or data
+- `style.css` -- style configuration or data
+- `app.js` -- app configuration or data
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 2 must have its own `0.2-AI-MANIFEST.a2ml`.

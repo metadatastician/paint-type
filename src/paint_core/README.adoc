@@ -13,14 +13,42 @@ Project directory.
 As a Level 2 directory (`src/paint_core/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n== Subdirectories\n\n[cols="1,2", options="header"]\n|===\n| Directory | Purpose\n| `src/` | |\n| `benches/` | |\n| `tests/` | |\n| `fuzz/` | |\n|===\n\n=== Configuration\n\n* `Cargo.toml` — Rust package manifest\n\n=== Source Files\n\n* `build.rs` — Rust build script\n\n=== Other Files\n\n* `Cargo.lock` — Rust dependency lock file\n\n
+== Contents by Functional Grouping
+
+== Subdirectories
+
+[cols="1,2", options="header"]
+|===
+| Directory | Purpose
+| `src/` | |
+| `benches/` | |
+| `tests/` | |
+| `fuzz/` | |
+|===
+
+=== Configuration
+
+* `Cargo.toml` — Rust package manifest
+
+=== Source Files
+
+* `build.rs` — Rust build script
+
+=== Other Files
+
+* `Cargo.lock` — Rust dependency lock file
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Configuration files* define build, test, and deployment parameters.\n
-*Source files* implement core functionality.\n
-*Other files* support directory operations.\n
+*Configuration files* define build, test, and deployment parameters.
+
+*Source files* implement core functionality.
+
+*Other files* support directory operations.
+
 
 == AI Manifest Structure
 

@@ -13,13 +13,33 @@ Project directory.
 As a Level 3 directory (`src/paint_core/fuzz/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n== Subdirectories\n\n[cols="1,2", options="header"]\n|===\n| Directory | Purpose\n| `fuzz_targets/` | |\n|===\n\n=== Configuration\n\n* `Cargo.toml` — Rust package manifest\n\n=== Other Files\n\n* `.gitignore` — Git ignore patterns\n\n
+== Contents by Functional Grouping
+
+== Subdirectories
+
+[cols="1,2", options="header"]
+|===
+| Directory | Purpose
+| `fuzz_targets/` | |
+|===
+
+=== Configuration
+
+* `Cargo.toml` — Rust package manifest
+
+=== Other Files
+
+* `.gitignore` — Git ignore patterns
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Configuration files* define build, test, and deployment parameters.\n
-*Other files* support directory operations.\n
+*Configuration files* define build, test, and deployment parameters.
+
+*Other files* support directory operations.
+
 
 == AI Manifest Structure
 

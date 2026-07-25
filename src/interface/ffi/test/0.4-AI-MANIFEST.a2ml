@@ -11,7 +11,12 @@ This manifest describes the purpose and structure of the `src/interface/ffi/test
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** src/interface/ffi/test/ specific configurations
 
-## Canonical Files\n\n- `bench.zig` -- bench configuration or data\n- `integration_test.zig` -- Test file\n\n## Invariants
+## Canonical Files
+
+- `bench.zig` -- bench configuration or data
+- `integration_test.zig` -- Test file
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 4 must have its own `0.4-AI-MANIFEST.a2ml`.

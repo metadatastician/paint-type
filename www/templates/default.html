@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Security Headers -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'self'; upgrade-insecure-requests">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta name="referrer" content="no-referrer">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <title>{{title}} -- paint.type</title>
+    <meta name="description" content="{{description}}">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="index.html" class="logo">paint.type</a>
+            <div class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="getting-started.html">Getting Started</a>
+                <a href="architecture.html">Architecture</a>
+                <a href="https://github.com/metadatastician/paint-type" target="_blank" rel="noopener noreferrer">GitHub</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <article>
+            {{content}}
+        </article>
+    </main>
+
+    <footer>
+        <p>paint.type — A cross-language, type-safe digital painting system.</p>
+        <p>MPL-2.0 &mdash; &copy; 2026 Jonathan D.A. Jewell (hyperpolymath)</p>
+        <div class="footer-links">
+            <a href="https://github.com/metadatastician/paint-type" target="_blank" rel="noopener noreferrer">GitHub</a>
+        </div>
+    </footer>
+</body>
+</html>

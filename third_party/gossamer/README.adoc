@@ -13,14 +13,102 @@ Project directory.
 As a Level 2 directory (`third_party/gossamer/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n== Subdirectories\n\n[cols="1,2", options="header"]\n|===\n| Directory | Purpose\n| `src/` | |\n| `.well-known/` | |\n| `cli/` | |\n| `verification/` | |\n| `tests/` | |\n| `audits/` | |\n| `android/` | |\n| `site/` | |\n| `schema/` | |\n| `container/` | |\n| `deploy/` | |\n| `scripts/` | |\n| `ffi/` | |\n| `api/` | |\n| `examples/` | |\n| `docs/` | |\n| `configs/` | |\n| `contractiles/` | |\n| `packaging/` | |\n| `features/` | |\n| `schemas/` | |\n| `.devcontainer/` | |\n| `benchmarks/` | |\n| `bindings/` | |\n|===\n\n=== Configuration\n\n* `stapeln.toml` — Configuration file\n* `tlaiser.toml` — Configuration file\n* `selur-compose.toml` — Configuration file\n* `gossamer.conf.json` — JSON configuration\n* `Justfile` — Task runner recipes\n* `k9iser.toml` — Configuration file\n* `setup.sh` — Project setup script\n* `.pre-commit-config.yaml` — YAML configuration\n* `eclexiaiser.toml` — Configuration file\n* `gossamer.conf.repos.json` — JSON configuration\n* `.gitlab-ci.yml` — YAML configuration\n* `.conflow.yaml` — YAML configuration\n\n=== Documentation\n\n* `SECURITY.md` — Security policy\n* `PROOF-NEEDS.md` — Markdown documentation\n* `TOPOLOGY.md` — Architecture topology\n* `QUICKSTART-MAINTAINER.adoc` — AsciiDoc documentation\n* `GETTING-STARTED.md` — Markdown documentation\n* `QUICKSTART-DEV.adoc` — AsciiDoc documentation\n* `llm-warmup-user.md` — Markdown documentation\n* `ROADMAP.adoc` — Project roadmap\n* `CODE_OF_CONDUCT.md` — Code of conduct\n* `TEST-NEEDS.md` — Markdown documentation\n* `NEXT-STEPS.md` — Markdown documentation\n* `CONTRIBUTING.md` — Contribution guidelines\n* `README.adoc.invariants.md` — Markdown documentation\n* `EXPLAINME.adoc` — Repository structure guide\n* `llm-warmup-dev.md` — Markdown documentation\n* `CHANGELOG.md` — Change log\n* `QUICKSTART-USER.adoc` — AsciiDoc documentation\n\n=== Other Files\n\n* `gossamer-abi-tests.ipkg` — gossamer-abi-tests configuration or data\n* `deno.lock` — deno configuration or data\n* `gossamer-abi.ipkg` — gossamer-abi configuration or data\n* `0-AI-MANIFEST.a2ml` — A2ML machine-readable metadata\n* `contractile.just` — contractile configuration or data\n* `guix.scm` — guix configuration or data\n* `.guix-channel` —  configuration or data\n* `gossamer.desktop` — gossamer configuration or data\n* `.envrc` —  configuration or data\n* `.gitattributes` — Git attributes\n* `Containerfile` — Container image definition\n* `.editorconfig` — Editor configuration\n* `.gitignore` — Git ignore patterns\n* `LICENSE` — License file\n\n
+== Contents by Functional Grouping
+
+== Subdirectories
+
+[cols="1,2", options="header"]
+|===
+| Directory | Purpose
+| `src/` | |
+| `.well-known/` | |
+| `cli/` | |
+| `verification/` | |
+| `tests/` | |
+| `audits/` | |
+| `android/` | |
+| `site/` | |
+| `schema/` | |
+| `container/` | |
+| `deploy/` | |
+| `scripts/` | |
+| `ffi/` | |
+| `api/` | |
+| `examples/` | |
+| `docs/` | |
+| `configs/` | |
+| `contractiles/` | |
+| `packaging/` | |
+| `features/` | |
+| `schemas/` | |
+| `.devcontainer/` | |
+| `benchmarks/` | |
+| `bindings/` | |
+|===
+
+=== Configuration
+
+* `stapeln.toml` — Configuration file
+* `tlaiser.toml` — Configuration file
+* `selur-compose.toml` — Configuration file
+* `gossamer.conf.json` — JSON configuration
+* `Justfile` — Task runner recipes
+* `k9iser.toml` — Configuration file
+* `setup.sh` — Project setup script
+* `.pre-commit-config.yaml` — YAML configuration
+* `eclexiaiser.toml` — Configuration file
+* `gossamer.conf.repos.json` — JSON configuration
+* `.gitlab-ci.yml` — YAML configuration
+* `.conflow.yaml` — YAML configuration
+
+=== Documentation
+
+* `SECURITY.md` — Security policy
+* `PROOF-NEEDS.md` — Markdown documentation
+* `TOPOLOGY.md` — Architecture topology
+* `QUICKSTART-MAINTAINER.adoc` — AsciiDoc documentation
+* `GETTING-STARTED.md` — Markdown documentation
+* `QUICKSTART-DEV.adoc` — AsciiDoc documentation
+* `llm-warmup-user.md` — Markdown documentation
+* `ROADMAP.adoc` — Project roadmap
+* `CODE_OF_CONDUCT.md` — Code of conduct
+* `TEST-NEEDS.md` — Markdown documentation
+* `NEXT-STEPS.md` — Markdown documentation
+* `CONTRIBUTING.md` — Contribution guidelines
+* `README.adoc.invariants.md` — Markdown documentation
+* `EXPLAINME.adoc` — Repository structure guide
+* `llm-warmup-dev.md` — Markdown documentation
+* `CHANGELOG.md` — Change log
+* `QUICKSTART-USER.adoc` — AsciiDoc documentation
+
+=== Other Files
+
+* `gossamer-abi-tests.ipkg` — gossamer-abi-tests configuration or data
+* `deno.lock` — deno configuration or data
+* `gossamer-abi.ipkg` — gossamer-abi configuration or data
+* `0-AI-MANIFEST.a2ml` — A2ML machine-readable metadata
+* `contractile.just` — contractile configuration or data
+* `guix.scm` — guix configuration or data
+* `.guix-channel` —  configuration or data
+* `gossamer.desktop` — gossamer configuration or data
+* `.envrc` —  configuration or data
+* `.gitattributes` — Git attributes
+* `Containerfile` — Container image definition
+* `.editorconfig` — Editor configuration
+* `.gitignore` — Git ignore patterns
+* `LICENSE` — License file
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Configuration files* define build, test, and deployment parameters.\n
-*Documentation files* provide guidance.\n
-*Other files* support directory operations.\n
+*Configuration files* define build, test, and deployment parameters.
+
+*Documentation files* provide guidance.
+
+*Other files* support directory operations.
+
 
 == AI Manifest Structure
 

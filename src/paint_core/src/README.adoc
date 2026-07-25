@@ -13,12 +13,24 @@ Project directory.
 As a Level 3 directory (`src/paint_core/src/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n=== Source Files\n\n* `undo.rs` — undo configuration or data\n* `composite.rs` — composite configuration or data\n* `lib.rs` — Rust library root\n* `brush.rs` — brush configuration or data\n* `layer.rs` — layer configuration or data\n* `render.rs` — render configuration or data\n\n
+== Contents by Functional Grouping
+
+=== Source Files
+
+* `undo.rs` — undo configuration or data
+* `composite.rs` — composite configuration or data
+* `lib.rs` — Rust library root
+* `brush.rs` — brush configuration or data
+* `layer.rs` — layer configuration or data
+* `render.rs` — render configuration or data
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Source files* implement core functionality.\n
+*Source files* implement core functionality.
+
 
 == AI Manifest Structure
 

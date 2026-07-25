@@ -13,12 +13,21 @@ Project directory.
 As a Level 4 directory (`src/paint_core/fuzz/fuzz_targets/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n=== Source Files\n\n* `pt_tile_blit.rs` — pt_tile_blit configuration or data\n* `pt_layer_opacity.rs` — pt_layer_opacity configuration or data\n* `pt_tile_write_pixel.rs` — pt_tile_write_pixel configuration or data\n\n
+== Contents by Functional Grouping
+
+=== Source Files
+
+* `pt_tile_blit.rs` — pt_tile_blit configuration or data
+* `pt_layer_opacity.rs` — pt_layer_opacity configuration or data
+* `pt_tile_write_pixel.rs` — pt_tile_write_pixel configuration or data
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Source files* implement core functionality.\n
+*Source files* implement core functionality.
+
 
 == AI Manifest Structure
 

@@ -13,12 +13,29 @@ Project directory.
 As a Level 5 directory (`third_party/gossamer/docs/governance/planning/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n== Subdirectories\n\n[cols="1,2", options="header"]\n|===\n| Directory | Purpose\n| `could/` | |\n| `must/` | |\n| `should/` | |\n|===\n\n=== Other Files\n\n* `0.2-AI-MANIFEST.a2ml` — A2ML machine-readable metadata\n\n
+== Contents by Functional Grouping
+
+== Subdirectories
+
+[cols="1,2", options="header"]
+|===
+| Directory | Purpose
+| `could/` | |
+| `must/` | |
+| `should/` | |
+|===
+
+=== Other Files
+
+* `0.2-AI-MANIFEST.a2ml` — A2ML machine-readable metadata
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Other files* support directory operations.\n
+*Other files* support directory operations.
+
 
 == AI Manifest Structure
 

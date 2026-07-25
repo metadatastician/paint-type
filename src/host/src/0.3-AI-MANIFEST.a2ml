@@ -11,7 +11,11 @@ This manifest describes the purpose and structure of the `src/host/src/` directo
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** src/host/src/ specific configurations
 
-## Canonical Files\n\n- `main.rs` -- Rust main entry point\n\n## Invariants
+## Canonical Files
+
+- `main.rs` -- Rust main entry point
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 3 must have its own `0.3-AI-MANIFEST.a2ml`.

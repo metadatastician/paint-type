@@ -13,12 +13,20 @@ Project directory.
 As a Level 3 directory (`third_party/gossamer/schema/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n=== Configuration\n\n* `gossamer.conf.schema.json` — JSON configuration\n* `groove-manifest.schema.json` — JSON configuration\n\n
+== Contents by Functional Grouping
+
+=== Configuration
+
+* `gossamer.conf.schema.json` — JSON configuration
+* `groove-manifest.schema.json` — JSON configuration
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Configuration files* define build, test, and deployment parameters.\n
+*Configuration files* define build, test, and deployment parameters.
+
 
 == AI Manifest Structure
 

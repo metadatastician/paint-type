@@ -10,7 +10,10 @@ permissions:
   contents: read
 jobs:
   dispatch:
+    name: Trigger Forge Propagation
     runs-on: ubuntu-latest
+    # Skip if dispatch token is not configured
+    if: ${{ secrets.FARM_DISPATCH_TOKEN != '' }}
     steps:
       - name: Trigger Propagation
         uses: peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697 # v3

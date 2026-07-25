@@ -13,13 +13,26 @@ Audit reports and compliance checks.
 As a Level 1 directory (`audits/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n=== Documentation\n\n* `audit-unbounded-allocation.md` — Markdown documentation\n* `audit-ffi-unsafe.md` — Markdown documentation\n\n=== Other Files\n\n* `assail-classifications.a2ml` — A2ML machine-readable metadata\n\n
+== Contents by Functional Grouping
+
+=== Documentation
+
+* `audit-unbounded-allocation.md` — Markdown documentation
+* `audit-ffi-unsafe.md` — Markdown documentation
+
+=== Other Files
+
+* `assail-classifications.a2ml` — A2ML machine-readable metadata
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Documentation files* provide guidance.\n
-*Other files* support directory operations.\n
+*Documentation files* provide guidance.
+
+*Other files* support directory operations.
+
 
 == AI Manifest Structure
 

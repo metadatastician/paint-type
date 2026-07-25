@@ -11,7 +11,14 @@ This manifest describes the purpose and structure of the `docs/attribution/` dir
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** docs/attribution/ specific configurations
 
-## Canonical Files\n\n- `MAINTAINERS.adoc` -- AsciiDoc documentation\n- `CITATION.cff` -- CITATION configuration or data\n- `CITATIONS.adoc` -- AsciiDoc documentation\n- `CODEOWNERS.adoc` -- AsciiDoc documentation\n\n## Invariants
+## Canonical Files
+
+- `MAINTAINERS.adoc` -- AsciiDoc documentation
+- `CITATION.cff` -- CITATION configuration or data
+- `CITATIONS.adoc` -- AsciiDoc documentation
+- `CODEOWNERS.adoc` -- AsciiDoc documentation
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 2 must have its own `0.2-AI-MANIFEST.a2ml`.

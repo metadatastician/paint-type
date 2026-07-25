@@ -103,3 +103,18 @@ Current trust level: maximal
 - description: Any website directory must contain a resource_records directory
 - run: "for d in www site docs/site; do if [ -d \"$d\" ]; then test -d \"$d/resource_records\" || exit 1; fi; done"
 - severity: warning
+
+#### www-casket-ssg-pinned
+- description: www/ site must have casket-ssg pinned in README.adoc
+- run: test ! -d www || grep -q "8c3b772b144e59df29c66cb1a8c3d9a4b276ff11" www/README.adoc
+- severity: critical
+
+#### www-csp-in-template
+- description: www/ site must have CSP in templates/default.html
+- run: test ! -d www || grep -q "Content-Security-Policy" www/templates/default.html
+- severity: critical
+
+#### www-escaping-contract-documented
+- description: www/ site must document escaping contract in README.adoc
+- run: test ! -d www || grep -q "Escaping Contract" www/README.adoc
+- severity: critical

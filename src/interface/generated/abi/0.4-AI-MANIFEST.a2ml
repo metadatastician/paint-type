@@ -11,7 +11,11 @@ This manifest describes the purpose and structure of the `src/interface/generate
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** src/interface/generated/abi/ specific configurations
 
-## Canonical Files\n\n- `.gitkeep` --  configuration or data\n\n## Invariants
+## Canonical Files
+
+- `.gitkeep` --  configuration or data
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 4 must have its own `0.4-AI-MANIFEST.a2ml`.

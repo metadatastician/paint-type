@@ -14,10 +14,13 @@ permissions:
   contents: read
 jobs:
   trigger-boj:
+    name: Trigger BoJ Server
     runs-on: ubuntu-latest
+    # Skip this job entirely if BOJ_SERVER_URL is not configured
+    if: ${{ (secrets.BOJ_SERVER_URL != '' || vars.BOJ_SERVER_URL != '') }}
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5825da76410c181273ba90b1 # v7.0.1
       - name: Trigger BoJ Server (Casket/ssg-mcp)
         env:
           BOJ_URL: ${{ secrets.BOJ_SERVER_URL || vars.BOJ_SERVER_URL }}
@@ -25,11 +28,6 @@ jobs:
           BRANCH_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-
-          if [ -z "$BOJ_URL" ]; then
-            echo "BOJ_SERVER_URL not configured - skipping"
-            exit 0
-          fi
 
           payload="$(jq -cn \
             --arg repo "$REPO_NAME" \

@@ -13,13 +13,33 @@ Project directory.
 As a Level 3 directory (`third_party/gossamer/container/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n=== Configuration\n\n* `compose.toml` — Configuration file\n* `.gatekeeper.yaml` — YAML configuration\n* `ct-build.sh` — Shell script\n* `manifest.toml` — Configuration file\n* `entrypoint.sh` — Shell script\n* `compose.example.toml` — Configuration file\n* `vordr.toml` — Configuration file\n\n=== Other Files\n\n* `deploy.k9.ncl` — deploy.k9 configuration or data\n* `0.1-AI-MANIFEST.a2ml` — A2ML machine-readable metadata\n* `Containerfile` — Container image definition\n\n
+== Contents by Functional Grouping
+
+=== Configuration
+
+* `compose.toml` — Configuration file
+* `.gatekeeper.yaml` — YAML configuration
+* `ct-build.sh` — Shell script
+* `manifest.toml` — Configuration file
+* `entrypoint.sh` — Shell script
+* `compose.example.toml` — Configuration file
+* `vordr.toml` — Configuration file
+
+=== Other Files
+
+* `deploy.k9.ncl` — deploy.k9 configuration or data
+* `0.1-AI-MANIFEST.a2ml` — A2ML machine-readable metadata
+* `Containerfile` — Container image definition
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Configuration files* define build, test, and deployment parameters.\n
-*Other files* support directory operations.\n
+*Configuration files* define build, test, and deployment parameters.
+
+*Other files* support directory operations.
+
 
 == AI Manifest Structure
 

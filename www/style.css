@@ -1,0 +1,157 @@
+/* SPDX-License-Identifier: CC-BY-SA-4.0 */
+
+/* Base styles for paint.type static site */
+:root {
+    --bg-primary: #2b2b2b;
+    --bg-secondary: #3a3a3a;
+    --bg-tertiary: #333333;
+    --text-primary: #cccccc;
+    --text-secondary: #888888;
+    --accent: #0078d7;
+    --border: #1a1a1a;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    background: var(--bg-primary);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+header {
+    background: var(--bg-secondary);
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+}
+
+nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--text-primary);
+    text-decoration: none;
+}
+
+.logo:hover {
+    color: var(--accent);
+}
+
+.nav-links {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.nav-links a {
+    color: var(--text-primary);
+    text-decoration: none;
+    padding: 0.5rem 0;
+}
+
+.nav-links a:hover {
+    color: var(--accent);
+    border-bottom: 2px solid var(--accent);
+}
+
+main {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+}
+
+article {
+    background: var(--bg-secondary);
+    padding: 2rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+
+footer {
+    background: var(--bg-tertiary);
+    padding: 2rem;
+    text-align: center;
+    margin-top: 2rem;
+    border-top: 1px solid var(--border);
+}
+
+.footer-links {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.footer-links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+}
+
+.footer-links a:hover {
+    color: var(--accent);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .nav-links {
+        display: none;
+    }
+    
+    main {
+        padding: 0 1rem;
+    }
+    
+    article {
+        padding: 1.5rem;
+    }
+}
+
+/* Code blocks */
+pre {
+    background: var(--bg-tertiary);
+    padding: 1rem;
+    border-radius: 4px;
+    overflow-x: auto;
+}
+
+code {
+    font-family: 'Fira Code', 'Consolas', monospace;
+    background: var(--bg-tertiary);
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+}
+
+/* Tables */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+}
+
+th, td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+th {
+    background: var(--bg-tertiary);
+}
+
+/* Links in content */
+a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}

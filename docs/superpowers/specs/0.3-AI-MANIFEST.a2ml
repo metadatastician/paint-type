@@ -11,7 +11,12 @@ This manifest describes the purpose and structure of the `docs/superpowers/specs
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** docs/superpowers/specs/ specific configurations
 
-## Canonical Files\n\n- `2026-05-31-pareto-surface-reduction-design.md` -- Markdown documentation\n- `2026-06-02-mvp-desktop-shell-design.md` -- Markdown documentation\n\n## Invariants
+## Canonical Files
+
+- `2026-05-31-pareto-surface-reduction-design.md` -- Markdown documentation
+- `2026-06-02-mvp-desktop-shell-design.md` -- Markdown documentation
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 3 must have its own `0.3-AI-MANIFEST.a2ml`.

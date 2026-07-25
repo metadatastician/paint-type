@@ -13,13 +13,26 @@ Project directory.
 As a Level 2 directory (`src/ui/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n=== Source Files\n\n* `app.js` — app configuration or data\n\n=== Other Files\n\n* `index.html` — index configuration or data\n* `style.css` — style configuration or data\n\n
+== Contents by Functional Grouping
+
+=== Source Files
+
+* `app.js` — app configuration or data
+
+=== Other Files
+
+* `index.html` — index configuration or data
+* `style.css` — style configuration or data
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Source files* implement core functionality.\n
-*Other files* support directory operations.\n
+*Source files* implement core functionality.
+
+*Other files* support directory operations.
+
 
 == AI Manifest Structure
 

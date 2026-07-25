@@ -11,7 +11,15 @@ This manifest describes the purpose and structure of the `docs/whitepapers/` dir
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** docs/whitepapers/ specific configurations
 
-## Subdirectories\n\n| Directory | Layer | Purpose |\n|---|---|---|\n| `outreach/` | 3 | |\n| `academic/` | 3 | |\n| `industry/` | 3 | |\n\n## Invariants
+## Subdirectories
+
+| Directory | Layer | Purpose |
+|---|---|---|
+| `outreach/` | 3 | |
+| `academic/` | 3 | |
+| `industry/` | 3 | |
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 2 must have its own `0.2-AI-MANIFEST.a2ml`.

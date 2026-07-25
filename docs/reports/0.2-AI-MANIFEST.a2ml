@@ -11,7 +11,17 @@ This manifest describes the purpose and structure of the `docs/reports/` directo
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** docs/reports/ specific configurations
 
-## Subdirectories\n\n| Directory | Layer | Purpose |\n|---|---|---|\n| `compliance/` | 3 | |\n| `performance/` | 3 | |\n| `maintenance/` | 3 | |\n| `security/` | 3 | |\n| `quality/` | 3 | |\n\n## Invariants
+## Subdirectories
+
+| Directory | Layer | Purpose |
+|---|---|---|
+| `compliance/` | 3 | |
+| `performance/` | 3 | |
+| `maintenance/` | 3 | |
+| `security/` | 3 | |
+| `quality/` | 3 | |
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 2 must have its own `0.2-AI-MANIFEST.a2ml`.

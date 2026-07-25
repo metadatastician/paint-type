@@ -13,12 +13,20 @@ Project directory.
 As a Level 2 directory (`docs/legal/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n=== Documentation\n\n* `EXHIBIT-B-QUANTUM-SAFE.txt` — EXHIBIT-B-QUANTUM-SAFE configuration or data\n* `EXHIBIT-A-ETHICAL-USE.txt` — EXHIBIT-A-ETHICAL-USE configuration or data\n\n
+== Contents by Functional Grouping
+
+=== Documentation
+
+* `EXHIBIT-B-QUANTUM-SAFE.txt` — EXHIBIT-B-QUANTUM-SAFE configuration or data
+* `EXHIBIT-A-ETHICAL-USE.txt` — EXHIBIT-A-ETHICAL-USE configuration or data
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Documentation files* provide guidance.\n
+*Documentation files* provide guidance.
+
 
 == AI Manifest Structure
 

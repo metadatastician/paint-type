@@ -11,7 +11,15 @@ This manifest describes the purpose and structure of the `src/aspects/` director
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** src/aspects/ specific configurations
 
-## Subdirectories\n\n| Directory | Layer | Purpose |\n|---|---|---|\n| `integrity/` | 3 | |\n| `security/` | 3 | |\n| `observability/` | 3 | |\n\n## Invariants
+## Subdirectories
+
+| Directory | Layer | Purpose |
+|---|---|---|
+| `integrity/` | 3 | |
+| `security/` | 3 | |
+| `observability/` | 3 | |
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 2 must have its own `0.2-AI-MANIFEST.a2ml`.

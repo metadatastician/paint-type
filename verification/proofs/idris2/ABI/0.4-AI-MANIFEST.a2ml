@@ -11,7 +11,16 @@ This manifest describes the purpose and structure of the `verification/proofs/id
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** verification/proofs/idris2/ABI/ specific configurations
 
-## Canonical Files\n\n- `Platform.idr` -- Platform configuration or data\n- `Compliance.idr` -- Compliance configuration or data\n- `Pointers.idr` -- Pointers configuration or data\n- `Foreign.idr` -- Foreign configuration or data\n- `Connector.idr` -- Connector configuration or data\n- `Layout.idr` -- Layout configuration or data\n\n## Invariants
+## Canonical Files
+
+- `Platform.idr` -- Platform configuration or data
+- `Compliance.idr` -- Compliance configuration or data
+- `Pointers.idr` -- Pointers configuration or data
+- `Foreign.idr` -- Foreign configuration or data
+- `Connector.idr` -- Connector configuration or data
+- `Layout.idr` -- Layout configuration or data
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 4 must have its own `0.4-AI-MANIFEST.a2ml`.

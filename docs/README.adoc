@@ -13,12 +13,44 @@ Project documentation.
 As a Level 1 directory (`docs/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n== Subdirectories\n\n[cols="1,2", options="header"]\n|===\n| Directory | Purpose\n| `practice/` | |\n| `standards/` | |\n| `legal/` | |\n| `attribution/` | |\n| `whitepapers/` | |\n| `theory/` | |\n| `reports/` | |\n| `decisions/` | |\n| `superpowers/` | |\n| `wikis/` | |\n| `templates/` | |\n| `developer/` | |\n| `architecture/` | |\n| `governance/` | |\n| `wiki/` | |\n|===\n\n=== Documentation\n\n* `STATE-VISUALIZER.adoc` — AsciiDoc documentation\n* `QUICKSTART.adoc` — AsciiDoc documentation\n* `RSR_OUTLINE.adoc` — AsciiDoc documentation\n* `tech-debt-2026-05-26.md` — Markdown documentation\n\n
+== Contents by Functional Grouping
+
+== Subdirectories
+
+[cols="1,2", options="header"]
+|===
+| Directory | Purpose
+| `practice/` | |
+| `standards/` | |
+| `legal/` | |
+| `attribution/` | |
+| `whitepapers/` | |
+| `theory/` | |
+| `reports/` | |
+| `decisions/` | |
+| `superpowers/` | |
+| `wikis/` | |
+| `templates/` | |
+| `developer/` | |
+| `architecture/` | |
+| `governance/` | |
+| `wiki/` | |
+|===
+
+=== Documentation
+
+* `STATE-VISUALIZER.adoc` — AsciiDoc documentation
+* `QUICKSTART.adoc` — AsciiDoc documentation
+* `RSR_OUTLINE.adoc` — AsciiDoc documentation
+* `tech-debt-2026-05-26.md` — Markdown documentation
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Documentation files* provide guidance.\n
+*Documentation files* provide guidance.
+
 
 == AI Manifest Structure
 

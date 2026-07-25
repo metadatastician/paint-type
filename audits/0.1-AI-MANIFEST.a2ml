@@ -11,7 +11,13 @@ This manifest describes the purpose and structure of the `audits/` directory.
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** audits/ specific configurations
 
-## Canonical Files\n\n- `assail-classifications.a2ml` -- A2ML machine-readable metadata\n- `audit-unbounded-allocation.md` -- Markdown documentation\n- `audit-ffi-unsafe.md` -- Markdown documentation\n\n## Invariants
+## Canonical Files
+
+- `assail-classifications.a2ml` -- A2ML machine-readable metadata
+- `audit-unbounded-allocation.md` -- Markdown documentation
+- `audit-ffi-unsafe.md` -- Markdown documentation
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 1 must have its own `0.1-AI-MANIFEST.a2ml`.

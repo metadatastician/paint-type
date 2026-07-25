@@ -13,13 +13,28 @@ Project directory.
 As a Level 4 directory (`third_party/gossamer/docs/attribution/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n=== Documentation\n\n* `MAINTAINERS.adoc` — AsciiDoc documentation\n* `CITATIONS.adoc` — AsciiDoc documentation\n* `CODEOWNERS.adoc` — AsciiDoc documentation\n\n=== Other Files\n\n* `0.2-AI-MANIFEST.a2ml` — A2ML machine-readable metadata\n* `CITATION.cff` — CITATION configuration or data\n\n
+== Contents by Functional Grouping
+
+=== Documentation
+
+* `MAINTAINERS.adoc` — AsciiDoc documentation
+* `CITATIONS.adoc` — AsciiDoc documentation
+* `CODEOWNERS.adoc` — AsciiDoc documentation
+
+=== Other Files
+
+* `0.2-AI-MANIFEST.a2ml` — A2ML machine-readable metadata
+* `CITATION.cff` — CITATION configuration or data
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Documentation files* provide guidance.\n
-*Other files* support directory operations.\n
+*Documentation files* provide guidance.
+
+*Other files* support directory operations.
+
 
 == AI Manifest Structure
 

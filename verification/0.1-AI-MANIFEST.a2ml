@@ -11,7 +11,20 @@ This manifest describes the purpose and structure of the `verification/` directo
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** verification/ specific configurations
 
-## Subdirectories\n\n| Directory | Layer | Purpose |\n|---|---|---|\n| `tests/` | 2 | |\n| `fuzzing/` | 2 | |\n| `safety_case/` | 2 | |\n| `proofs/` | 2 | |\n| `traceability/` | 2 | |\n| `simulations/` | 2 | |\n| `coverage/` | 2 | |\n| `benchmarks/` | 2 | |\n\n## Invariants
+## Subdirectories
+
+| Directory | Layer | Purpose |
+|---|---|---|
+| `tests/` | 2 | |
+| `fuzzing/` | 2 | |
+| `safety_case/` | 2 | |
+| `proofs/` | 2 | |
+| `traceability/` | 2 | |
+| `simulations/` | 2 | |
+| `coverage/` | 2 | |
+| `benchmarks/` | 2 | |
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 1 must have its own `0.1-AI-MANIFEST.a2ml`.

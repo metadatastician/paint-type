@@ -1,0 +1,39 @@
+= src/plugins/
+:description: Paint.Type Plugins System
+:spdx-license-identifier: AGPL-3.0-or-later
+
+== Overview
+
+The `src/plugins/` directory contains the plugin infrastructure for paint.type, enabling
+extensibility through dynamically loaded modules, connectors, and integrations.
+
+== Purpose
+
+This module provides the framework for:
+
+* Dynamic plugin loading and management
+* Connector implementations for external systems
+* Integration points with third-party services
+* Extensible functionality without modifying core paint.type
+
+== Structure
+
+[source]
+----
+src/plugins/
+├── Cargo.toml          # Plugin manifest and dependencies
+├── Cargo.lock          # Locked dependency versions
+├── src/                # Plugin source code
+│   └── ...
+└── target/             # Build artifacts (generated)
+----
+
+== See Also
+
+* link:../../[Parent Directory (`src/`)]
+* link:../../0.1-AI-MANIFEST.a2ml[Parent AI Manifest]
+* link:0.2-AI-MANIFEST.a2ml[This Directory AI Manifest]
+
+== License
+
+AGPL-3.0-or-later

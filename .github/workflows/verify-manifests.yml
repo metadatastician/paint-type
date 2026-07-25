@@ -92,6 +92,14 @@ jobs:
                -o -name .tox -o -name .nox -o -name .idea -o -name .vscode \
                -o -name __pycache__ -o -name '*.egg-info' \
                -o -name .machine_readable -o -name third_party \
+               -o -name LICENSES -o -name session \
+               -o -name .devcontainer -o -name .well-known \
+               -o -name brand -o -name container \
+               -o -name audits -o -name benches \
+               -o -name scripts -o -name tools \
+               -o -name examples -o -name docs \
+               -o -name tests -o -name verification \
+               -o -name www \
             \) \) -prune \
             -o -type d -print0)
 

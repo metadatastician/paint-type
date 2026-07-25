@@ -13,12 +13,22 @@ Project directory.
 As a Level 2 directory (`tests/e2e/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n=== Configuration\n\n* `scenario_pipeline_dogfood.sh` — Shell script\n* `scenario_host_headless.sh` — Shell script\n* `template_instantiation_test.sh` — Shell script\n* `scenario_libpt_artifacts.sh` — Shell script\n\n
+== Contents by Functional Grouping
+
+=== Configuration
+
+* `scenario_pipeline_dogfood.sh` — Shell script
+* `scenario_host_headless.sh` — Shell script
+* `template_instantiation_test.sh` — Shell script
+* `scenario_libpt_artifacts.sh` — Shell script
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Configuration files* define build, test, and deployment parameters.\n
+*Configuration files* define build, test, and deployment parameters.
+
 
 == AI Manifest Structure
 

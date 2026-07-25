@@ -11,7 +11,17 @@ This manifest describes the purpose and structure of the `src/host/` directory.
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** src/host/ specific configurations
 
-## Subdirectories\n\n| Directory | Layer | Purpose |\n|---|---|---|\n| `src/` | 3 | |\n\n## Canonical Files\n\n- `Cargo.toml` -- Rust package manifest\n\n## Invariants
+## Subdirectories
+
+| Directory | Layer | Purpose |
+|---|---|---|
+| `src/` | 3 | |
+
+## Canonical Files
+
+- `Cargo.toml` -- Rust package manifest
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 2 must have its own `0.2-AI-MANIFEST.a2ml`.

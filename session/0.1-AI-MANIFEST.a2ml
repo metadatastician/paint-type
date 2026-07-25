@@ -11,7 +11,14 @@ This manifest describes the purpose and structure of the `session/` directory.
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** session/ specific configurations
 
-## Canonical Files\n\n- `local-hooks.sh` -- Shell script\n- `custom-checks.k9` -- K9 coordination file\n- `README.md` -- Project documentation\n- `dispatch.sh` -- Shell script\n\n## Invariants
+## Canonical Files
+
+- `local-hooks.sh` -- Shell script
+- `custom-checks.k9` -- K9 coordination file
+- `README.md` -- Project documentation
+- `dispatch.sh` -- Shell script
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 1 must have its own `0.1-AI-MANIFEST.a2ml`.

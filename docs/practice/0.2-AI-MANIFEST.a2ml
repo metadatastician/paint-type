@@ -11,7 +11,13 @@ This manifest describes the purpose and structure of the `docs/practice/` direct
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** docs/practice/ specific configurations
 
-## Canonical Files\n\n- `STATE-VISUALIZER-GUIDE.adoc` -- AsciiDoc documentation\n- `.gitkeep` --  configuration or data\n- `AI-CONVENTIONS.adoc` -- AsciiDoc documentation\n\n## Invariants
+## Canonical Files
+
+- `STATE-VISUALIZER-GUIDE.adoc` -- AsciiDoc documentation
+- `.gitkeep` --  configuration or data
+- `AI-CONVENTIONS.adoc` -- AsciiDoc documentation
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 2 must have its own `0.2-AI-MANIFEST.a2ml`.

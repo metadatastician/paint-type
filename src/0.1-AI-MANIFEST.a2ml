@@ -11,7 +11,23 @@ This manifest describes the purpose and structure of the `src/` directory.
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** src/ specific configurations
 
-## Subdirectories\n\n| Directory | Layer | Purpose |\n|---|---|---|\n| `bridges/` | 2 | |\n| `contracts/` | 2 | |\n| `host_core/` | 2 | |\n| `host/` | 2 | |\n| `core/` | 2 | |\n| `ui/` | 2 | |\n| `errors/` | 2 | |\n| `paint_core/` | 2 | |\n| `aspects/` | 2 | |\n| `interface/` | 2 | |\n| `definitions/` | 2 | |\n\n## Invariants
+## Subdirectories
+
+| Directory | Layer | Purpose |
+|---|---|---|
+| `bridges/` | 2 | |
+| `contracts/` | 2 | |
+| `host_core/` | 2 | |
+| `host/` | 2 | |
+| `core/` | 2 | |
+| `ui/` | 2 | |
+| `errors/` | 2 | |
+| `paint_core/` | 2 | |
+| `aspects/` | 2 | |
+| `interface/` | 2 | |
+| `definitions/` | 2 | |
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 1 must have its own `0.1-AI-MANIFEST.a2ml`.

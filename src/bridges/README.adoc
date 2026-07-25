@@ -13,12 +13,20 @@ Project directory.
 As a Level 2 directory (`src/bridges/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n=== Other Files\n\n* `paint-type-layer.twasm` — paint-type-layer configuration or data\n* `paint-type-tile.twasm` — paint-type-tile configuration or data\n\n
+== Contents by Functional Grouping
+
+=== Other Files
+
+* `paint-type-layer.twasm` — paint-type-layer configuration or data
+* `paint-type-tile.twasm` — paint-type-tile configuration or data
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Other files* support directory operations.\n
+*Other files* support directory operations.
+
 
 == AI Manifest Structure
 

@@ -13,13 +13,36 @@ Project directory.
 As a Level 4 directory (`third_party/gossamer/docs/whitepapers/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n== Subdirectories\n\n[cols="1,2", options="header"]\n|===\n| Directory | Purpose\n| `outreach/` | |\n| `academic/` | |\n| `industry/` | |\n|===\n\n=== Documentation\n\n* `gossamer-arxiv-paper.tex.invariants.md` — Markdown documentation\n\n=== Other Files\n\n* `0.2-AI-MANIFEST.a2ml` — A2ML machine-readable metadata\n* `gossamer-arxiv-paper.tex` — gossamer-arxiv-paper configuration or data\n\n
+== Contents by Functional Grouping
+
+== Subdirectories
+
+[cols="1,2", options="header"]
+|===
+| Directory | Purpose
+| `outreach/` | |
+| `academic/` | |
+| `industry/` | |
+|===
+
+=== Documentation
+
+* `gossamer-arxiv-paper.tex.invariants.md` — Markdown documentation
+
+=== Other Files
+
+* `0.2-AI-MANIFEST.a2ml` — A2ML machine-readable metadata
+* `gossamer-arxiv-paper.tex` — gossamer-arxiv-paper configuration or data
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Documentation files* provide guidance.\n
-*Other files* support directory operations.\n
+*Documentation files* provide guidance.
+
+*Other files* support directory operations.
+
 
 == AI Manifest Structure
 

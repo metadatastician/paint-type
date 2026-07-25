@@ -11,7 +11,18 @@ This manifest describes the purpose and structure of the `src/interface/ffi/src/
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** src/interface/ffi/src/ specific configurations
 
-## Subdirectories\n\n| Directory | Layer | Purpose |\n|---|---|---|\n| `connectors/` | 5 | |\n\n## Canonical Files\n\n- `main.zig` -- main configuration or data\n- `hexadeca.zig` -- hexadeca configuration or data\n\n## Invariants
+## Subdirectories
+
+| Directory | Layer | Purpose |
+|---|---|---|
+| `connectors/` | 5 | |
+
+## Canonical Files
+
+- `main.zig` -- main configuration or data
+- `hexadeca.zig` -- hexadeca configuration or data
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 4 must have its own `0.4-AI-MANIFEST.a2ml`.

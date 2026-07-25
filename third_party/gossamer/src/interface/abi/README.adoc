@@ -13,13 +13,37 @@ Project directory.
 As a Level 5 directory (`third_party/gossamer/src/interface/abi/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n=== Source Files\n\n* `IPCDispatch.idr` — IPCDispatch configuration or data\n* `HandleLinearity.idr` — HandleLinearity configuration or data\n* `Types.idr` — Types configuration or data\n* `Groove.idr` — Groove configuration or data\n* `GrooveTermination.idr` — GrooveTermination configuration or data\n* `ResourceCleanup.idr` — ResourceCleanup configuration or data\n* `Foreign.idr` — Foreign configuration or data\n* `IPCIntegrity.idr` — IPCIntegrity configuration or data\n* `PanelIsolation.idr` — PanelIsolation configuration or data\n* `CapabilityAuthenticity.idr` — CapabilityAuthenticity configuration or data\n* `Layout.idr` — Layout configuration or data\n* `WindowStateMachine.idr` — WindowStateMachine configuration or data\n* `LayoutStability.idr` — LayoutStability configuration or data\n\n=== Other Files\n\n* `0.3-AI-MANIFEST.a2ml` — A2ML machine-readable metadata\n\n
+== Contents by Functional Grouping
+
+=== Source Files
+
+* `IPCDispatch.idr` — IPCDispatch configuration or data
+* `HandleLinearity.idr` — HandleLinearity configuration or data
+* `Types.idr` — Types configuration or data
+* `Groove.idr` — Groove configuration or data
+* `GrooveTermination.idr` — GrooveTermination configuration or data
+* `ResourceCleanup.idr` — ResourceCleanup configuration or data
+* `Foreign.idr` — Foreign configuration or data
+* `IPCIntegrity.idr` — IPCIntegrity configuration or data
+* `PanelIsolation.idr` — PanelIsolation configuration or data
+* `CapabilityAuthenticity.idr` — CapabilityAuthenticity configuration or data
+* `Layout.idr` — Layout configuration or data
+* `WindowStateMachine.idr` — WindowStateMachine configuration or data
+* `LayoutStability.idr` — LayoutStability configuration or data
+
+=== Other Files
+
+* `0.3-AI-MANIFEST.a2ml` — A2ML machine-readable metadata
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Source files* implement core functionality.\n
-*Other files* support directory operations.\n
+*Source files* implement core functionality.
+
+*Other files* support directory operations.
+
 
 == AI Manifest Structure
 

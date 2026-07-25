@@ -11,7 +11,16 @@ This manifest describes the purpose and structure of the `docs/templates/contrac
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** docs/templates/contractiles/ specific configurations
 
-## Subdirectories\n\n| Directory | Layer | Purpose |\n|---|---|---|\n| `dust/` | 4 | |\n| `trust/` | 4 | |\n| `lust/` | 4 | |\n| `must/` | 4 | |\n\n## Invariants
+## Subdirectories
+
+| Directory | Layer | Purpose |
+|---|---|---|
+| `dust/` | 4 | |
+| `trust/` | 4 | |
+| `lust/` | 4 | |
+| `must/` | 4 | |
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 3 must have its own `0.3-AI-MANIFEST.a2ml`.

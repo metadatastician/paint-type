@@ -13,12 +13,31 @@ Test suites and validation.
 As a Level 1 directory (`tests/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n== Subdirectories\n\n[cols="1,2", options="header"]\n|===\n| Directory | Purpose\n| `e2e/` | |\n| `workflows/` | |\n| `fuzz/` | |\n|===\n\n=== Configuration\n\n* `aspect_tests.sh` — Shell script\n* `coverage.sh` — Shell script\n* `e2e.sh` — Shell script\n\n
+== Contents by Functional Grouping
+
+== Subdirectories
+
+[cols="1,2", options="header"]
+|===
+| Directory | Purpose
+| `e2e/` | |
+| `workflows/` | |
+| `fuzz/` | |
+|===
+
+=== Configuration
+
+* `aspect_tests.sh` — Shell script
+* `coverage.sh` — Shell script
+* `e2e.sh` — Shell script
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Configuration files* define build, test, and deployment parameters.\n
+*Configuration files* define build, test, and deployment parameters.
+
 
 == AI Manifest Structure
 

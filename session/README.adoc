@@ -13,14 +13,32 @@ Session management and coordination files.
 As a Level 1 directory (`session/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n=== Configuration\n\n* `local-hooks.sh` — Shell script\n* `dispatch.sh` — Shell script\n\n=== Documentation\n\n* `README.md` — Project documentation\n\n=== Other Files\n\n* `custom-checks.k9` — K9 coordination file\n\n
+== Contents by Functional Grouping
+
+=== Configuration
+
+* `local-hooks.sh` — Shell script
+* `dispatch.sh` — Shell script
+
+=== Documentation
+
+* `README.md` — Project documentation
+
+=== Other Files
+
+* `custom-checks.k9` — K9 coordination file
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Configuration files* define build, test, and deployment parameters.\n
-*Documentation files* provide guidance.\n
-*Other files* support directory operations.\n
+*Configuration files* define build, test, and deployment parameters.
+
+*Documentation files* provide guidance.
+
+*Other files* support directory operations.
+
 
 == AI Manifest Structure
 

@@ -11,7 +11,12 @@ This manifest describes the purpose and structure of the `src/bridges/` director
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** src/bridges/ specific configurations
 
-## Canonical Files\n\n- `paint-type-layer.twasm` -- paint-type-layer configuration or data\n- `paint-type-tile.twasm` -- paint-type-tile configuration or data\n\n## Invariants
+## Canonical Files
+
+- `paint-type-layer.twasm` -- paint-type-layer configuration or data
+- `paint-type-tile.twasm` -- paint-type-tile configuration or data
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 2 must have its own `0.2-AI-MANIFEST.a2ml`.

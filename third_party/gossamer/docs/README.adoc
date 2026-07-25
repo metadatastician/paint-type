@@ -13,13 +13,52 @@ Project directory.
 As a Level 3 directory (`third_party/gossamer/docs/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n== Subdirectories\n\n[cols="1,2", options="header"]\n|===\n| Directory | Purpose\n| `practice/` | |\n| `standards/` | |\n| `legal/` | |\n| `attribution/` | |\n| `whitepapers/` | |\n| `theory/` | |\n| `reports/` | |\n| `decisions/` | |\n| `wikis/` | |\n| `templates/` | |\n| `developer/` | |\n| `architecture/` | |\n| `governance/` | |\n|===\n\n=== Documentation\n\n* `STATE-VISUALIZER.adoc` — AsciiDoc documentation\n* `QUICKSTART.adoc` — AsciiDoc documentation\n* `BENCHMARK-COMPARISON.adoc` — AsciiDoc documentation\n* `EPHAPAX-GRAMMAR.adoc` — AsciiDoc documentation\n* `RSR_OUTLINE.adoc` — AsciiDoc documentation\n* `gossamer-conf-reference.adoc` — AsciiDoc documentation\n* `productive-meandering-prompt.md` — Markdown documentation\n* `tech-debt-2026-05-26.md` — Markdown documentation\n\n=== Other Files\n\n* `0.1-AI-MANIFEST.a2ml` — A2ML machine-readable metadata\n\n
+== Contents by Functional Grouping
+
+== Subdirectories
+
+[cols="1,2", options="header"]
+|===
+| Directory | Purpose
+| `practice/` | |
+| `standards/` | |
+| `legal/` | |
+| `attribution/` | |
+| `whitepapers/` | |
+| `theory/` | |
+| `reports/` | |
+| `decisions/` | |
+| `wikis/` | |
+| `templates/` | |
+| `developer/` | |
+| `architecture/` | |
+| `governance/` | |
+|===
+
+=== Documentation
+
+* `STATE-VISUALIZER.adoc` — AsciiDoc documentation
+* `QUICKSTART.adoc` — AsciiDoc documentation
+* `BENCHMARK-COMPARISON.adoc` — AsciiDoc documentation
+* `EPHAPAX-GRAMMAR.adoc` — AsciiDoc documentation
+* `RSR_OUTLINE.adoc` — AsciiDoc documentation
+* `gossamer-conf-reference.adoc` — AsciiDoc documentation
+* `productive-meandering-prompt.md` — Markdown documentation
+* `tech-debt-2026-05-26.md` — Markdown documentation
+
+=== Other Files
+
+* `0.1-AI-MANIFEST.a2ml` — A2ML machine-readable metadata
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Documentation files* provide guidance.\n
-*Other files* support directory operations.\n
+*Documentation files* provide guidance.
+
+*Other files* support directory operations.
+
 
 == AI Manifest Structure
 

@@ -13,14 +13,33 @@ Project directory.
 As a Level 3 directory (`third_party/gossamer/scripts/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n=== Configuration\n\n* `install-desktop.sh` — Shell script\n* `test-with-display.sh` — Shell script\n\n=== Source Files\n\n* `ssg-build-runner.zig` — ssg-build-runner configuration or data\n\n=== Other Files\n\n* `md-to-html.awk` — md-to-html configuration or data\n* `template-sub.awk` — template-sub configuration or data\n\n
+== Contents by Functional Grouping
+
+=== Configuration
+
+* `install-desktop.sh` — Shell script
+* `test-with-display.sh` — Shell script
+
+=== Source Files
+
+* `ssg-build-runner.zig` — ssg-build-runner configuration or data
+
+=== Other Files
+
+* `md-to-html.awk` — md-to-html configuration or data
+* `template-sub.awk` — template-sub configuration or data
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Configuration files* define build, test, and deployment parameters.\n
-*Source files* implement core functionality.\n
-*Other files* support directory operations.\n
+*Configuration files* define build, test, and deployment parameters.
+
+*Source files* implement core functionality.
+
+*Other files* support directory operations.
+
 
 == AI Manifest Structure
 

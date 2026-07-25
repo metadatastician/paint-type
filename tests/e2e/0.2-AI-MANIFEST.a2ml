@@ -11,7 +11,14 @@ This manifest describes the purpose and structure of the `tests/e2e/` directory.
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** tests/e2e/ specific configurations
 
-## Canonical Files\n\n- `scenario_pipeline_dogfood.sh` -- Shell script\n- `scenario_host_headless.sh` -- Shell script\n- `template_instantiation_test.sh` -- Shell script\n- `scenario_libpt_artifacts.sh` -- Shell script\n\n## Invariants
+## Canonical Files
+
+- `scenario_pipeline_dogfood.sh` -- Shell script
+- `scenario_host_headless.sh` -- Shell script
+- `template_instantiation_test.sh` -- Shell script
+- `scenario_libpt_artifacts.sh` -- Shell script
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 2 must have its own `0.2-AI-MANIFEST.a2ml`.

@@ -11,7 +11,34 @@ This manifest describes the purpose and structure of the `docs/` directory.
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** docs/ specific configurations
 
-## Subdirectories\n\n| Directory | Layer | Purpose |\n|---|---|---|\n| `practice/` | 2 | |\n| `standards/` | 2 | |\n| `legal/` | 2 | |\n| `attribution/` | 2 | |\n| `whitepapers/` | 2 | |\n| `theory/` | 2 | |\n| `reports/` | 2 | |\n| `decisions/` | 2 | |\n| `superpowers/` | 2 | |\n| `wikis/` | 2 | |\n| `templates/` | 2 | |\n| `developer/` | 2 | |\n| `architecture/` | 2 | |\n| `governance/` | 2 | |\n| `wiki/` | 2 | |\n\n## Canonical Files\n\n- `STATE-VISUALIZER.adoc` -- AsciiDoc documentation\n- `QUICKSTART.adoc` -- AsciiDoc documentation\n- `RSR_OUTLINE.adoc` -- AsciiDoc documentation\n- `tech-debt-2026-05-26.md` -- Markdown documentation\n\n## Invariants
+## Subdirectories
+
+| Directory | Layer | Purpose |
+|---|---|---|
+| `practice/` | 2 | |
+| `standards/` | 2 | |
+| `legal/` | 2 | |
+| `attribution/` | 2 | |
+| `whitepapers/` | 2 | |
+| `theory/` | 2 | |
+| `reports/` | 2 | |
+| `decisions/` | 2 | |
+| `superpowers/` | 2 | |
+| `wikis/` | 2 | |
+| `templates/` | 2 | |
+| `developer/` | 2 | |
+| `architecture/` | 2 | |
+| `governance/` | 2 | |
+| `wiki/` | 2 | |
+
+## Canonical Files
+
+- `STATE-VISUALIZER.adoc` -- AsciiDoc documentation
+- `QUICKSTART.adoc` -- AsciiDoc documentation
+- `RSR_OUTLINE.adoc` -- AsciiDoc documentation
+- `tech-debt-2026-05-26.md` -- Markdown documentation
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 1 must have its own `0.1-AI-MANIFEST.a2ml`.

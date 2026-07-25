@@ -11,7 +11,17 @@ This manifest describes the purpose and structure of the `verification/proofs/id
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** verification/proofs/idris2/ specific configurations
 
-## Subdirectories\n\n| Directory | Layer | Purpose |\n|---|---|---|\n| `ABI/` | 4 | |\n\n## Canonical Files\n\n- `Pixel.idr` -- Pixel configuration or data\n\n## Invariants
+## Subdirectories
+
+| Directory | Layer | Purpose |
+|---|---|---|
+| `ABI/` | 4 | |
+
+## Canonical Files
+
+- `Pixel.idr` -- Pixel configuration or data
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 3 must have its own `0.3-AI-MANIFEST.a2ml`.

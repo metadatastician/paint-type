@@ -11,7 +11,15 @@ This manifest describes the purpose and structure of the `src/interface/` direct
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** src/interface/ specific configurations
 
-## Subdirectories\n\n| Directory | Layer | Purpose |\n|---|---|---|\n| `Abi/` | 3 | |\n| `generated/` | 3 | |\n| `ffi/` | 3 | |\n\n## Invariants
+## Subdirectories
+
+| Directory | Layer | Purpose |
+|---|---|---|
+| `Abi/` | 3 | |
+| `generated/` | 3 | |
+| `ffi/` | 3 | |
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 2 must have its own `0.2-AI-MANIFEST.a2ml`.

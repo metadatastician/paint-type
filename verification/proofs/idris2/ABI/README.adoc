@@ -13,12 +13,24 @@ Project directory.
 As a Level 4 directory (`verification/proofs/idris2/ABI/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n=== Source Files\n\n* `Platform.idr` — Platform configuration or data\n* `Compliance.idr` — Compliance configuration or data\n* `Pointers.idr` — Pointers configuration or data\n* `Foreign.idr` — Foreign configuration or data\n* `Connector.idr` — Connector configuration or data\n* `Layout.idr` — Layout configuration or data\n\n
+== Contents by Functional Grouping
+
+=== Source Files
+
+* `Platform.idr` — Platform configuration or data
+* `Compliance.idr` — Compliance configuration or data
+* `Pointers.idr` — Pointers configuration or data
+* `Foreign.idr` — Foreign configuration or data
+* `Connector.idr` — Connector configuration or data
+* `Layout.idr` — Layout configuration or data
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Source files* implement core functionality.\n
+*Source files* implement core functionality.
+
 
 == AI Manifest Structure
 

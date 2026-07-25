@@ -11,7 +11,18 @@ This manifest describes the purpose and structure of the `src/paint_core/fuzz/` 
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** src/paint_core/fuzz/ specific configurations
 
-## Subdirectories\n\n| Directory | Layer | Purpose |\n|---|---|---|\n| `fuzz_targets/` | 4 | |\n\n## Canonical Files\n\n- `.gitignore` -- Git ignore patterns\n- `Cargo.toml` -- Rust package manifest\n\n## Invariants
+## Subdirectories
+
+| Directory | Layer | Purpose |
+|---|---|---|
+| `fuzz_targets/` | 4 | |
+
+## Canonical Files
+
+- `.gitignore` -- Git ignore patterns
+- `Cargo.toml` -- Rust package manifest
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 3 must have its own `0.3-AI-MANIFEST.a2ml`.

@@ -11,7 +11,19 @@ This manifest describes the purpose and structure of the `docs/governance/mainte
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** docs/governance/maintenance/ specific configurations
 
-## Subdirectories\n\n| Directory | Layer | Purpose |\n|---|---|---|\n| `adaptive/` | 4 | |\n| `corrective/` | 4 | |\n| `perfective/` | 4 | |\n\n## Canonical Files\n\n- `0.2-AI-MANIFEST.a2ml` -- A2ML machine-readable metadata\n\n## Invariants
+## Subdirectories
+
+| Directory | Layer | Purpose |
+|---|---|---|
+| `adaptive/` | 4 | |
+| `corrective/` | 4 | |
+| `perfective/` | 4 | |
+
+## Canonical Files
+
+- `0.2-AI-MANIFEST.a2ml` -- A2ML machine-readable metadata
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 3 must have its own `0.3-AI-MANIFEST.a2ml`.

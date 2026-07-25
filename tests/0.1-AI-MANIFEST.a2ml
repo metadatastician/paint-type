@@ -11,7 +11,21 @@ This manifest describes the purpose and structure of the `tests/` directory.
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** tests/ specific configurations
 
-## Subdirectories\n\n| Directory | Layer | Purpose |\n|---|---|---|\n| `e2e/` | 2 | |\n| `workflows/` | 2 | |\n| `fuzz/` | 2 | |\n\n## Canonical Files\n\n- `aspect_tests.sh` -- Shell script\n- `coverage.sh` -- Shell script\n- `e2e.sh` -- Shell script\n\n## Invariants
+## Subdirectories
+
+| Directory | Layer | Purpose |
+|---|---|---|
+| `e2e/` | 2 | |
+| `workflows/` | 2 | |
+| `fuzz/` | 2 | |
+
+## Canonical Files
+
+- `aspect_tests.sh` -- Shell script
+- `coverage.sh` -- Shell script
+- `e2e.sh` -- Shell script
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 1 must have its own `0.1-AI-MANIFEST.a2ml`.

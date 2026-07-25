@@ -11,7 +11,11 @@ This manifest describes the purpose and structure of the `docs/developer/` direc
 - **Central protocol authority:** `standards/` repository
 - **Local integration authority (this directory):** docs/developer/ specific configurations
 
-## Canonical Files\n\n- `ABI-FFI-README.adoc` -- AsciiDoc documentation\n\n## Invariants
+## Canonical Files
+
+- `ABI-FFI-README.adoc` -- AsciiDoc documentation
+
+## Invariants
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 2 must have its own `0.2-AI-MANIFEST.a2ml`.

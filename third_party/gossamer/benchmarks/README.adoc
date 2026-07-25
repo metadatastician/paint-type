@@ -13,12 +13,19 @@ Project directory.
 As a Level 3 directory (`third_party/gossamer/benchmarks/`), it supports the overall
 project structure.
 
-== Contents by Functional Grouping\n\n=== Configuration\n\n* `startup-bench.sh` — Shell script\n\n
+== Contents by Functional Grouping
+
+=== Configuration
+
+* `startup-bench.sh` — Shell script
+
+
 == Purpose of Each Component
 
 Each file in this directory serves a specific purpose.
 
-*Configuration files* define build, test, and deployment parameters.\n
+*Configuration files* define build, test, and deployment parameters.
+
 
 == AI Manifest Structure
 
