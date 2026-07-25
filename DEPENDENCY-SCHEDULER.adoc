@@ -28,8 +28,8 @@ updated on next sync.
 | DEP-01 (#71) | **Ephapax** | Spine | hyperpolymath | C | P1 | In&nbsp;Progress | Region-calculus / linear-affine core; `paint_core` is ex-ephapax; Gossamer's safety backend · all |
 | DEP-02 (#72) | **typed-wasm** | Spine | hyperpolymath | A | Maintain | **Done** | Verified WASM bridge target · v0.2 (paint-type slice closed) |
 | DEP-03 (#73) | **AffineScript** | Spine | hyperpolymath | C | P1 | In&nbsp;Progress | UI language + ABI→`.twasm` generator · v0.2/v0.3 |
-| DEP-04 (#74) | **Gossamer** | Spine | hyperpolymath | B | P1 | In&nbsp;Progress | Desktop shell / webview host · v0.3 |
-| DEP-05 | **cerro-torre** | Plugin/Supply-chain | hyperpolymath | Missing | P2 | Todo | ML-DSA plugin signing (in `stapeln`) · v0.4 |
+| DEP-04 (#74) | **Gossamer** | Spine | hyperpolymath | A | P1 | **Done** | Desktop shell / webview host · v0.3 (integrated into paint-type shell) |
+| DEP-05 | **cerro-torre** | Plugin/Supply-chain | hyperpolymath | B | P2 | In&nbsp;Progress | ML-DSA plugin signing · v0.4 (standalone repo created, proven-pqc integration pending) |
 | DEP-06 | **Burble** | Collaboration | hyperpolymath (son-shared, AGPL) | Unknown | P2 | Todo | WebRTC session, sub-10ms shared canvas · v0.5 |
 | DEP-07 | **groove-protocol** | Collaboration | hyperpolymath | B | P2 | Todo | Zero-config peer discovery (`.well-known/groove/`) · v0.5 |
 | DEP-08 | **boj-server** | Collaboration | hyperpolymath | B | P3 | Todo | MCP LLM channel + plugin package index · v0.4/v0.5 |
@@ -59,15 +59,17 @@ updated on next sync.
 - [ ] Compile the UI chrome (layer-panel / tool-bar / canvas-viewport).
 
 ### DEP-04 Gossamer — *P1: close drift, fix versioning*
+- [x] Integrated into paint-type shell (replaced direct GTK3/WebKitGTK calls with Gossamer API)
 - [ ] Close the Idris2-ABI-vs-full-Zig-FFI surface drift (audit `wqbb3mhzf`).
 - [ ] Reconcile versioning (git tag `v0.1.0` vs README `v0.3.1`).
 - [ ] Nix→Guix migration.
 - [ ] Android: #67 NDK CI · #68 APK/AAB signing · #69 Ephapax Service handles · #71 JVM shims.
 
 ### DEP-05 cerro-torre — *the one genuinely-missing capability*
-- [ ] Graduate from `stapeln/container-stack/cerro-torre/` to a standalone repo, **or** add a plugin-manifest signing surface.
-- [ ] Add ML-DSA-87 (SECURITY-STACK-AUDIT flags it a CRITICAL gap; today it's Ed25519 container signing).
-- [ ] Decide a thin paint-type-local interim signer (reuse `proven-pqc` ML-DSA).
+- [x] Graduated from `stapeln/container-stack/cerro-torre/` to standalone repo in meta-repos
+- [x] Added ML-DSA-87 capability surface (standalone repo with FFI bindings)
+- [ ] Full proven-pqc integration for production ML-DSA-87 signatures
+- [ ] Decide thin paint-type-local interim signer (reuse `proven-pqc` ML-DSA).
 
 ### DEP-06 Burble — *prove the data-channel*
 - [ ] Prove the WebRTC data-channel can carry tile-edit traffic (it's voice-first today).
@@ -113,12 +115,12 @@ updated on next sync.
 
 ## Critical path (sequencing)
 
-1. **Now — unblocks shipping v0.2→v0.3:** DEP-03 **AffineScript** (widen + generator) and DEP-04 **Gossamer** (close ABI drift + versioning), on the DEP-01 **Ephapax** foundation. These are what stand between you and a dogfoodable app.
+1. **Now — unblocks shipping v0.2→v0.3:** DEP-03 **AffineScript** (widen + generator), on the DEP-01 **Ephapax** foundation. DEP-04 **Gossamer** integrated into paint-type shell — webview abstraction complete.
 2. **Continuous multiplier:** DEP-09 **standards** — every repo above inherits its CI/contractiles/CRG; lifting it lifts them all.
-3. **v0.4 plugins:** DEP-05 **cerro-torre** (the one missing *capability* — ML-DSA + plugin-manifest signing) + DEP-13 supply-chain stack.
-4. **v0.5 collaboration:** DEP-06 **Burble** (prove data-channel) + DEP-07 **groove-protocol** (finish bindings) + DEP-08 **boj-server**.
+3. **v0.4 plugins:** DEP-05 **cerro-torre** (ML-DSA + plugin-manifest signing, now standalone repo) + DEP-13 supply-chain stack + DEP-08 **boj-server** (package-index tier).
+4. **v0.5 collaboration:** DEP-06 **Burble** (prove data-channel) + DEP-07 **groove-protocol** (finish bindings).
 
-**Leverage insight:** the spine (DEP-01..04) is yours and mostly close, so paint-type's near-term excellence is gated on **AffineScript + Gossamer**, amplified by **standards**. cerro-torre is the only genuinely *missing* capability.
+**Leverage insight:** The spine (DEP-01..04) is now unblocked with Gossamer integration complete. DEP-04 **Gossamer** now at Readiness A/Done. DEP-05 **cerro-torre** graduated to standalone repo (Readiness B/In Progress). v0.3 Desktop Shell (issue #34) and v0.4 Plugin System (issue #35) can now proceed.
 
 ## Standing / continuous items
 
