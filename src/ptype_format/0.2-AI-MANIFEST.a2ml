@@ -17,8 +17,8 @@ The .ptype image container format — encode/decode Rust crate with fuzzing.
 
 | Directory | Layer | Purpose |
 |---|---|---|
-| `fuzz/` | 3 | |
-| `src/` | 3 | |
+| `fuzz/` | 3 | Fuzzing targets and seeds for ptype_format |
+| `src/` | 3 | Source code for the ptype_format crate |
 
 ## Canonical Files
 

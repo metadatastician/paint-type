@@ -17,10 +17,10 @@ paint_collab — the CvRDT collaboration crate (tile CRDT, permission model, ses
 
 | Directory | Layer | Purpose |
 |---|---|---|
-| `examples/` | 3 | |
-| `scripts/` | 3 | |
-| `src/` | 3 | |
-| `tests/` | 3 | |
+| `examples/` | 3 | Example usage of the paint_collab crate |
+| `scripts/` | 3 | Utility scripts for paint_collab |
+| `src/` | 3 | Source code for the paint_collab crate |
+| `tests/` | 3 | Integration tests for paint_collab |
 
 ## Canonical Files
 
