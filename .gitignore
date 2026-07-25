@@ -116,3 +116,6 @@ src/bridges/*.wasm
 # Hypatia scan cache (local-only)
 .hypatia/
 .zig-cache/
+
+.editorconfig
+.claude/
