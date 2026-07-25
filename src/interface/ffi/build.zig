@@ -94,10 +94,10 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .link_libc = true,
     });
+    integration_module.linkLibrary(static);
     const integration_tests = b.addTest(.{
         .root_module = integration_module,
     });
-    integration_tests.linkLibrary(static);
     const run_integration_tests = b.addRunArtifact(integration_tests);
 
     //--------------------------------------------------------------------------
