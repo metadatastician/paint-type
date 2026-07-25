@@ -1,0 +1,263 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+= Plugin Provisioner
+:description: Tool for deploying and managing paint.type plugins
+
+This directory contains the **paint-type Plugin Provisioner** tool, responsible for deploying plugins and setting up their runtime environment.
+
+== Purpose
+
+The provisioner tool handles the full plugin lifecycle:
+
+* Plugin deployment from source directories
+* Dependency resolution (future enhancement)
+* Runtime environment setup
+* Capability management
+* Integrity validation (SHA-256 checksums)
+* Configuration management
+* Plugin removal
+* Plugin listing and validation
+
+== Architecture
+
+The provisioner is inspired by three reference implementations:
+
+. **boJ-server cartridge-provisioner** (`tools/cartridge-provisioner/provisioner.js`):
+   * Node.js-based cartridge deployment
+   * Copies cartridge files to deploy directory
+   * Handles A2ML manifests and panll descriptors
+
+. **panll provisioner.toml** (`contracts/provisioner.toml`):
+   * Portfolio bundle configuration
+   * Panel configuration and isolation tier management
+
+. **panll provisioner_engine.affine** (`src/core/provisioner_engine.affine`):
+   * AffineScript TEA spec modeling provisioning as a state machine
+   * Explicit, traceable phase transitions (linear logic)
+
+== Provisioning Phases
+
+The provisioner models plugin deployment as an affine state machine with the following phases:
+
+. *Idle* - Waiting to start
+. *ResolvingDependencies* - Resolving plugin dependencies
+. *Downloading* - Downloading plugin artifacts (network mode only)
+. *Validating* - Validating manifest and integrity
+. *Installing* - Copying files to target directory
+. *Configuring* - Creating plugin configuration
+. *Complete* - Provisioning successful
+. *Failed* - Provisioning failed with errors
+
+Each phase consumes the previous state and produces a new one, ensuring no step is silently dropped.
+
+== Usage
+
+=== Build
+
+[source,bash]
+----
+cd tools/plugin-provisioner
+cargo build --release
+----
+
+The binary will be at `target/release/plugin-provisioner`.
+
+=== Deploy a Plugin
+
+[source,bash]
+----
+# Deploy from source directory to default location
+./plugin-provisioner deploy --source /path/to/plugin
+
+# Deploy to custom target directory
+./plugin-provisioner deploy --source /path/to/plugin --target /custom/plugins/dir
+
+# Skip validation (not recommended)
+./plugin-provisioner deploy --source /path/to/plugin --skip-validation
+----
+
+=== List Deployed Plugins
+
+[source,bash]
+----
+# List all plugins in default directory
+./plugin-provisioner list
+
+# List with detailed information
+./plugin-provisioner list --detailed
+
+# List from custom directory
+./plugin-provisioner list --target /custom/plugins/dir
+----
+
+=== Validate a Plugin
+
+[source,bash]
+----
+# Validate a plugin directory
+./plugin-provisioner validate --path /path/to/plugin
+
+# Validate a manifest file
+./plugin-provisioner validate --path /path/to/plugin.toml
+----
+
+=== Remove a Plugin
+
+[source,bash]
+----
+# Remove by plugin ID
+./plugin-provisioner remove --plugin-id com.example.myplugin
+
+# Remove from custom directory
+./plugin-provisioner remove --plugin-id com.example.myplugin --target /custom/plugins/dir
+----
+
+=== Resolve Dependencies
+
+[source,bash]
+----
+# Show required capabilities for a plugin
+./plugin-provisioner resolve --manifest /path/to/plugin.toml
+----
+
+=== Initialize Configuration
+
+[source,bash]
+----
+# Create default provisioner.toml
+./plugin-provisioner init --output /path/to/config/dir
+----
+
+== Plugin Structure
+
+A valid paint.type plugin has the following structure:
+
+----
+my-plugin/
+├── plugin.toml          # or plugin.json - Plugin manifest
+├── my_plugin.wasm        # WASM module (entry point from manifest)
+├── README.adoc           # Plugin documentation (optional)
+├── LICENSE               # License file (optional)
+├── icon.png              # Plugin icon (optional)
+└── ...                   # Other plugin files
+----
+
+=== Plugin Manifest (plugin.toml)
+
+[source,toml]
+----
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Required fields
+id = "com.example.myplugin"
+name = "My Plugin"
+version = "1.0.0"
+description = "A sample paint.type plugin"
+author = "Your Name"
+license = "AGPL-3.0-or-later"
+
+# Plugin type: "effect" or "tool"
+type = "effect"
+
+# WASM entry point (default: "_start")
+wasm_entry = "my_plugin.wasm"
+
+# API version (default: 1)
+api_version = 1
+
+# Optional fields
+long_description = """
+A longer description of the plugin in markdown.
+"""
+author_email = "your@email.com"
+homepage = "https://github.com/your/plugin"
+icon = "icon.png"
+
+# Required capabilities
+# Available: CanvasRead, CanvasWrite, LayerAccess, SelectionAccess,
+#          FileAccess, NetworkAccess, UserInterface, PersistentStorage
+capabilities = ["CanvasRead", "CanvasWrite"]
+
+# Tags for categorization
+tags = ["filter", "example"]
+----
+
+== Configuration
+
+The provisioner can be configured via `provisioner.toml`:
+
+[source,toml]
+----
+# Plugin installation directory
+plugin_directory = "src/plugins/available"
+
+# Registry URL (for network installation)
+registry_url = "https://registry.paint.type/plugins"
+
+# Strict validation (reject plugins with warnings)
+strict_validation = false
+
+# Verify checksums on deployment
+verify_checksums = true
+
+# Auto-grant all requested capabilities
+auto_grant_capabilities = true
+
+# Maximum recursion depth for dependency resolution
+max_dependency_depth = 10
+
+# Allowed capabilities (empty = all allowed)
+allowed_capabilities = []
+
+# Blocked capabilities (never grant these)
+blocked_capabilities = []
+
+[log_config]
+level = "info"
+to_file = false
+log_path = "logs/provisioner.log"
+----
+
+== Deployment Result
+
+After successful deployment, a `_deployment_result.json` file is created in the target directory containing:
+
+* Plugin ID
+* Plugin name
+* Version
+* Target directory
+* Granted capabilities
+* Resolved dependencies
+* Checksum of the WASM module
+* Timestamp
+
+== Features
+
+* `--features network` - Enable network installation from registry
+
+== Integration with paint.type
+
+The provisioner integrates with the paint.type plugin system:
+
+* Uses the same manifest schema as `src/plugins/`
+* Supports both TOML and JSON manifest formats
+* Generates plugin configuration files
+* Validates plugin capabilities
+* Maintains deployment logs
+
+== Related Files
+
+* link:../../src/plugins/[paint.type Plugins Crate]
+* link:../../src/plugins/src/manifest.rs[Plugin Manifest Schema]
+* link:../../src/plugins/src/registry.rs[Plugin Registry]
+
+== AI Manifest Structure
+
+* link:0.2-AI-MANIFEST.a2ml[this file] - Level 2 manifest for `tools/plugin-provisioner/`
+* Each subdirectory has its own `0.3-AI-MANIFEST.a2ml`
+
+== Related Files
+
+* link:../0.1-AI-MANIFEST.a2ml[Parent AI Manifest]
+* link:../README.adoc[Parent Directory README]
+* link:../../.machine_readable/[Machine Readable Metadata]

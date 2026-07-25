@@ -9,13 +9,13 @@
 | ABI/FFI (ABI) | 5 | 5 | 0 | 0 | 0 |
 | Typing (TP) | 3 | 3 | 0 | 0 | 0 |
 | Invariant (INV) | 3 | 3 | 0 | 0 | 0 |
-| Security (SEC) | 2 | 0 | 0 | 2 | 0 |
+| Security (SEC) | 2 | 0 | 0 | 0 | 2 |
 | Concurrency (CONC) | 3 | 3 | 0 | 0 | 0 |
 | Algorithm (ALG) | 0 | 0 | 0 | 0 | 0 |
 | Domain (DOM) | 0 | 0 | 0 | 0 | 0 |
-| **Total** | **16** | **14** | **0** | **2** | **0** |
+| **Total** | **16** | **14** | **0** | **0** | **2** |
 
-**Overall**: 88% proven (14/16). **ABI, Typing, Invariant, and Concurrency categories fully closed** (CONC-1/2/3 landed with v0.5.0). The four unblocked obligations (TP-2, INV-1, INV-2, INV-3) were discharged 2026-06-14 across Idris2/Lean4/Agda. CONC-1/CONC-2 proved in `verification/proofs/agda/TileCRDT.agda` (Agda, builtin-only); CONC-3 modeled in `verification/proofs/tlaplus/BurbleSession.tla`. **Only 2 proofs remain blocked** (both SEC): SEC-1/2 need the v0.4.0 plugin design. `idris2 --check` runs in CI per `.github/workflows/idris-ci.yml`; CI enforcement of Lean4/Agda proofs pending (proofs verify locally — see Verification Commands).
+**Overall**: 88% proven (14/16). **ABI, Typing, Invariant, and Concurrency categories fully closed** (CONC-1/2/3 landed with v0.5.0). The four unblocked obligations (TP-2, INV-1, INV-2, INV-3) were discharged 2026-06-14 across Idris2/Lean4/Agda. CONC-1/CONC-2 proved in `verification/proofs/agda/TileCRDT.agda` (Agda, builtin-only); CONC-3 modeled in `verification/proofs/tlaplus/BurbleSession.tla`. **Only 2 proofs remain** (both SEC): SEC-1/2 now unblocked by v0.4.0 plugin system completion. `idris2 --check` runs in CI per `.github/workflows/idris-ci.yml`; CI enforcement of Lean4/Agda proofs pending (proofs verify locally — see Verification Commands).
 
 ## Proofs Done
 
@@ -44,18 +44,18 @@
 
 ## Proofs Blocked
 
-| ID | Proof | Blocked By | Notes |
-|----|-------|------------|-------|
-| SEC-1 | Plugin WASM sandbox isolation | Plugin system not started | Depends on v0.4.0 plugin design (v0.5.0 scope does not include plugin system) |
-| SEC-2 | Plugin API surface confinement | Plugin system not started | Same blocker as SEC-1 (v0.5.0 scope does not include plugin system) |
+_None._ All design blockers resolved. v0.4.0 plugin system completed; v0.5.0 Burble collaboration completed.
 
 **Note:** CONC-1, CONC-2, CONC-3 were all **unblocked and completed** with v0.5.0 issue #36 — Burble design was finalised and the proofs landed.
 
 ## Proofs Remaining (Unblocked)
 
-_None — all four unblocked obligations (TP-2, INV-1, INV-2, INV-3) were discharged 2026-06-14._
+| ID | Proof | Prover | File | Started |
+|----|-------|--------|------|---------|
+| SEC-1 | Plugin WASM sandbox isolation | TLA+ | `verification/proofs/tlaplus/PluginSandbox.tla` | Not started |
+| SEC-2 | Plugin API surface confinement | TLA+ | `verification/proofs/tlaplus/PluginApiSurface.tla` | Not started |
 
-The only outstanding proofs are the **design-blocked** SEC-1/2 (v0.4.0 plugin sandbox) and CONC-1/2/3 (v0.5.0 Burble collaboration); see "Proofs Blocked" above. They cannot be written until those subsystems are designed.
+Both SEC proofs now unblocked by v0.4.0 plugin system completion (issue #14).
 
 **Operational follow-up (not a proof gap):** wire the new proofs into CI. `idris-ci.yml` currently checks only the ABI Idris2 modules — add `TilePool.idr`, plus a Lean4 job (`lean ApiTypes.lean UndoGraph.lean`) and an Agda job. The Agda job must pass `--no-libraries` (or set a correct `AGDA_DIR`) to dodge the estate-wide broken global `~/.agda/libraries` path-drift; the proof itself has zero library dependencies.
 

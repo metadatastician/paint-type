@@ -1,0 +1,92 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# paint.type Plugin Provisioner AI Manifest (Level 2)
+
+This is the AI manifest for the `tools/plugin-provisioner/` directory (Level 2) of paint.type.
+
+## Purpose
+
+paint.type application — Plugin Provisioner Tool
+
+This tool is responsible for deploying and managing plugins for the paint.type plugin system.
+It handles the full plugin lifecycle including deployment, validation, configuration, and removal.
+Inspired by boJ-server cartridge-provisioner and panll provisioner patterns.
+
+## Authority Split
+
+- **Central protocol authority:** `standards/` repository
+- **Local integration authority (this directory):** `tools/plugin-provisioner/` specific configuration
+
+## Subdirectories
+
+| Directory | Layer | Purpose |
+|---|---|---|
+| `src/` | 3 | Rust source code for the provisioner |
+
+## Canonical Files
+
+- `Cargo.toml` -- Rust package manifest with dependencies
+- `Cargo.lock` -- Dependency lock file
+- `README.adoc` -- Full documentation with usage examples
+- `0.2-AI-MANIFEST.a2ml` -- This file (Level 2 manifest)
+
+## Invariants
+
+1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
+2. Each directory at layer 2 must have its own `0.2-AI-MANIFEST.a2ml`.
+3. Each directory must have a `README.adoc` describing purpose, contents, and function.
+4. SPDX license identifiers must be consistent across all files (AGPL-3.0-or-later).
+5. Plugin manifests must be validated before deployment.
+6. Provisioning follows affine state machine phases (Idle → ResolvingDependencies → Downloading → Validating → Installing → Configuring → Complete/Failed).
+
+## Startup Checklist for Agents
+
+1. Read this file (`0.2-AI-MANIFEST.a2ml`).
+2. Read `README.adoc` for directory overview.
+3. For subdirectories, navigate to their respective manifest files.
+4. Never edit `.machine_readable/` files directly.
+5. Always validate plugin manifests before deployment.
+6. Always verify SHA-256 checksums when copying WASM modules.
+7. Use affine state machine pattern for all provisioning operations.
+
+## Provisioner Usage
+
+To build and use the provisioner:
+
+1. Build the provisioner:
+   cd tools/plugin-provisioner
+   cargo build --release
+
+2. Deploy a plugin:
+   ./target/release/plugin-provisioner deploy --source /path/to/plugin
+
+3. List deployed plugins:
+   ./target/release/plugin-provisioner list --detailed
+
+4. Validate a plugin:
+   ./target/release/plugin-provisioner validate --path /path/to/plugin
+
+5. Remove a plugin:
+   ./target/release/plugin-provisioner remove --plugin-id com.example.myplugin
+
+## Provisioning Phases (Affine State Machine)
+
+The provisioner models plugin deployment as an affine state machine with explicit phases:
+
+1. **Idle** - Waiting to start
+2. **ResolvingDependencies** - Resolving plugin dependencies
+3. **Downloading** - Downloading plugin artifacts (network mode only)
+4. **Validating** - Validating manifest and integrity (SHA-256 checksums)
+5. **Installing** - Copying files to target directory
+6. **Configuring** - Creating plugin configuration files
+7. **Complete** - Provisioning successful
+8. **Failed** - Provisioning failed with errors
+
+Each phase consumes the previous state and produces a new one, ensuring no step is silently dropped (linear logic).
+
+## References
+
+- boJ-server cartridge-provisioner: hyper-repos/boj-server/tools/cartridge-provisioner/provisioner.js
+- panll provisioner.toml: hyper-repos/panll/contracts/provisioner.toml
+- panll provisioner_engine.affine: hyper-repos/panll/src/core/provisioner_engine.affine
+- paint.type plugins crate: src/plugins/

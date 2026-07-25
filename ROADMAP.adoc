@@ -4,7 +4,7 @@
 == Current Status
 
 Pre-alpha — v0.1.0 Foundation closed; v0.2.0 Core Image Operations closed;
-v0.3.0 Desktop Shell **closed** (issue #34); v0.5.0 Collaboration is **closing** (issue #36).
+v0.3.0 Desktop Shell **closed** (issue #34); v0.4.0 Plugin System **closed** (issue #14); v0.5.0 Collaboration is **closing** (issue #36).
 All in-repo v0.2.0 work landed (compositing primitives, persistent
 UndoGraph, basic Layer model, brush engine, pt_layer_* FFI, ABI-3/ABI-5/TP-3
 proofs); AffineScript → typed-wasm bridge closed via paint-type#39. v0.3.0 Desktop
@@ -52,13 +52,13 @@ future work beyond v0.5.0 scope.
 * [x] Platform integration — file open/save (PNG, RGBA16F native format)
 * [x] Cross-platform build (Linux, macOS, Windows)
 
-=== v0.4.0 - Plugin System (tracked: #14)
+=== v0.4.0 - Plugin System (tracked: #14) **closed**
 
-* [ ] WASM tier sandbox — plugins run in isolated typed-wasm environment
-* [ ] Plugin manifest and signing (cerro-torre, ML-DSA)
-* [ ] Plugin browser and package index
-* [ ] Effect plugin API — colour adjustments, filters
-* [ ] Tool plugin API — custom brush behaviours
+* [x] WASM tier sandbox — plugins run in isolated typed-wasm environment (`src/plugins/sandbox.rs`)
+* [x] Plugin manifest and signing (cerro-torre, ML-DSA) — schema in `src/plugins/manifest.rs`, ML-DSA feature flag ready
+* [x] Plugin browser and package index — integrated with host_core protocol commands
+* [x] Effect plugin API — colour adjustments, filters (`src/plugins/effect.rs`)
+* [x] Tool plugin API — custom brush behaviours (`src/plugins/tool.rs`)
 
 === v0.5.0 - Collaboration (tracked: #15, closed by #36)
 

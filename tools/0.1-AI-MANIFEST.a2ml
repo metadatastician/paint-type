@@ -16,6 +16,11 @@ This manifest describes the purpose and structure of the `tools/` directory.
 | Directory | Layer | Purpose |
 |---|---|---|
 | `invariant-path/` | 2 | |
+| `abi-codegen/` | 2 | ABI code generation tool |
+| `plugin-harness/` | 2 | Plugin harness for testing and integration |
+| `plugin-minter/` | 2 | Plugin minter for creating plugin packages |
+| `plugin-provisioner/` | 2 | Plugin provisioner for deployment and management |
+| `plugin-wizard/` | 2 | Plugin wizard for scaffold generation |
 
 ## Invariants
 

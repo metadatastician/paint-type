@@ -18,7 +18,7 @@ use hex;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
-use std::fs;
+use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use tracing::{debug, error, info, warn};
 use walkdir::WalkDir;

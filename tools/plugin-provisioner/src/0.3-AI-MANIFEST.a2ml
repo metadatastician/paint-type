@@ -1,0 +1,129 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# paint.type Plugin Provisioner Source AI Manifest (Level 3)
+
+This is the AI manifest for the `tools/plugin-provisioner/src/` directory (Level 3) of paint.type.
+
+## Purpose
+
+This manifest describes the Rust source code for the paint.type Plugin Provisioner tool.
+The source directory contains the core provisioning logic and CLI implementation.
+
+## Authority Split
+
+- **Central protocol authority:** `standards/` repository
+- **Local integration authority (this directory):** `tools/plugin-provisioner/src/` specific implementation
+
+## Canonical Files
+
+- `main.rs` -- Main CLI entry point with all commands (deploy, install, remove, list, validate, resolve, init)
+- `manifest.rs` -- Plugin manifest types and validation logic
+- `0.3-AI-MANIFEST.a2ml` -- This file (Level 3 manifest)
+
+## Invariants
+
+1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
+2. Each directory at layer 3 must have its own `0.3-AI-MANIFEST.a2ml`.
+3. Each directory must have a `README.adoc` describing purpose, contents, and function.
+4. SPDX license identifiers must be consistent across all files (AGPL-3.0-or-later).
+5. All source files must include SPDX license headers.
+6. ProvisioningState must always track phase transitions explicitly.
+7. SHA-256 checksums must be verified for all deployed WASM modules.
+
+## Startup Checklist for Agents
+
+1. Read this file (`0.3-AI-MANIFEST.a2ml`).
+2. Read parent `../0.2-AI-MANIFEST.a2ml` for context.
+3. Read `../README.adoc` for usage examples.
+4. Never edit `.machine_readable/` files directly.
+5. Always update ProvisioningPhase when transitioning between states.
+
+## Source File Descriptions
+
+### main.rs
+
+The main entry point contains:
+
+- **ProvisioningPhase enum** - Affine state machine phases (Idle, ResolvingDependencies, Downloading, Validating, Installing, Configuring, Complete, Failed)
+- **ProvisioningState struct** - Tracks current phase, resolved dependencies, downloaded plugins, validated plugins, installed plugins, configured plugins, provisioning log, and errors
+- **PluginConfig struct** - Per-plugin configuration (id, enabled, capabilities, granted_capabilities, priority)
+- **DeploymentResult struct** - Result of plugin deployment (plugin_id, plugin_name, version, target_directory, capabilities_granted, dependencies_resolved, checksum, timestamp)
+
+**Core Functions:**
+- `provision_plugin()` - Main provisioning workflow that orchestrates all phases
+- `validate_manifest()` - Validates plugin manifest structure and fields
+- `load_manifest_from_dir()` - Loads manifest from plugin.toml or plugin.json
+- `compute_checksum()` - Computes SHA-256 hash of a file
+- `copy_file_with_checksum()` - Copies file and verifies integrity
+- `list_plugins()` - Lists all deployed plugins with optional detail
+- `validate_plugin()` - Validates a plugin directory or manifest file
+- `remove_plugin()` - Removes a deployed plugin
+
+**CLI Commands:**
+- `Deploy` - Deploy a plugin from source directory
+- `Install` - Install from registry (stub, requires network feature)
+- `Remove` - Remove a deployed plugin
+- `List` - List deployed plugins
+- `Validate` - Validate a plugin manifest
+- `Resolve` - Resolve plugin dependencies and show capabilities
+- `Init` - Initialize provisioner configuration
+
+### manifest.rs
+
+The manifest module defines all plugin metadata types:
+
+**Types:**
+- **PluginId** - Unique plugin identifier in reverse domain notation (e.g., "com.example.myplugin")
+- **PluginVersion** - Semver version (major.minor.patch) with API version compatibility checking
+- **PluginType** - Enum: Effect (stateless transformations) or Tool (stateful tools)
+- **PluginCapability** - Enum of capabilities a plugin may request:
+  - CanvasRead, CanvasWrite, LayerAccess, SelectionAccess
+  - FileAccess, NetworkAccess, UserInterface, PersistentStorage
+- **PluginManifest** - Main manifest structure with all plugin metadata fields
+- **PluginError** - Error types for plugin operations
+- **PluginResult<T>** - Result type alias
+
+**PluginManifest Fields:**
+- Required: id, version, name, description, author, wasm_entry, license, api_version
+- Optional: long_description, author_email, icon, homepage, tags, capabilities
+
+**Validation:**
+- Validates all required fields are present
+- Validates id is in reverse domain notation
+- Validates API version compatibility
+- Validates semver format
+- Provides `required_capabilities()` and `has_capability()` methods
+
+## Affine State Machine Pattern
+
+The provisioner uses an affine state machine to model plugin deployment:
+
+- Each `ProvisioningPhase` represents a discrete step in the provisioning process
+- `ProvisioningState` tracks the current phase and accumulated state
+- State transitions are explicit: each phase consumes the previous state and produces a new one
+- No phase can be skipped or silently dropped (linear logic)
+- The `provisioning_log` and `errors` fields track all operations and issues
+
+## Provisioning Flow
+
+1. **Idle** → Load manifest from source directory
+2. **ResolvingDependencies** → Resolve plugin dependencies (future: network registry lookup)
+3. **Downloading** → Download plugin artifacts (future: network mode)
+4. **Validating** → Validate manifest structure and integrity
+5. **Installing** → Copy all plugin files to target directory with checksum verification
+6. **Configuring** → Create plugin.config.toml with granted capabilities
+7. **Complete** → Save deployment result and log success
+
+## Integration Points
+
+- Uses the same manifest schema as `src/plugins/` crate for compatibility
+- Supports both TOML and JSON manifest formats
+- Generates `plugin.config.toml` for each deployed plugin
+- Creates `_deployment_result.json` with full deployment metadata
+- Default plugin directory: `src/plugins/available`
+
+## References
+
+- Parent manifest: link:../0.2-AI-MANIFEST.a2ml[tools/plugin-provisioner/ manifest]
+- Tool README: link:../README.adoc[Plugin Provisioner Documentation]
+- paint.type plugins: link:../../../src/plugins/[paint.type Plugins Crate]

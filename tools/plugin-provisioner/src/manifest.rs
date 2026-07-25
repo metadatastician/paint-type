@@ -5,7 +5,7 @@
 // This module defines the plugin manifest types used by the provisioner.
 // These mirror the types in paint-type-plugins crate for compatibility.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
 use std::path::Path;
 use thiserror::Error;
@@ -43,7 +43,7 @@ impl From<&str> for PluginId {
 }
 
 /// Plugin version following semver (major.minor.patch)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Default)]
 pub struct PluginVersion {
     pub major: u32,
     pub minor: u32,
@@ -72,6 +72,34 @@ impl PluginVersion {
 
     pub fn is_compatible(&self) -> bool {
         self.major == Self::CURRENT_API_VERSION
+    }
+}
+
+/// Custom deserialization for PluginVersion to handle both string and struct formats
+impl<'de> Deserialize<'de> for PluginVersion {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        // Try to deserialize as a struct first
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum VersionHelper {
+            Struct { major: u32, minor: u32, patch: u32 },
+            String(String),
+        }
+        
+        let helper = VersionHelper::deserialize(deserializer)?;
+        
+        match helper {
+            VersionHelper::Struct { major, minor, patch } => {
+                Ok(PluginVersion { major, minor, patch })
+            }
+            VersionHelper::String(s) => {
+                PluginVersion::parse(&s)
+                    .ok_or_else(|| serde::de::Error::custom(format!("Invalid version string: {}", s)))
+            }
+        }
     }
 }
 
