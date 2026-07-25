@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# minter.toml -- Plugin metadata template for paint.type plugin minter.
+#
+# This is the canonical configuration for scaffolding a new paint.type plugin.
+# Inspired by boJ-server cartridge-minter and panll minter patterns.
+#
+# Usage:
+#   cargo run --manifest-path tools/plugin-minter/Cargo.toml -- minter.toml [--dest <path>]
+#
+# If --dest is omitted, the plugin is placed at:
+#   src/plugins/available/<plugin_id>/
+
+# Required: Plugin identity
+name = "example-blur"
+description = "Example Gaussian blur effect plugin"
+version = "0.1.0"
+
+# Required: Plugin metadata
+id = "com.example.paint-type.blur"
+author = "Your Name"
+author_email = "your.email@example.com"
+license = "AGPL-3.0-or-later"
+
+# Required: Plugin classification
+plugin_type = "effect"  # "effect" or "tool"
+
+# Required: Technical specification
+wasm_entry = "_start"
+api_version = 1
+
+# Optional: Extended metadata
+homepage = "https://github.com/your-org/paint-type-plugin-blur"
+icon = "icon.png"
+tags = ["filter", "blur", "gaussian", "example"]
+
+# Optional: Capabilities required by this plugin
+# Available: CanvasRead, CanvasWrite, LayerAccess, SelectionAccess,
+#          FileAccess, NetworkAccess, UserInterface, PersistentStorage
+capabilities = [
+    "CanvasRead",
+    "CanvasWrite",
+]
+
+# Optional: Long description (markdown)
+long_description = '''
+An example Gaussian blur effect plugin for paint.type.
+
+This plugin demonstrates how to create a simple image filtering effect
+using the paint.type plugin API.
+'''

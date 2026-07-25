@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# paint.type Plugin Minter AI Manifest (Level 2)
+
+This is the AI manifest for the `tools/plugin-minter/` directory (Level 2) of paint.type.
+
+## Purpose
+
+paint.type application — Plugin Minter Tool
+
+This tool is responsible for scaffolding new plugins for paint.type's plugin system.
+It creates the directory structure, manifest files, and boilerplate code needed for
+a new plugin, inspired by boJ-server cartridge-minter and panll minter patterns.
+
+## Authority Split
+
+- **Central protocol authority:** `standards/` repository
+- **Local integration authority (this directory):** `tools/plugin-minter/` specific configuration
+
+## Invariants
+
+1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
+2. Each directory at layer 2 must have its own `0.2-AI-MANIFEST.a2ml`.
+3. Each directory must have a `README.adoc` describing purpose, contents, and function.
+4. SPDX license identifiers must be consistent across all files (AGPL-3.0-or-later).
+5. Plugin IDs must be in reverse domain notation (e.g., com.example.plugin).
+6. Plugin types must be either 'effect' or 'tool'.
+
+## Startup Checklist for Agents
+
+1. Read this file (`0.2-AI-MANIFEST.a2ml`).
+2. Read `README.adoc` for directory overview.
+3. For subdirectories, navigate to their respective manifest files.
+4. Never edit `.machine_readable/` files directly.
+5. Always validate minter.toml before scaffolding.
+
+## Plugin Minter Usage
+
+To create a new plugin:
+
+1. Create a `minter.toml` configuration file
+2. Run: `cargo run --manifest-path tools/plugin-minter/Cargo.toml -- minter.toml`
+3. Or with explicit destination: `cargo run --manifest-path tools/plugin-minter/Cargo.toml -- minter.toml --dest ./my-plugin`
+
+## References
+
+- boJ-server cartridge-minter: hyper-repos/boj-server-cartridges/tools/cartridge-minter/mint.ts
+- panll minter: hyper-repos/panll/contracts/minter.toml

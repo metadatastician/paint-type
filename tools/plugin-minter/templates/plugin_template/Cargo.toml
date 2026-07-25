@@ -1,0 +1,12 @@
+[package]
+name = "PLUGIN_CRATE_NAME"
+version = "PLUGIN_VERSION"
+edition = "2021"
+license = "PLUGIN_LICENSE"
+description = "PLUGIN_DESCRIPTION"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+paint-type-plugins = { path = "../../../../src/plugins" }

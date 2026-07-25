@@ -1,0 +1,230 @@
+= Plugin Minter Tool
+:description: Scaffold new plugins for paint.type
+:spdx-license-identifier: AGPL-3.0-or-later
+
+== Overview
+
+The Plugin Minter Tool is responsible for creating, packaging, and validating plugins
+for paint.type's plugin system. It scaffolds the complete directory structure,
+manifest files, and boilerplate code needed for a new plugin.
+
+== Inspiration
+
+This tool is inspired by:
+
+* link:https://github.com/hyperpolymath/boj-server-cartridges[boJ-server cartridge-minter]
+* link:https://github.com/hyperpolymath/panll[panll minter patterns]
+
+== Features
+
+* Scaffolds complete plugin directory structure
+* Generates `plugin.toml` manifest from `minter.toml` configuration
+* Generates `Cargo.toml` for Rust-based plugins
+* Generates `lib.rs` with plugin skeleton
+* Generates `README.adoc` documentation
+* Validates configuration before scaffolding
+* Supports Effect and Tool plugin types
+
+== Quick Start
+
+=== 1. Create a minter.toml
+
+[source,toml]
+----
+# Required fields
+name = "my-blur-effect"
+description = "A Gaussian blur effect plugin"
+version = "0.1.0"
+id = "com.example.paint-type.blur"
+author = "Your Name"
+plugin_type = "effect"  # or "tool"
+wasm_entry = "_start"
+license = "AGPL-3.0-or-later"
+
+# Optional fields
+author_email = "your.email@example.com"
+homepage = "https://github.com/your-org/plugin-blur"
+icon = "icon.png"
+api_version = 1
+capabilities = ["CanvasRead", "CanvasWrite"]
+tags = ["filter", "blur", "example"]
+long_description = '''
+A Gaussian blur effect plugin for paint.type.
+'''
+----
+
+=== 2. Run the minter
+
+[source,bash]
+----
+# Navigate to paint-type root
+cd /path/to/paint-type
+
+# Run the minter with your config
+cargo run --manifest-path tools/plugin-minter/Cargo.toml -- minter.toml
+
+# Or specify a destination directory
+cargo run --manifest-path tools/plugin-minter/Cargo.toml -- minter.toml --dest ./my-plugin
+----
+
+=== 3. Build your plugin
+
+[source,bash]
+----
+cd src/plugins/available/com.example.paint-type.blur
+cargo build --release
+----
+
+The compiled WASM will be at:
+`target/wasm32-unknown-unknown/release/<crate-name>.wasm`
+
+== Configuration Reference
+
+=== Required Fields
+
+[cols="2,3,2"]
+|===
+| Field | Description | Example
+
+| name | Human-readable plugin name | `"gaussian-blur"`
+| description | Short description | `"Gaussian blur effect"`
+| version | Semver version | `"0.1.0"`
+| id | Reverse domain notation ID | `"com.example.paint-type.blur"`
+| author | Author name | `"Jane Developer"`
+| plugin_type | Plugin type | `"effect"` or `"tool"`
+| wasm_entry | WASM entry point | `"_start"`
+| license | SPDX license identifier | `"AGPL-3.0-or-later"`
+|===
+
+=== Optional Fields
+
+[cols="2,3,2"]
+|===
+| Field | Description | Example
+
+| author_email | Author email | `"jane@example.com"`
+| homepage | Plugin homepage URL | `"https://example.com/plugin"`
+| icon | Icon file path | `"icon.png"`
+| api_version | Plugin API version | `1`
+| capabilities | Required capabilities | `["CanvasRead", "CanvasWrite"]`
+| tags | Categorization tags | `["filter", "blur"]`
+| long_description | Long description (markdown) | Multi-line string
+|===
+
+=== Plugin Types
+
+* `effect` - Stateless transformations (filters, colour adjustments, etc.)
+* `tool` - Stateful tools (custom brushes, selection tools, etc.)
+
+=== Available Capabilities
+
+* `CanvasRead` - Read access to the canvas
+* `CanvasWrite` - Write access to the canvas
+* `LayerAccess` - Access to layer stack
+* `SelectionAccess` - Access to selection
+* `FileAccess` - Access to file system (restricted paths)
+* `NetworkAccess` - Network access for fetching resources
+* `UserInterface` - Modal dialogs, notifications
+* `PersistentStorage` - Persistent storage
+
+== Generated Structure
+
+When you run the minter, it creates:
+
+[source]
+----
+src/plugins/available/<plugin_id>/
+├── Cargo.toml              # Rust package configuration
+├── plugin.toml             # Plugin manifest
+├── README.adoc             # Documentation
+├── minter.toml             # Original config (for reproducibility)
+└── src/
+    └── lib.rs              # Plugin implementation skeleton
+----
+
+== Plugin Manifest (plugin.toml)
+
+The generated `plugin.toml` contains:
+
+[source,toml]
+----
+# Plugin identity
+id = "com.example.paint-type.blur"
+version = "0.1.0"
+name = "Gaussian Blur"
+description = "A Gaussian blur effect plugin"
+
+# Author information
+author = "Jane Developer"
+
+# Plugin classification
+plugin_type = "effect"
+
+# Technical specification
+wasm_entry = "_start"
+api_version = 1
+
+# License
+license = "AGPL-3.0-or-later"
+
+# Optional: Capabilities, tags, etc.
+capabilities = ["CanvasRead", "CanvasWrite"]
+tags = ["filter", "blur"]
+----
+
+== Rust Skeleton (src/lib.rs)
+
+The generated `lib.rs` provides:
+
+[source,rust]
+----
+use paint_type_plugins::{
+    effect::EffectPlugin,
+    tool::ToolPlugin,
+};
+
+pub struct GaussianBlur;
+
+impl EffectPlugin for GaussianBlur {
+    // TODO: Implement effect plugin
+}
+----
+
+== Integration with paint.type
+
+The minter tool is integrated into paint.type's plugin system. Plugins created
+with this tool can be:
+
+* Loaded dynamically at runtime
+* Validated against the plugin manifest schema
+* Sandboxed using WASM
+* Discovered via the plugin registry
+
+== Build
+
+[source,bash]
+----
+# Build the minter tool itself
+cd tools/plugin-minter
+cargo build --release
+
+# The binary will be at target/release/plugin-minter
+----
+
+== Running Tests
+
+[source,bash]
+----
+cargo test --manifest-path tools/plugin-minter/Cargo.toml
+----
+
+== License
+
+AGPL-3.0-or-later
+
+== See Also
+
+* link:../../[Parent Directory (`tools/`)]
+* link:0.2-AI-MANIFEST.a2ml[This Directory AI Manifest]
+* link:minter.toml[Example Minter Configuration]
+* link:templates/plugin_template/[Plugin Template]

@@ -1,0 +1,42 @@
+= PLUGIN_NAME
+:description: PLUGIN_DESCRIPTION
+:spdx-license-identifier: PLUGIN_LICENSE
+
+== Overview
+
+PLUGIN_DESCRIPTION
+
+== Plugin Metadata
+
+[cols="2,3"]
+|===
+| ID | PLUGIN_ID
+| Version | PLUGIN_VERSION
+| Type | PLUGIN_TYPE
+| Author | PLUGIN_AUTHOR
+| License | PLUGIN_LICENSE
+| WASM Entry | PLUGIN_WASM_ENTRY
+| API Version | PLUGIN_API_VERSION
+|===
+
+== Building
+
+[source,bash]
+----
+cd path/to/plugin
+cargo build --release
+----
+
+The compiled WASM will be at `target/wasm32-unknown-unknown/release/PLUGIN_CRATE_NAME.wasm`.
+
+== Installation
+
+Copy the `.wasm` file and `plugin.toml` to your paint.type plugins directory.
+
+== Usage
+
+TODO: Document how to use this plugin
+
+== License
+
+PLUGIN_LICENSE

@@ -1,0 +1,24 @@
+[package]
+name = "plugin-minter"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-or-later"
+description = "Plugin minter tool for paint.type - scaffolds new plugins from minter.toml configs"
+
+[[bin]]
+name = "plugin-minter"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+
+[dev-dependencies]
+assert_cmd = "2"
+predicates = "3"
+tempfile = "3"
+
+[profile.release]
+opt-level = "s"
+strip = true
