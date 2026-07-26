@@ -1,6 +1,8 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
 --
+import Init.Data.List.Lemmas
+
 -- Mechanisation: Undo graph monotonicity  (PROOF-NEEDS INV-2)
 --
 -- Ground truth:
@@ -18,8 +20,8 @@
 --   (4) Ancestry is acyclic and terminates along the root-ward path, in at
 --       most `r.as_u32()` steps.
 --
--- This file is pure Lean 4 core (NO mathlib, NO Std imports): it typechecks
--- with a bare `lean UndoGraph.lean` invocation. It contains no `sorry`,
+-- This file uses Lean 4 core + Init.Data.List.Lemmas (NO mathlib, NO Std imports):
+-- it typechecks with `lean UndoGraph.lean`. It contains no `sorry`,
 -- `admit`, or `native_decide`.
 
 /-! ## 0. Model
@@ -52,7 +54,7 @@ abbrev Graph (α : Type) := List (Node α)
 /-! ## 1. Observers (faithful models of the `pub fn`s)
 
 `len`, `checkout`, `parent_of` are the `&self` read APIs; in Rust they read
-from the `Vec` and never mutate. We reuse `List.length` and `List.get?`,
+from the `Vec` and never mutate. We reuse `List.length` and `List[i]?` notation,
 whose totality and out-of-bounds-→`none` behaviour exactly match
 `Vec::len` / `Vec::get` / `slice::get`. -/
 
@@ -62,12 +64,12 @@ def len (g : Graph α) : Nat := g.length
 /-- `g.checkout(r)` — value at revision `r`, `none` if unknown.
 Mirrors `self.nodes.get(r).map(|n| &n.value)`. -/
 def checkout (g : Graph α) (r : Nat) : Option α :=
-  (g.get? r).map Node.value
+  g[r]?.map Node.value
 
 /-- `g.parent_of(r)` — parent of `r`, `none` for the root or unknown ids.
 Mirrors `self.nodes.get(r).and_then(|n| n.parent)`. -/
 def parentOf (g : Graph α) (r : Nat) : Option Nat :=
-  (g.get? r).bind Node.parent
+  g[r]?.bind Node.parent
 
 /-! ## 2. Mutators
 
@@ -161,20 +163,34 @@ theorem newId_eq_old_len (g : Graph α) (p : Nat) (v : α) :
 `checkout` of any *existing* revision returns the *same* value after a
 commit. We prove the general statement: for every `r < len g`,
 `checkout (commit g p v) r = checkout g r`. The proof reduces to the fact
-that `List.get?` on an in-bounds index is unaffected by appending, which is
+that `[*][*]?` on an in-bounds index is unaffected by appending, which is
 the formal content of "append-only push never mutates existing entries". -/
 
-/-- `List.get?` at an in-bounds index is invariant under appending on the
+/-- Helper: out-of-bounds `getElem?` returns `none`. -/
+theorem getElem?_eq_none_of_ge {α : Type} (xs : List α) {i : Nat} (h : i >= xs.length) :
+    xs[i]? = none := by
+  induction xs generalizing i with
+  | nil => cases i <;> rfl
+  | cons x xs ih =>
+    cases i with
+    | zero => exact absurd h (Nat.not_lt_zero _)
+    | succ i' =>
+      have : i' + 1 >= (x :: xs).length := h
+      have hge : i' >= xs.length := Nat.le_of_succ_le_succ this
+      rw [List.getElem?_cons_succ]
+      exact ih hge
+
+/-- `[*][*]?` at an in-bounds index is invariant under appending on the
 right. (Pure-core lemma; mirrors `Vec::push` not touching live entries.) -/
 theorem getAppend_lt {α : Type} (xs ys : List α) {r : Nat}
-    (h : r < xs.length) : (xs ++ ys).get? r = xs.get? r := by
+    (h : r < xs.length) : (xs ++ ys)[r]? = xs[r]? := by
   induction xs generalizing r with
   | nil => exact absurd h (Nat.not_lt_zero r)
   | cons x xs ih =>
     cases r with
     | zero => rfl
     | succ r' =>
-      simp only [List.cons_append, List.get?]
+      simp only [List.cons_append]
       exact ih (Nat.lt_of_succ_lt_succ h)
 
 /-- Clause (2): checking out an existing revision is invariant under any
@@ -208,13 +224,13 @@ theorem parentOf_commit_lt (g : Graph α) (p : Nat) (v : α)
   unfold parentOf commit len at *
   rw [getAppend_lt g [{ parent := some p, value := v }] h]
 
-/-- `List.get?` at the first appended index returns the appended head.
-(`xs.get? xs.length = (ys.get? 0)` when appending `ys`.) -/
+/-- `[*][*]?` at the first appended index returns the appended head.
+(`xs[xs.length]? = (y :: ys)[0]?` when appending `y :: ys`.) -/
 theorem getAppend_eq {α : Type} (xs : List α) (y : α) (ys : List α) :
-    (xs ++ y :: ys).get? xs.length = some y := by
+    (xs ++ y :: ys)[xs.length]? = some y := by
   induction xs with
   | nil => rfl
-  | cons x xs ih => simpa [List.cons_append, List.get?] using ih
+  | cons x xs ih => simp
 
 /-- The parent pointer of the *newly committed* node (id `len g`) is `some p`.
 Mirrors `Node::parent` set once at construction. -/
@@ -282,9 +298,9 @@ theorem in_bounds_of_parent {g : Graph α} {r p : Nat}
     exfalso
     have hnone : parentOf g r = none := by
       unfold parentOf len at *
-      rw [List.get?_eq_none.mpr hge]; rfl
+      rw [getElem?_eq_none_of_ge g hge]; rfl
     rw [hnone] at h
-    exact Option.noConfusion h
+    cases h
 
 /-- Single root-ward step strictly decreases the id (the local acyclicity
 fact). From `WF`, if `parentOf g r = some p` then `p < r`. A cycle would
