@@ -1,0 +1,291 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+The open, cross-platform image editor Paint.NET users are actually
+asking for.
+
+![License:
+AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-red)
+<img src="https://img.shields.io/badge/CRG-D-orange?style=flat-square"
+data-link="https://github.com/hyperpolymath/standards/tree/main/component-readiness-grades"
+alt="CRG D" /> ![Status: pre-alpha — v0.2.0
+closing](https://img.shields.io/badge/status-pre--alpha%20(v0.2.0%20closing)-yellow)
+![Platforms](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey)
+<img
+src="https://github.com/metadatastician/paint-type/actions/workflows/rust.yml/badge.svg"
+data-link="https://github.com/metadatastician/paint-type/actions/workflows/rust.yml"
+alt="Rust CI" /> <img
+src="https://github.com/metadatastician/paint-type/actions/workflows/idris-ci.yml/badge.svg"
+data-link="https://github.com/metadatastician/paint-type/actions/workflows/idris-ci.yml"
+alt="Idris2 CI" /> <img
+src="https://github.com/metadatastician/paint-type/actions/workflows/e2e.yml/badge.svg"
+data-link="https://github.com/metadatastician/paint-type/actions/workflows/e2e.yml"
+alt="E2E" /> <img
+src="https://github.com/metadatastician/paint-type/actions/workflows/coverage.yml/badge.svg"
+data-link="https://github.com/metadatastician/paint-type/actions/workflows/coverage.yml"
+alt="Coverage" />
+<img src="https://img.shields.io/badge/docs-CC--BY--SA--4.0-blue"
+data-link="https://creativecommons.org/licenses/by-sa/4.0/"
+alt="Docs: CC-BY-SA-4.0" /> <img
+src="https://img.shields.io/badge/Idris-Inside-5E5086?logo=idris&amp;logoColor=white"
+data-link="https://www.idris-lang.org" alt="Idris Inside" />
+<img src="https://img.shields.io/badge/RSR-Bronze-cd7f32"
+data-link="https://github.com/hyperpolymath/standards"
+alt="RSR Standard" /> <img
+src="https://api.securityscorecards.dev/projects/github.com/metadatastician/paint-type/badge"
+data-link="https://securityscorecards.dev/viewer/?uri=github.com/metadatastician/paint-type"
+alt="OpenSSF Scorecard" />
+
+> [!TIP]
+> For quick project orientation, see the [Project
+> Wiki](https://github.com/metadatastician/paint-type/wiki).
+
+We will advertise the release schedule shortly, which allows for easy
+install.
+
+By way of orientation, if you have AI you can request the warm up script
+for user or developer, once you have the LLM pointed at this repo:
+
+- "Warm up on paint.type and give me the current status."
+
+- "I want to develop paint.type — what’s the next unblocked task?"
+
+- "What can I contribute right now, and what’s off-limits?"
+
+------------------------------------------------------------------------
+
+# What this is
+
+Paint.NET is one of the best ideas in image editing: capable enough for
+real work, simple enough to learn without a manual, fast enough to reach
+for without thinking. Its community knows this. The [forum
+threads](https://news.ycombinator.com/item?id=39871186), the plugin
+ecosystem, the years of requests — they all say the same thing. The tool
+is right. The constraints are wrong.
+
+paint.type is the answer to those constraints.
+
+- Open source, community-maintained
+
+- Linux, macOS, and Windows — same experience, same file format,
+  everywhere
+
+- A plugin ecosystem that doesn’t live in forum threads
+
+- Real-time collaboration via
+  [Burble](https://github.com/hyperpolymath/burble) — built in, not
+  bolted on
+
+- The same simplicity contract Paint.NET made with its users, kept
+
+This is not a GIMP. It is not a Krita. It is not a Photoshop. It is the
+tool Paint.NET users have been asking for, built by one of them.
+
+------------------------------------------------------------------------
+
+# Status
+
+Pre-alpha. v0.1.0 Foundation (tile primitive, Idris2 ABI, Zig FFI, Rust Ephapax skeleton, CI/CD) closed. v0.2.0 Core Image Operations is closing: compositing primitives (11 ops — Porter-Duff `over` + masked blend + flatten + lerp/multiply/screen/in/out/atop/xor), persistent UndoGraph, basic Layer model, brush engine (BrushTip + Brush  
+stamp + Stroke), and pt_layer\_\* cross-language FFI all landed; ABI
+category fully proven (ABI-1..5 done) + TP-1/TP-3; cargo test 98/98 + 1
+doctest, zig 29/29, 7/7 aspect tests, E2E + fuzz + coverage CI all
+green. The AffineScript → typed-wasm bridge is now fully verified by
+typed-wasm (`paint-type#39` closed).
+
+The first runnable application is v0.3.0 (Gossamer shell), still ahead.
+
+If you are a Paint.NET user who has ever wanted this to exist on Linux,
+or wanted to share a plugin without posting a forum thread, or wanted to
+paint with someone else in real time — this is the right moment to show
+up.
+
+See <a href="#contributing" class="cross-reference">Contributing</a> if
+you want to be part of building it from the ground up.
+
+------------------------------------------------------------------------
+
+# What it will be
+
+## The core experience
+
+- Layers, blend modes, masks
+
+- Unlimited history — bounded memory, not bounded undo
+
+- Fast everyday editing without professional-pipeline overhead
+
+- Familiar tool set: selection, brush, clone, gradient, shapes, text
+
+- Full colour management — sRGB, Display P3, wide gamut
+
+## The plugin story, done properly
+
+The Paint.NET plugin ecosystem is one of its best features and one of
+its biggest frustrations. Finding plugins means searching forum threads.
+Knowing if a plugin works on your version means hoping. paint.type fixes
+this:
+
+- In-app plugin browser — find, install, update without leaving the tool
+
+- Signed packages — integrity without gatekeeping
+
+- WASM plugin tier — write once, runs on every platform without
+  recompilation
+
+- Native plugin tier — maximum performance where it matters
+
+- Stable SDK — plugins do not break on every release
+
+- Sandboxed permissions — plugins declare what they need, the runtime
+  enforces it
+
+## Collaboration
+
+paint.type is Groove-aware. If
+[Burble](https://github.com/hyperpolymath/burble) is running on the same
+machine, the two find each other automatically. No configuration. No
+account. No setup. You open a session, someone joins, and you are
+painting together.
+
+The session includes an LLM channel — not an AI-first experience, not a
+creative director that tells you what to do, but a participant in the
+session that holds context, mediates conflicts when two people edit the
+same region, and answers when addressed. It does not touch the canvas
+unless explicitly asked. It does not offer unsolicited opinions about
+your palette.
+
+## What it will not try to be
+
+paint.type will not try to beat Photoshop at professional print
+workflows. It will not try to be a full digital content creation suite.
+It will not accumulate features until it becomes the thing Paint.NET was
+never supposed to be.
+
+The scope contract is: capable enough for real work, simple enough to
+reach for without thinking. That contract does not expire.
+
+------------------------------------------------------------------------
+
+# Architecture
+
+paint.type is built on the
+[hyperpolymath](https://github.com/hyperpolymath) ecosystem:
+
+| Layer | Technology |
+|----|----|
+| Desktop shell | [Gossamer](https://github.com/hyperpolymath/gossamer) — linearly-typed webview shell, provable resource safety, compile-time IPC type safety |
+| UI frontend | Web (HTML/CSS/JS) hosted in Gossamer — layer panel, tool chrome, inspector panels, plugin UI |
+| Native image core | [Ephapax](https://github.com/hyperpolymath/ephapax) — linear types with region-based allocation; tile ownership, compositing pipeline, brush engine, undo graph, codecs |
+| Bridge language | [AffineScript](https://github.com/hyperpolymath/affinescript) — algebraic effects for the IPC traffic classes; latency-critical brush commands separated from throughput-oriented tile delivery |
+| Cross-language boundary | [typed-wasm](https://github.com/hyperpolymath/typed-wasm) — multi-module type safety at the AffineScript/Ephapax boundary; shared region schemas verified at compile time, no bitmap copies across the bridge |
+| Collaboration | [Burble](https://github.com/hyperpolymath/burble) — sub-10ms WebRTC voice, embeddable client, session presence model |
+| Service discovery | [Groove](https://github.com/hyperpolymath/groove-browser-harness) — automatic localhost service discovery; paint.type and Burble find each other without configuration |
+
+The canvas bridge is command-in, dirty-rect-out. The native core owns
+the pixel buffer. The webview renders chrome. Tile data does not cross
+the bridge as bitmap copies — the frontend holds a typed reference into
+the native core’s tile region, verified at compile time by typed-wasm.
+
+------------------------------------------------------------------------
+
+# Comparison
+
+|                            | paint.type | Paint.NET     | GIMP    | Krita   |
+|----------------------------|------------|---------------|---------|---------|
+| Linux                      | ✓          | ✗             | ✓       | ✓       |
+| macOS                      | ✓          | ✗             | ✓       | ✓       |
+| Open source                | ✓          | ✗             | ✓       | ✓       |
+| Plugin marketplace         | ✓          | Forum threads | Limited | Limited |
+| Real-time collaboration    | ✓          | ✗             | ✗       | ✗       |
+| Paint.NET complexity level | ✓          | ✓             | ✗       | ✗       |
+
+------------------------------------------------------------------------
+
+# Language + seam compliance
+
+paint-type adheres to a strict per-tier language policy. The mapping is
+load-bearing — every tier picks the language that gives the tier its
+safety property.
+
+| Tier | Language | Why this language |
+|----|----|----|
+| Application + image core | Rust | Linear types via `!Copy` `+` `!Clone` `Tile`; no aliased mutable access; cargo-fuzz for FFI surface |
+| FFI bridge | Zig (FFI directory only) | C ABI compatibility without C foot-guns; libpt is pure Zig, Rust links via `extern` `"C"` |
+| ABI definitions + proofs | Idris2 | Dependent types prove pointer non-nullability, layout correctness, ABI compliance |
+| UI bridge schemas | AffineScript → typed-wasm | Algebraic effects separate latency-critical brush commands from throughput-oriented tile delivery; multi-module type safety across the IPC boundary |
+| Build orchestration | `just` + bash | Recipe-based, no Python, no `make` |
+| Container runtime | podman + Chainguard Wolfi | Rootless containers; ML-DSA-87 signed |
+
+------------------------------------------------------------------------
+
+# Seams
+
+paint-type has four named seams. Each has a typed contract:
+
+| Seam | Contract |
+|----|----|
+| Internal: `paint_core` ↔ `libpt` | Rust `extern` `"C"` declarations in `src/paint_core/src/lib.rs` mirror Zig `pub` `export` `fn` in `src/interface/ffi/src/main.zig`. ABI-compatibility proven in `src/interface/Abi/Foreign.idr`. |
+| Internal: `host` ↔ `paint_core` | Pure Rust calls through `host_core::dispatch::dispatch`; shared `Document` behind `Arc<Mutex<_>>` for the Gossamer command thread. |
+| External: Gossamer shell ↔ webview | JSON-encoded `Command` / `Response` via `window.__gossamer_invoke("dispatch",` `…)`. CSP-locked to own origin + inline UI script. |
+| External: paint-type ↔ Burble / Groove | Service discovery via `.well-known/groove/manifest.json`; collaboration via Burble WebRTC (CRDT tile mutations). |
+
+The proximal seams (within paint-type) are size-checked, layout-proven,
+and panic-attack-scanned. The distal seams (to ecosystem peers) are
+protocol-versioned and version-guarded — see `DUST-ABI-0001` for the
+recovery path on libpt ABI mismatch.
+
+------------------------------------------------------------------------
+
+# Quick links
+
+- [Wiki Home](https://github.com/metadatastician/paint-type/wiki) —
+  single-page routing hub pointing at the in-repo source of truth
+
+- <a href="EXPLAINME.adoc" class="adoc">EXPLAINME</a> — repository
+  structure guide
+
+- <a href="TOPOLOGY.adoc" class="adoc">TOPOLOGY</a> — component
+  architecture
+
+- <a href="ROADMAP.adoc" class="adoc">ROADMAP</a> — milestone plan
+
+- <a href="PROOF-STATUS.adoc" class="adoc">PROOF-STATUS</a> /
+  <a href="TEST-NEEDS.adoc" class="adoc">TEST-NEEDS</a> — proof + test
+  coverage status
+
+- [QUICKSTART-DEV](QUICKSTART-DEV.adoc) /
+  [QUICKSTART-USER](QUICKSTART-USER.adoc) /
+  [QUICKSTART-MAINTAINER](QUICKSTART-MAINTAINER.adoc)
+
+------------------------------------------------------------------------
+
+# Contributing
+
+paint.type is starting now. The best time to get involved is before the
+conventions are set.
+
+If you know Paint.NET well — what it gets right, what it gets wrong,
+what you reach for it for — that knowledge is exactly what this project
+needs. If you can write Rust, Zig, AffineScript, Ephapax, or web
+frontend code, there is real work to do. If you want to help define the
+plugin SDK, the file format spec, or the collaboration model, those
+conversations are open.
+
+Open an issue, start a discussion, or reach out directly.
+
+`paint-`[`type@pm.me`](type@pm.me)
+
+------------------------------------------------------------------------
+
+# License
+
+AGPL-3.0-or-later — see [LICENSE](LICENSE)
+
+------------------------------------------------------------------------
+
+# Author
+
+Joshua Jewell — [JoshuaJewell](https://github.com/metadatastician)
+Jonathan D.A. Jewell - [hyperpolymath](https://github.com/hyperpolymath)
+
+Built within the [hyperpolymath](https://github.com/hyperpolymath)
+ecosystem.
