@@ -14,10 +14,11 @@ permissions:
 jobs:
   scorecard:
     name: OSSF Scorecard Check
+    timeout-minutes: 10
     uses: metadatastician/standards/.github/workflows/scorecard-reusable.yml@2b6d30bba13d1ed7034fb03ec61b7011e4040896
     permissions:
       contents: read
       security-events: write
       id-token: write
-    # Mark as non-critical to prevent workflow failure due to estate-wide template bugs
+    # Mark as non-critical to prevent workflow failure due to estate-wide issues
     continue-on-error: true

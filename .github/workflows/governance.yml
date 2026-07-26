@@ -14,6 +14,7 @@ permissions:
 jobs:
   governance:
     name: Governance Check
+    timeout-minutes: 10
     uses: metadatastician/standards/.github/workflows/governance-reusable.yml@2b6d30bba13d1ed7034fb03ec61b7011e4040896
     # Mark as non-critical to prevent workflow failure due to estate-wide issues
     continue-on-error: true
