@@ -33,15 +33,18 @@ As a Level 1 directory (`.github/`), it supports the overall project structure.
 * `DIRECTORY.adoc` — AsciiDoc documentation
 * `funding.yml` — YAML configuration
 * `FUNDING.yml` — YAML configuration
-* `GOVERNANCE.adoc` — AsciiDoc documentation
-* `GOVERNANCE.md` — Markdown documentation
 * `.mailmap` — project file
-* `MAINTAINERS` — project file
 * `.nojekyll` — project file
 * `pull_request_template.md` — Markdown documentation
 * `SECURITY.md` — Markdown documentation
 * `settings.yml` — YAML configuration
 * `SUPPORT` — project file
+
+[NOTE]
+====
+`GOVERNANCE.adoc`, `GOVERNANCE.md`, and `MAINTAINERS` have been consolidated in the repository root.
+====
+
 
 == AI Manifest Structure
 

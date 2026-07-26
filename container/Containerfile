@@ -5,7 +5,12 @@
 # Customise the builder stage for your language and copy the
 # resulting binary/release into the minimal runtime stage.
 #
-# Build with Podman:
+# This is the Tier-A artifact: a plain OCI image, buildable by ANY
+# OCI-compliant engine — podman (recommended), nerdctl, or docker.
+# It carries no hard dependency on the stapeln tier; the cerro-torre /
+# svalinn files under container/ are referenced only as labels.
+#
+# Build (engine-agnostic — substitute podman | nerdctl | docker):
 #   podman build -t {{SERVICE_NAME}}:latest -f container/Containerfile .
 #
 # Run:
@@ -13,6 +18,9 @@
 #
 # Run with persistent volume:
 #   podman run -p {{PORT}}:{{PORT}} -v {{SERVICE_NAME}}-data:/data {{SERVICE_NAME}}:latest
+#
+# Via the Justfile (auto-detects engine, prefers cerro-torre when present):
+#   just container-build
 
 # ============================================================================
 # Stage 1: Builder
@@ -48,6 +56,11 @@
 #   RUN zig build -Doptimize=ReleaseFast
 #   # Output: /build/zig-out/bin/{{SERVICE_NAME}}
 #
+# Base image: `:latest` is right for a template scaffold (Chainguard rebuilds
+# Wolfi daily). For PRODUCTION builds, pin by digest for reproducibility/supply-
+# chain integrity, e.g.:
+#   FROM cgr.dev/chainguard/wolfi-base:latest@sha256:<digest> AS builder
+# (cerro-torre's .ctp signing in container/ records the resolved digest.)
 FROM cgr.dev/chainguard/wolfi-base:latest AS builder
 
 # TODO: Install your language toolchain

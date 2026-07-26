@@ -1,0 +1,112 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// GitHub Issue: DEP-02 typed-wasm — Verified WASM Bridge Target
+// Status: DONE
+// Priority: Maintain
+// Readiness: A
+// Owner: hyperpolymath
+// Last Updated: 2026-07-26
+
+= DEP-02: typed-wasm — Verified WASM Bridge Target
+
+**Repository:** https://github.com/hyperpolymath/typed-wasm
+**Status:** ✅ **DONE** — paint-type slice closed
+
+== Current Status
+
+DEP-02 is **complete** for paint-type. All critical tasks have been finished and the
+WASM bridge is verified and working.
+
+=== Completed Tasks
+
+1. ✅ **paint-type slice closed** (#127 closed)
+   - Issue #127: Integrate typed-wasm with paint-type
+   - Status: Closed
+
+2. ✅ **#130 slice green** via PR#165 (`ba3c7d9`)
+   - Issue #130: WASM verification corpus
+   - PR #165: Implemented and merged
+   - Commit: `ba3c7d9`
+
+3. ✅ **Hand-modelled `.twasm` schemas**
+   - Location: `paint-type/src/bridges/`
+   - Schemas: `paint-type-{tile,layer}.twasm`
+   - Compiled by: `tw build` from typed-wasm v0
+
+== Repository Integration
+
+**paint-type:** `/home/hyperpolymath/developer/meta-repos/paint-type/`
+
+=== Files Created/Modified
+
+[cols="3,1,1"]
+|=== 
+| File | Status | Purpose |
+| `src/bridges/paint-type-tile.twasm` | Created | Tile API WASM schema |
+| `src/bridges/paint-type-layer.twasm` | Created | Layer API WASM schema |
+|=== 
+
+== Remaining Tasks (Maintenance)
+
+These are **non-critical maintenance items** that do not block paint-type:
+
+[cols="1,3,1"]
+|=== 
+| Task | Description | Priority |
+| Keep `tw`/`tw-verify` pinned in paint-type | Ensure typed-wasm tools are at compatible versions | Low |
+| Full #130 corpus | Complete the full WASM verification corpus | Low |
+| D6 human-readable errors (#126) | Improve error messages for WASM verification | Low |
+|=== 
+
+== Automation
+
+[cols="3,1,1"]
+|=== 
+| Check | Status | Location |
+| WASM verification | ✅ Active | CI workflow |
+| Schema compilation | ✅ Active | `tw build` |
+| Type checking | ✅ Active | typed-wasm CI |
+|=== 
+
+== Verification
+
+The typed-wasm integration has been verified through:
+
+1. **Schema compilation**: All `.twasm` schemas compile successfully
+2. **Type verification**: All schemas pass typed-wasm type checking
+3. **Integration tests**: paint-type CI includes typed-wasm verification
+4. **End-to-end**: WASM modules are consumed by paint-type runtime
+
+== Acceptance Criteria
+
+- [x] paint-type slice closed (#127)
+- [x] #130 slice green (PR#165)
+- [x] `.twasm` schemas created and verified
+- [x] WASM bridge target working
+- [ ] Keep `tw`/`tw-verify` pinned (maintenance)
+- [ ] Full #130 corpus (nice-to-have)
+- [ ] D6 human-readable errors (#126) (nice-to-have)
+
+== References
+
+- **Issue #127:** https://github.com/hyperpolymath/paint-type/issues/127
+- **Issue #130:** https://github.com/hyperpolymath/paint-type/issues/130
+- **PR #165:** https://github.com/hyperpolymath/paint-type/pull/165
+- **Commit:** `ba3c7d9`
+- **typed-wasm repo:** https://github.com/hyperpolymath/typed-wasm
+
+== Labels
+
+`DEP-02`, `typed-wasm`, `done`, `maintenance`, `P2`
+
+== Assignees
+
+- **Primary:** hyperpolymath
+- **Maintenance:** paint-type maintainers
+
+== Closing Note
+
+DEP-02 is **considered done** for paint-type's purposes. The WASM bridge is
+verified, schemas are in place, and integration is complete. Remaining tasks
+are maintenance/improvement items that do not block any critical path.
+
+**Status: CLOSED** ✅

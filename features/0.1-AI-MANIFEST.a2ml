@@ -15,9 +15,7 @@ This manifest describes the purpose and structure of the `features/` directory.
 
 | Directory | Layer | Purpose |
 |---|---|---|
-| `boj-server/` | 2 | |
-| `panic-attacker/` | 2 | |
-| `ssg/` | 2 | |
+| `ssg/` | 2 | Static site generator integration |
 
 ## Invariants
 

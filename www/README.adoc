@@ -4,7 +4,8 @@
 :description: Static site for paint.type project
 
 This directory contains the static site for the paint.type project, generated
-using link:https://github.com/hyperpolymath/casket-ssg[casket-ssg].
+using link:https://github.com/hyperpolymath/ddraig-ssg[ddraig-ssg] — a dependently-typed
+static-site generator written in pure Idris 2.
 
 == Purpose
 
@@ -14,28 +15,44 @@ The `www/` directory hosts the official paint.type static website, including:
 - Getting started guides
 - Architecture overviews
 - API references
+- Demo showcases with representative images
 
 == Tooling and Security
 
-This static site is generated using *casket-ssg*.
+This static site is generated using *ddraig-ssg* (Welsh for _dragon_ — "types that breathe fire").
 
 === Dependency Pinning
 
-* *Tool*: `casket-ssg`
-* *Version/Commit*: `v0.1.4` (commit `8c3b772b144e59df29c66cb1a8c3d9a4b276ff11`)
-* *Source*: https://github.com/hyperpolymath/casket-ssg
-* *Pin Verification*: Verify with `casket-ssg --version` or hash match during container builds.
+* *Tool*: `ddraig-ssg`
+* *Language*: Idris 2 (0.8.0+)
+* *Source*: https://github.com/hyperpolymath/ddraig-ssg
+* *Build*: `idris2 Ddraig.idr -o ddraig`
+* *Verification*: `idris2 --check Html.idr` (type-checked HTML core)
+
+=== Proof-Carrying Accessibility
+
+Ddraig-ssg provides WCAG 2.2 AAA-capable accessible output with proof-carrying
+guarantees:
+
+* Every page carries an echo witness that its output is the render of an accessible source
+* Machine-decidable WCAG criteria are theorems, not conventions
+* The build fails if any page is un-attestable
+* Accessibility attestation emitted at `/.well-known/accessibility-attestation.json`
 
 === Escaping Contract
 
-The casket-ssg templating engine provides the following escaping guarantees:
+The ddraig-ssg templating engine provides the following escaping guarantees:
 
-* `{{title}}` & `{{description}}`: Automatically HTML-escaped by `casket-ssg` at template compilation time to prevent XSS (Cross-Site Scripting) attacks.
-* `{{content}}`: Raw HTML block generated from Markdown. *SECURITY NOTE*: The template trust model assumes markdown content is generated from trusted repository files and contains no unescaped user-controlled input. Do NOT use `{{content}}` with untrusted user input.
+* Front-matter fields (`title`, `description`, `date`, etc.) are automatically HTML-escaped
+* Markdown content is parsed into typed HTML nodes and emitted by a total `render` function
+* Image nodes cannot be constructed without non-empty alt text (WCAG 1.1.1 by construction)
+* Raw HTML passthrough is supported but the template trust model assumes markdown content
+  is generated from trusted repository files
 
 === Security Headers
 
-The site enforces strict security headers:
+The site enforces strict security headers (embedded via `<meta>` tags and served as
+HTTP response headers):
 
 * **Content-Security-Policy (CSP)**: `default-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'self'; upgrade-insecure-requests`
 * **X-Content-Type-Options**: `nosniff` — prevents MIME-sniffing attacks
@@ -43,43 +60,75 @@ The site enforces strict security headers:
 * **X-XSS-Protection**: `1; mode=block` — enables browser XSS filter
 * **Referrer-Policy**: `no-referrer` — limits referrer information
 
-These headers are embedded in templates via `<meta>` tags and can also be served
-as HTTP response headers from the host.
-
 == Directory Structure
 
 [cols="1,2", options="header"]
 |===
 | Directory | Purpose
-| `templates/` | HTML templates for casket-ssg
+| `src/` | Markdown source files with front-matter
+| `templates/` | HTML templates for ddraig-ssg
+| `assets/` | Static assets (CSS, images)
+| `public/` | Files copied to site root (CNAME, robots.txt, .well-known/)
 | `security_headers/` | Security header configurations
 | `.well-known/` | Well-known URI resources (RFC 8615)
 | `resource_records/` | Resource records and security manifests
 |===
 
-=== Building the Site
+== Source Layout
+
+A ddraig-ssg site directory may contain:
+
+----
+src/
+  index.md              # pages (front-matter + Markdown)
+  getting-started.md    # getting started guide
+  architecture.md       # architecture overview
+  templates/
+    default.html        # layout (overrides the built-in)
+    partials/header.html
+  assets/style.css      # copied as-is
+  assets/images/       # project images and screenshots
+  public/               # copied to the OUTPUT ROOT
+    CNAME
+    .well-known/security.txt
+----
+
+== Building the Site
 
 To build the static site:
 
-. Ensure casket-ssg is installed at the pinned version:
-   - Clone: `git clone https://github.com/hyperpolymath/casket-ssg`
-   - Checkout: `git checkout 8c3b772b144e59df29c66cb1a8c3d9a4b276ff11`
-   - Verify: `casket-ssg --version`
+. Ensure ddraig-ssg is installed:
+   - Clone: `git clone https://github.com/hyperpolymath/ddraig-ssg`
+   - Build: `cd ddraig-ssg && idris2 Ddraig.idr -o ddraig`
+   - Verify: `./build/exec/ddraig --version`
+   - Verify proofs: `idris2 --check Html.idr`
 
-. Run the site generator (consult casket-ssg documentation for exact commands)
+. Run the site generator:
+   - `ddraig build src _site https://paint.type`
 
-. The generated files will be placed in the output directory
+. The generated files will be placed in `_site/`
+
+. Clean with: `ddraig clean _site`
 
 == Contents by Functional Grouping
 
+*Source Pages*::
+- `src/index.md` — Home page with project overview
+- `src/getting-started.md` — Getting started guide
+- `src/architecture.md` — Architecture overview
+
 *Templates*::
 - `templates/default.html` — Main HTML template with security headers
+
+*Assets*::
+- `assets/style.css` — Project stylesheet
+- `assets/images/` — Screenshots and demo images
 
 *Security Configuration*::
 - `security_headers/csp.conf` — Content Security Policy and related headers
 
 *Well-Known Resources*::
-- `.well-known/` — Standard well-known URI endpoints
+- `.well-known/` — Standard well-known URI endpoints (security.txt, ai.txt, etc.)
 
 *Resource Records*::
 - `resource_records/` — Security and resource manifests
@@ -93,3 +142,4 @@ To build the static site:
 * link:../features/ssg/README.adoc[SSG Feature Directory]
 * link:../.machine_readable/[Machine Readable Metadata]
 * link:../SECURITY.md[Security Policy]
+* link:https://github.com/hyperpolymath/ddraig-ssg[Ddraig SSG Repository]

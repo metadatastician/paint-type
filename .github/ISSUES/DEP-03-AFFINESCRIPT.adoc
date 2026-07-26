@@ -1,0 +1,164 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// GitHub Issue: DEP-03 AffineScript — UI Language + ABI→.twasm Generator
+// Status: In Progress (BLOCKED)
+// Priority: P1
+// Readiness: C
+// Owner: hyperpolymath
+// Last Updated: 2026-07-26
+
+= DEP-03: AffineScript — UI Language + ABI→.twasm Generator
+
+**Repository:** https://github.com/hyperpolymath/affinescript
+**Live Path:** `/home/hyperpolymath/developer/worktrees/affinescript/`
+
+== Current Status
+
+AffineScript is a **separate language** from Ephapax (despite the similar name).
+It is an OCaml-based compiler targeting WebAssembly with typed-wasm integration.
+
+**Critical Issue: NO WORKING COMPILER**
+
+AffineScript currently has **no working compiler** (per multiple sources:
+- git-reticulator/PROOF-NEEDS.md: "AffineScript has no working compiler yet"
+- git-reticulator/docs/decisions/rust-spark-stance.adoc: "AffineScript has no
+  working compiler, and the code calls git2/postgres crates AffineScript cannot bind")
+
+This is the **primary blocker** for DEP-03 and for paint-type v0.2→v0.3 shipping.
+
+=== Completed Tasks
+
+1. ✅ **Build the ABI→`.twasm` generator** (paint-type#39 producer side)
+   - Status: Closed via PR #39
+   - Schemas: `src/bridges/paint-type-{tile,layer}.twasm`
+   - Compiled by: `tw build` from typed-wasm v0
+
+=== Remaining Tasks
+
+[cols="1,3,1,1"]
+|=== 
+| Task | Description | Status | Blocker |
+| Widen typed-wasm enforcement | From L7/L10/L13 to L1–L5 | ⏳ Open | No compiler |
+| Compile UI chrome | layer-panel / tool-bar / canvas-viewport | ⏳ Open | No compiler |
+|=== 
+
+=== Details
+
+### Task 1: Widen typed-wasm enforcement
+
+**Issue references:** #462 (access-sites), #562 (fixtures)
+
+**Current state:** typed-wasm enforcement exists for L7, L10, L13 but not for
+L1–L5. This needs to be widened to cover all language levels.
+
+**Blocker:** Requires a working AffineScript compiler to test and verify the
+widening.
+
+### Task 2: Compile the UI chrome
+
+**Components:**
+- layer-panel
+- tool-bar  
+- canvas-viewport
+
+**Blocker:** Requires a working AffineScript compiler to compile these UI
+components.
+
+=== Repository State
+
+[cols="3,1"]
+|=== 
+| Property | Value |
+| Language | OCaml |
+| Build system | dune |
+| Test suite | 257 tests (green per justfile) |
+| Version | Alpha (0.1.1) |
+| Compilable | ❌ No |
+| Backends | Deno, Tea, DOM (planned) |
+|=== 
+
+=== Dependencies
+
+**typed-wasm:** https://github.com/hyperpolymath/typed-wasm
+- Status: ✅ Working (DEP-02 complete)
+- Integration: ABI→`.twasm` generator complete
+
+**paint-type:** https://github.com/hyperpolymath/paint-type
+- Status: Waiting on AffineScript compiler
+- Needs: UI chrome compilation
+
+=== Blockers Analysis
+
+### Primary Blocker: No Working Compiler
+
+This is **not an automation problem** — it's a fundamental implementation gap.
+
+**Evidence:**
+1. git-reticulator/PROOF-NEEDS.md explicitly states: "AffineScript has no working
+   compiler yet"
+2. git-reticulator/docs/decisions/rust-spark-stance.adoc: "AffineScript has no
+   working compiler, and the code calls git2/postgres crates AffineScript cannot
+   bind"
+3. Multiple repos reference this as a blocker
+
+**Impact:**
+- Blocks paint-type v0.2→v0.3 shipping
+- Blocks UI chrome compilation
+- Blocks typed-wasm widening
+- Blocks DEP-03 completion
+
+### Secondary Considerations
+
+**Alternative Approach:**
+If AffineScript compiler completion is far off, consider using Ephapax directly
+for the UI chrome. However, this would be a **different architecture** and
+would require significant redesign.
+
+**Note:** Ephapax is NOT AffineScript. They are separate languages with
+different purposes. See:
+https://github.com/hyperpolymath/nextgen-languages/blob/main/docs/disambiguation/ephapax-vs-affinescript.md
+
+== Automation Status
+
+[cols="3,1,1"]
+|=== 
+| Check | Status | Location |
+| panic-attack.toml | ✅ Exists | Root directory |
+| CI workflows | ❌ Needed | .github/workflows/ |
+| Build automation | ✅ dune | justfile |
+|=== 
+
+=== Acceptance Criteria
+
+- [x] ABI→`.twasm` generator built (paint-type#39)
+- [ ] AffineScript compiler working
+- [ ] typed-wasm enforcement widened to L1–L5
+- [ ] UI chrome (layer-panel, tool-bar, canvas-viewport) compiled
+- [ ] panic-attack CI workflow added
+- [ ] All 257 tests passing with new compiler
+
+== References
+
+- **Repository:** https://github.com/hyperpolymath/affinescript
+- **Issue #462:** Access-sites for typed-wasm widening
+- **Issue #562:** Fixtures for typed-wasm widening
+- **paint-type#39:** ABI→`.twasm` generator
+- **typed-wasm:** https://github.com/hyperpolymath/typed-wasm
+- **Disambiguation:** https://github.com/hyperpolymath/nextgen-languages/blob/main/docs/disambiguation/ephapax-vs-affinescript.md
+
+== Labels
+
+`DEP-03`, `AffineScript`, `blocked`, `P1`, `compiler`, `BLOCKED-no-compiler`
+
+== Assignees
+
+- **Primary:** hyperpolymath
+- **Compiler:** AffineScript team
+- **Integration:** paint-type maintainers
+
+== Closing Note
+
+DEP-03 **cannot be closed** until the AffineScript compiler is working. This is
+a **fundamental blocker** that requires implementation work, not automation
+or documentation.
+
+**Status: BLOCKED** ❌ (awaiting compiler completion)

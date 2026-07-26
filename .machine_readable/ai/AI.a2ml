@@ -20,7 +20,7 @@
 # Integrate them incrementally as the project matures.
 
 proven = "Formally verified safety library — replace raw string/JSON/URL/crypto ops"
-panic-attacker = "Static analysis — run `just assail` before every commit"
+panic-attack = "Static analysis — run `just assail` before every commit"
 feedback-o-tron = "Autonomous bug filing — auto-report upstream dependency failures"
 verisimdb = "Cross-repo analytics — emit scan results and build metrics"
 vexometer = "Irritation surface analysis — measure friction in CLI/UI tools"

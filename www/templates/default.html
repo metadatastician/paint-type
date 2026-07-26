@@ -1,43 +1,67 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" prefix="rdf: http://www.w3.org/1999/02/22-rdf-syntax-ns# rdfs: http://www.w3.org/2000/01/rdf-schema# owl: http://www.w3.org/2002/07/owl# schema: http://schema.org/">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Security Headers -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'self'; upgrade-insecure-requests">
-    <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <meta name="referrer" content="no-referrer">
-    <meta http-equiv="X-Frame-Options" content="DENY">
-    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
-    <title>{{title}} -- paint.type</title>
-    <meta name="description" content="{{description}}">
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title property="schema:name">{{title}}</title>
+  <meta name="description" property="schema:description" content="{{description}}">
+  <meta name="color-scheme" content="light dark">
+  <link rel="canonical" href="{{canonical}}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="paint.type">
+  <meta property="og:title" content="{{title}}">
+  <meta property="og:description" content="{{description}}">
+  <meta property="og:url" content="{{canonical}}">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="{{title}}">
+  <meta name="twitter:description" content="{{description}}">
+  <!-- Security Headers -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'self'; upgrade-insecure-requests">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+  <link rel="stylesheet" href="/assets/style.css">
 </head>
-<body>
-    <header>
-        <nav>
-            <a href="index.html" class="logo">paint.type</a>
-            <div class="nav-links">
-                <a href="index.html">Home</a>
-                <a href="getting-started.html">Getting Started</a>
-                <a href="architecture.html">Architecture</a>
-                <a href="https://github.com/metadatastician/paint-type" target="_blank" rel="noopener noreferrer">GitHub</a>
-            </div>
-        </nav>
-    </header>
+<body typeof="schema:WebPage">
+  <a class="skip-link" href="#main">Skip to content</a>
 
-    <main>
-        <article>
-            {{content}}
-        </article>
-    </main>
+  <header class="site-header" role="banner">
+    <nav class="container nav" aria-label="Primary" role="navigation" typeof="schema:SiteNavigationElement">
+      <a class="brand" href="/" property="schema:url"><span property="schema:name">paint.type</span></a>
+      <ul class="nav-links">
+        <li><a href="/index.html" property="schema:url">Home</a></li>
+        <li><a href="/getting-started.html" property="schema:url">Getting Started</a></li>
+        <li><a href="/architecture.html" property="schema:url">Architecture</a></li>
+        <li><a href="https://github.com/metadatastician/paint-type" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+      </ul>
+    </nav>
+  </header>
 
-    <footer>
-        <p>paint.type — A cross-language, type-safe digital painting system.</p>
-        <p>MPL-2.0 &mdash; &copy; 2026 Jonathan D.A. Jewell (hyperpolymath)</p>
-        <div class="footer-links">
-            <a href="https://github.com/metadatastician/paint-type" target="_blank" rel="noopener noreferrer">GitHub</a>
-        </div>
-    </footer>
+  <main id="main" class="container main" role="main" typeof="schema:WebPageElement">
+    <article typeof="schema:Article">
+      <header>
+        <h1 property="schema:headline">{{title}}</h1>
+      </header>
+      
+      {{content}}
+      
+      {{toc}}
+    </article>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="container">
+      <p>paint.type &mdash; <span property="schema:slogan">Types that paint. A cross-language, type-safe digital painting system with formally verified invariants.</span></p>
+      <p><small>MPL-2.0-or-later &mdash; &copy; 2026 <span property="schema:author">Jonathan D.A. Jewell (hyperpolymath)</span></small></p>
+      <nav aria-label="Secondary" role="navigation">
+        <ul class="footer-links">
+          <li><a href="https://github.com/metadatastician/paint-type" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+          <li><a href="/.well-known/security.txt">Security Policy</a></li>
+          <li><a href="/.well-known/ai.txt">AI Manifest</a></li>
+        </ul>
+      </nav>
+    </div>
+  </footer>
 </body>
 </html>

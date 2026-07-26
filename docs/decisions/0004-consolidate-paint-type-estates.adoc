@@ -43,7 +43,7 @@ From **`JoshuaJewell/paint-type@ba4fd84`** (merged PR #113), the CI/security tra
 - `.github/workflows/cross-platform.yml` — Windows `pt.dll`-on-`$GITHUB_PATH`
   step + poisoned-cache skip.
 - `third_party/gossamer/site/index.html` — Content-Security-Policy hardening.
-- `docs/proof-debt.md` — the proof-debt ledger this repo already *referenced*
+- `audits/outstanding_debt/proof-debt.md` — the proof-debt ledger this repo already *referenced*
   (see `AFFIRMATION.adoc`) but had never authored.
 - `.trusted-base-ignore` — the RSR vendored-base carve-out (registered in
   `root-hygiene.scm`; paired with `verify-manifests` and `dogfood-gate`).

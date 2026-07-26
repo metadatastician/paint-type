@@ -16,9 +16,12 @@
 *.hs    text eol=lf
 *.chpl  text eol=lf
 *.scm   text eol=lf
+*.zig   text eol=lf
+*.idr   text eol=lf
+*.ipkg  text eol=lf
 *.a2ml  text eol=lf linguist-language=TOML
 *.ncl   text eol=lf
-*.nix   text eol=lf
+*.k9    text eol=lf linguist-language=Nickel
 
 # Docs
 *.md    text eol=lf diff=markdown
@@ -52,4 +55,7 @@ Containerfile  text eol=lf
 
 # Lock files
 Cargo.lock  text eol=lf -diff
-flake.lock  text eol=lf -diff
+
+# Linguist overrides
+third_party/ linguist-vendored
+third_party/** linguist-vendored=third_party

@@ -53,6 +53,7 @@ while IFS= read -r -d $'\0' dir; do
         *.swp) continue ;;
         *.tmp) continue ;;
         .zig-cache) continue ;;
+        third_party) continue ;;
     esac
     
     # Calculate depth
@@ -118,7 +119,7 @@ while IFS= read -r -d $'\0' dir; do
         fi
     fi
     
-done < <(find "$REPO_ROOT" -type d \( -name .git -o -name .machine_readable -o -name node_modules -o -name __pycache__ -o -name .egg-info -o -name .mypy_cache -o -name .pytest_cache -o -name .tox -o -name .nox -o -name .cache -o -name .local -o -name build -o -name dist -o -name target -o -name .idea -o -name .vscode -o -name .zig-cache \) -prune -o -type d -print0)
+done < <(find "$REPO_ROOT" -type d \( -name .git -o -name .machine_readable -o -name node_modules -o -name __pycache__ -o -name .egg-info -o -name .mypy_cache -o -name .pytest_cache -o -name .tox -o -name .nox -o -name .cache -o -name .local -o -name build -o -name dist -o -name target -o -name .idea -o -name .vscode -o -name .zig-cache -o -name third_party \) -prune -o -type d -print0)
 
 echo ""
 echo "=== Verification Summary ==="

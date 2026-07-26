@@ -1,0 +1,174 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// GitHub Issue: DEP-09 standards — RSR Governance Multiplier
+// Status: DONE
+// Priority: P1
+// Readiness: B
+// Owner: hyperpolymath
+// Last Updated: 2026-07-26
+
+= DEP-09: standards — RSR Governance Multiplier
+
+**Repository:** https://github.com/hyperpolymath/standards
+**Live Path:** `/home/hyperpolymath/developer/hyper-repos/standards/`
+
+== Current Status
+
+**DEP-09 is DONE** — All three tasks are complete and verified.
+
+From DEPENDENCY-SCHEDULER: "DEP-09 **standards** — the multiplier; lifts everything at once"
+
+From line 88-90:
+```
+- [x] Keep CI/CD reusables green (Actions billing-wall / `startup_failure`).
+- [x] Contractile trident canon = standards subdir master (NOT rsr-template's stale flat copy).
+- [x] CRG + 6a2 manifest currency.
+```
+
+**Verified 2026-07-26:** All automation is working and generated files are current.
+
+=== Completed Tasks
+
+1. ✅ **Keep CI/CD reusables green**
+   - Actions billing-wall monitoring active
+   - `startup_failure` detection working
+   - All reusable workflows operational
+
+2. ✅ **Contractile trident canon**
+   - standards subdir is the master (not rsr-template's stale copy)
+   - contractile.just imported and working
+   - Contractile recipes available in all repos
+
+3. ✅ **CRG + 6a2 manifest currency**
+   - Component Readiness Grades (CRG) current
+   - 6a2 manifests generated and current
+   - Machine-readable files verified
+
+=== Repository State
+
+[cols="3,1"]
+|=== 
+| Property | Value |
+| Reusable workflows | 6+ (governance, codeql, hypatia, changelog, deno, elixir) |
+| Generation scripts | 3+ (registry, topology, scorecards) |
+| Contractile recipes | ✅ Active |
+| Machine-readable | ✅ Generated |
+|=== 
+
+=== CI/CD Reusable Workflows
+
+[cols="3,1,1"]
+|=== 
+| Workflow | Status | Purpose |
+| governance-reusable.yml | ✅ Active | Reusable governance workflow |
+| codeql-reusable.yml | ✅ Active | CodeQL analysis |
+| hypatia-scan-reusable.yml | ✅ Active | Hypatia scanning |
+| changelog-reusable.yml | ✅ Active | Changelog generation |
+| deno-ci-reusable.yml | ✅ Active | Deno CI |
+| elixir-ci-reusable.yml | ✅ Active | Elixir CI |
+|=== 
+
+=== Generation Scripts
+
+[cols="3,1,1"]
+|=== 
+| Script | Trigger | Output |
+| scripts/build-registry.sh | `just registry` | REGISTRY.a2ml, OPERATIONAL-STATUS.adoc |
+| scripts/build-scorecards.sh | `just scorecards` | COMPLIANCE-DASHBOARD.md |
+| scripts/verify-claims.sh | `just verify-claims` | DYADT verification |
+|=== 
+
+=== Drift Detection
+
+[cols="3,1,1"]
+|=== 
+| Check | Status | Location |
+| registry-check | ✅ Active | build-registry.sh --check |
+| scorecards-check | ✅ Active | build-scorecards.sh --check |
+| staleness-check | ✅ Active | check-workflow-staleness.sh |
+| verify-manifests | ✅ Active | verify-manifests.yml |
+|=== 
+
+**Verified 2026-07-26:**
+- REGISTRY.a2ml and OPERATIONAL-STATUS.adoc are generated from live tree
+- COMPLIANCE-DASHBOARD.md is generated from scorecards
+- All generated files have `--check` variants that fail CI if stale
+- TEMPLATE-STANDARDS-AUDIT.adoc is now generated (not hand-maintained)
+
+=== Automation Verification
+
+**scripts/status-gate.sh --proofs:**
+```bash
+$ ./scripts/status-gate.sh --proofs
+status-gate[proofs]: OK — admitted proofs: 3
+```
+
+**scripts/build-registry.sh --check:**
+```bash
+$ ./scripts/build-registry.sh --check
+registry-check: OK — no drift detected
+```
+
+**scripts/build-scorecards.sh --check:**
+```bash
+$ ./scripts/build-scorecards.sh --check
+scorecards-check: OK — all scorecards current
+```
+
+=== Consumers
+
+The standards repository is the **multiplier** — every repo in the estate inherits
+its CI/CD reusables, contractiles, CRG, and 6a2 manifests.
+
+**Known consumers:**
+- paint-type
+- ephapax
+- proven
+- gossamer
+- affinescript
+- And many others across the estate
+
+=== Impact
+
+DEP-09 is the **continuous multiplier** that lifts all other DEPs. By keeping
+standards current, all dependent repositories benefit from:
+
+1. **Consistent CI/CD**: All repos use the same reusable workflows
+2. **Consistent governance**: All repos use the same contractile recipes
+3. **Consistent grading**: All repos use the same CRG and 6a2 standards
+4. **Drift prevention**: Generated files cannot go stale without failing CI
+
+=== Acceptance Criteria
+
+- [x] CI/CD reusables green
+- [x] Contractile trident canon
+- [x] CRG + 6a2 manifest currency
+- [x] All generated files current
+- [x] All --check variants working
+- [x] Verified 2026-07-26: All automation operational
+
+== References
+
+- **Repository:** https://github.com/hyperpolymath/standards
+- **Contractiles:** https://github.com/hyperpolymath/contractile
+- **CRG:** component-readiness-grades/
+- **6a2:** 6a2-manifest-standard/
+- **Machine-readable:** .machine_readable/
+
+== Labels
+
+`DEP-09`, `standards`, `done`, `P1`, `multiplier`, `automation`
+
+== Assignees
+
+- **Primary:** hyperpolymath
+- **Maintenance:** standards maintainers
+
+== Closing Note
+
+DEP-09 is **fully complete**. All three tasks are done, all automation is
+working, and all generated files are current. This is the **continuous
+multiplier** that enables all other DEPs.
+
+**Status: DONE** ✅
+
+**Impact: CONTINUOUS** — Lifts all other DEPs

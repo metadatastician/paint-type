@@ -1,0 +1,25 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+= Outstanding Debt
+:description: Tracked technical and proof debt items for paint.type
+
+This directory is part of the paint.type project audit trail.
+
+== Purpose
+
+Central repository for all outstanding debt items identified across the project,
+including technical debt, proof debt, and other tracked obligations.
+
+== Files
+
+[cols="1,2", options="header"]
+|===
+| File | Description
+| `proof-debt.md` | Ledger of soundness-relevant escape hatches in proof-bearing code
+| `tech-debt-2026-05-26.md` | Estate-wide tech-debt audit findings from 2026-05-26 scan
+|===
+
+== Related Files
+
+* link:../[Parent audits directory]
+* link:../../.machine_readable/[Machine Readable Metadata]

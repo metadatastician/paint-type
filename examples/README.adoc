@@ -15,16 +15,21 @@ project structure.
 
 == Contents by Functional Grouping
 
-=== Configuration
+=== Example Programs
 
-* `web-project-deno.json` — JSON configuration
+* `brush_demo.zig` — Brush demonstration
+* `composite_demo.zig` — Compositing demonstration
+* `gesture_webview_demo.zig` — Gesture webview demonstration
+* `undo_demo.zig` — Undo functionality demonstration
+
+=== Subdirectories
+
+* `images/` — Reference/fixture images (undo-graph snapshots)
 
 
 == Purpose of Each Component
 
-Each file in this directory serves a specific purpose.
-
-*Configuration files* define build, test, and deployment parameters.
+Example programs demonstrate paint-type functionality. The `images/` subdirectory contains reference images.
 
 
 == AI Manifest Structure

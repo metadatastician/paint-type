@@ -42,7 +42,6 @@ project structure.
 * `STATE-VISUALIZER.adoc` — AsciiDoc documentation
 * `QUICKSTART.adoc` — AsciiDoc documentation
 * `RSR_OUTLINE.adoc` — AsciiDoc documentation
-* `tech-debt-2026-05-26.md` — Markdown documentation
 
 
 == Purpose of Each Component

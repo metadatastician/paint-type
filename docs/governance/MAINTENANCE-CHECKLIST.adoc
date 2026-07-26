@@ -253,13 +253,13 @@ find . -type f \( -name '*.idr' -o -name '*.idris2' -o -name '*.zig' \)
 
 ## 5) Panic/Safety/Security Pass
 
-- [ ] Run `panic-attacker` assail/assault.
+- [ ] Run `panic-attack` assail/assault.
 - [ ] Triage findings by severity.
 - [ ] Fix high first, then medium.
 - [ ] Re-run until acceptable.
 
 ```bash
-PANIC_BIN="${REPOS_ROOT:-~/Documents/hyperpolymath-repos}/panic-attacker/target/release/panic-attack"
+PANIC_BIN="${REPOS_ROOT:-~/Documents/hyperpolymath-repos}/panic-attack/target/release/panic-attack"
 "$PANIC_BIN" assail "$REPO" --output /tmp/assail.json --output-format json --quiet
 jq -r '.weak_points | length' /tmp/assail.json
 jq -r '.weak_points[] | "\(.severity)|\(.location)|\(.description)"' /tmp/assail.json
@@ -494,7 +494,7 @@ Required behavior:
 2. Triage report results by severity: fail > warn > pass.
 3. Execute corrective maintenance first (fix regressions, panics, broken tests/commands).
 4. Run TODO/FIXME/stub scan and address relevant items.
-5. Run panic-attacker and fix findings in priority order; rerun to confirm.
+5. Run panic-attack and fix findings in priority order; rerun to confirm.
 6. Run language-specific checks (Rust/Python/Elixir) relevant to this repo.
 7. Run benchmark/regression checks for touched hot paths.
 8. Enforce permission policy:

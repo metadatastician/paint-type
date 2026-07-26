@@ -1287,13 +1287,13 @@ todos:
 edit:
     ${EDITOR:-code} .
 
-# Run high-rigor security assault using panic-attacker
+# Run high-rigor security assault using panic-attack
 maint-assault:
     @./.machine_readable/scripts/maintenance/maint-assault.sh
 
-# Run panic-attacker pre-commit scan (foundational floor-raise requirement)
+# Run panic-attack pre-commit scan (foundational floor-raise requirement)
 assail:
-    @command -v panic-attack >/dev/null 2>&1 && panic-attack assail . || echo "WARN: panic-attack not found — install from https://github.com/hyperpolymath/panic-attacker"
+    @command -v panic-attack >/dev/null 2>&1 && panic-attack assail . || echo "WARN: panic-attack not found — install from https://github.com/hyperpolymath/panic-attack"
 
 
 # Self-diagnostic — checks dependencies, permissions, paths

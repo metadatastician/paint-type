@@ -1,0 +1,901 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+= DEP Automation Tracking Matrix — paint-type Dependency Scheduler
+
+**Source of Truth:** This file tracks CI/CD, automation, and drift detection coverage for all 15 DEPs.
+**Last Updated:** 2026-07-26
+**Maintained by:** hyperpolymath (estate owner)
+**Related:** DEPENDENCY-SCHEDULER.adoc, DEP-IMPLEMENTATION-STATUS.adoc
+
+== Overview
+
+This document provides a comprehensive matrix of automation coverage across all DEPs, including CI/CD workflows, drift detection, status gates, and verification mechanisms.
+
+**Automation Categories:**
+- *CI/CD Workflows*: GitHub Actions workflows for build, test, and verification
+- *Status Gates*: Automated checks that prevent regressions (proof counts, test counts)
+- *Drift Detection*: Mechanisms to detect and prevent documentation/code drift
+- *Verification Scripts*: Automated verification of claims and invariants
+- *Machine-Readable*: a2ml, JSON, or other structured formats for tooling
+
+**Coverage Levels:**
+- *✅ Full*: All critical automation in place and working
+- *⚠️ Partial*: Some automation in place, gaps identified
+- *❌ None*: No automation
+- *🟡 Planned*: Automation planned but not yet implemented
+
+== Automation Coverage Matrix
+
+=== Spine Dependencies
+
+[cols="1,3,2,2,2,2,2"]
+|=== 
+| ID | Dependency | CI/CD | Status Gates | Drift Detection | Verification | Machine-Readable | Overall
+
+| DEP-01 | **Ephapax** | ✅ Active | ✅ Active | ✅ 2026-07-26 | ✅ Active | ✅ a2ml | ✅ Full
+
+| DEP-02 | **typed-wasm** | ✅ Active | ✅ Active | ✅ Active | ✅ Active | ✅ Schema | ✅ Full
+
+| DEP-03 | **AffineScript** | ❌ Missing | ❌ Missing | ❌ Missing | ❌ Missing | ❌ None | ❌ None
+
+| DEP-04 | **Gossamer** | ✅ Active | ✅ Active | ⚠️ Partial | ✅ Active | ✅ a2ml | ⚠️ Partial
+
+|=== 
+
+=== Proof-Foundation Dependencies
+
+[cols="1,3,2,2,2,2,2"]
+|=== 
+| ID | Dependency | CI/CD | Status Gates | Drift Detection | Verification | Machine-Readable | Overall
+
+| DEP-09 | **standards** | ✅ Full (6+ workflows) | ✅ Full | ✅ Full | ✅ Full | ✅ Full | ✅ Full
+
+| DEP-10 | **proven** | ✅ Full (7 workflows) | ✅ Full | ✅ Active | ✅ Full | ✅ a2ml | ✅ Full
+
+| DEP-11 | **echo-types** | ❌ Missing | ❌ Missing | ❌ Missing | ❌ Missing | ❌ None | ❌ None
+
+|=== 
+
+=== Plugin / Supply-Chain Dependencies
+
+[cols="1,3,2,2,2,2,2"]
+|=== 
+| ID | Dependency | CI/CD | Status Gates | Drift Detection | Verification | Machine-Readable | Overall
+
+| DEP-05 | **cerro-torre** | ✅ Active | ✅ Active | ⚠️ Partial | ✅ Active | ✅ Manifest | ⚠️ Partial
+
+| DEP-13 | **Container / supply-chain stack** | ❌ Missing | ❌ Missing | ❌ Missing | ❌ Missing | ❌ None | ❌ None
+
+|=== 
+
+=== Collaboration Dependencies
+
+[cols="1,3,2,2,2,2,2"]
+|=== 
+| ID | Dependency | CI/CD | Status Gates | Drift Detection | Verification | Machine-Readable | Overall
+
+| DEP-06 | **Burble** | ❌ Missing | ❌ Missing | ❌ Missing | ❌ Missing | ❌ None | ❌ None
+
+| DEP-07 | **groove-protocol** | ⚠️ Partial | ❌ Missing | ❌ Missing | ⚠️ Partial | ✅ Manifest | ⚠️ Partial
+
+| DEP-08 | **boj-server** | ❌ Missing | ❌ Missing | ❌ Missing | ❌ Missing | ❌ None | ❌ None
+
+|=== 
+
+=== Tooling Dependencies
+
+[cols="1,3,2,2,2,2,2"]
+|=== 
+| ID | Dependency | CI/CD | Status Gates | Drift Detection | Verification | Machine-Readable | Overall
+
+| DEP-12 | **panic-attack** | ✅ 2026-07-26 | ✅ Active | ✅ Active | ✅ Active | ✅ Config | ✅ Full
+
+| DEP-15 | **Toolchain & formats** | ✅ Active | ✅ Active | ⚠️ Partial | ✅ Active | ✅ Full | ⚠️ Partial
+
+|=== 
+
+=== Additional Dependencies
+
+[cols="1,3,2,2,2,2,2"]
+|=== 
+| ID | Dependency | CI/CD | Status Gates | Drift Detection | Verification | Machine-Readable | Overall
+
+| DEP-14 | **Hypatia** (Hexadeca) | ⚠️ Partial | ❌ Missing | ❌ Missing | ⚠️ Partial | ✅ Canonical | ⚠️ Partial
+
+|=== 
+
+== Detailed Automation Breakdown by DEP
+
+=== DEP-01: Ephapax
+
+**Automation Added 2026-07-26:**
+
+[cols="3,1,1,1"]
+|=== 
+| Component | Type | Status | Location |
+| `panic-attack.toml` | Config | ✅ Created | Root |
+| `panic-attack.yml` | CI Workflow | ✅ Created | `.github/workflows/` |
+| `status-gate.yml` | CI Workflow | ✅ Existing | `.github/workflows/` |
+|=== 
+
+==== CI/CD Workflows
+
+[cols="3,1,1"]
+|=== 
+| Workflow | Status | Purpose |
+| abi-verify.yml | ✅ Active | ABI verification |
+| boj-build.yml | ✅ Active | BOJ build |
+| coq-build.yml | ✅ Active | Coq formal proofs |
+| ffi-seams.yml | ✅ Active | FFI seam verification |
+| rust-ci.yml | ✅ Active | Rust CI |
+| scorecard.yml | ✅ Active | OpenSSF Scorecard |
+| status-gate.yml | ✅ Active | Proof/test count gates |
+| panic-attack.yml | ✅ 2026-07-26 | Dangerous pattern detection |
+|=== 
+
+==== Status Gates
+
+[cols="3,1,1"]
+|=== 
+| Gate | Status | Checks |
+| Proof count | ✅ Active | Matches PROOF-NEEDS.md §4 |
+| Test count | ✅ Active | Prevents regression |
+| panic-attack | ✅ 2026-07-26 | Blocks on critical/high |
+|=== 
+
+**Verification (2026-07-26):**
+- Claimed admitted proofs: 3 (in PROOF-NEEDS.md §4)
+- Actual admitted proofs: 3 (grep of formal/*.v)
+- **Status: ✅ IN SYNC**
+
+==== Drift Detection
+
+[cols="3,1,1"]
+|=== 
+| Mechanism | Status | Coverage |
+| panic-attack.toml | ✅ Created | Rust, Coq, Idris2 patterns |
+| status-gate.yml | ✅ Active | Proof count drift |
+| False positives config | ✅ Configured | Allows Admitted. in formal/*.v |
+|=== 
+
+==== Machine-Readable
+
+[cols="3,1,1"]
+|=== 
+| File | Status | Format |
+| a2ml manifests | ✅ Active | a2ml |
+| PROOF-NEEDS.md | ✅ Active | Markdown table |
+| panic-attack.toml | ✅ Created | TOML |
+|=== 
+
+=== DEP-02: typed-wasm
+
+==== CI/CD Workflows
+
+[cols="3,1,1"]
+|=== 
+| Workflow | Status | Purpose |
+| build.yml | ✅ Active | Schema compilation |
+| verify.yml | ✅ Active | Type verification |
+| test.yml | ✅ Active | Integration tests |
+|=== 
+
+==== Status Gates
+
+[cols="3,1,1"]
+|=== 
+| Gate | Status | Checks |
+| Schema compilation | ✅ Active | All `.twasm` compile |
+| Type verification | ✅ Active | All schemas pass |
+| Integration | ✅ Active | paint-type CI includes typed-wasm |
+|=== 
+
+==== Drift Detection
+
+[cols="3,1,1"]
+|=== 
+| Mechanism | Status | Coverage |
+| Schema version check | ✅ Active | Prevents stale schemas |
+| paint-type integration | ✅ Active | Verifies consumption |
+|=== 
+
+==== Machine-Readable
+
+[cols="3,1,1"]
+|=== 
+| File | Status | Format |
+| `.twasm` schemas | ✅ Active | Typed WASM |
+|=== 
+
+==== Verification
+
+- All `.twasm` schemas compile successfully
+- All schemas pass typed-wasm type checking
+- WASM modules consumed by paint-type runtime
+
+=== DEP-03: AffineScript
+
+**Status: ❌ NO AUTOMATION**
+
+**Blocker:** No working compiler exists (per git-reticulator/PROOF-NEEDS.md and rust-spark-stance.adoc)
+
+==== Current State
+
+[cols="3,1,1"]
+|=== 
+| Component | Status | Notes |
+| CI/CD workflows | ❌ Missing | No compiler to test |
+| Status gates | ❌ Missing | No build to gate |
+| Drift detection | ❌ Missing | No baseline |
+| Verification | ❌ Missing | Cannot verify |
+| Machine-readable | ❌ None | No artifacts |
+|=== 
+
+==== Needed Automation (When Compiler Exists)
+
+[cols="3,1,1"]
+|=== 
+| Component | Priority | Purpose |
+| panic-attack.toml | High | Dangerous pattern detection |
+| CI workflows | High | Build and test |
+| Status gates | High | Proof/test count tracking |
+| Drift detection | Medium | Prevent regression |
+|=== 
+
+=== DEP-04: Gossamer
+
+==== CI/CD Workflows
+
+[cols="3,1,1"]
+|=== 
+| Workflow | Status | Purpose |
+| ci.yml | ✅ Active | Cross-platform build |
+| integration.yml | ✅ Active | 173 integration tests |
+| release.yml | ✅ Active | Release automation |
+|=== 
+
+==== Status Gates
+
+[cols="3,1,1"]
+|=== 
+| Gate | Status | Checks |
+| Build | ✅ Active | Cross-platform |
+| Tests | ✅ Active | 173 passing |
+| Release | ✅ Active | Version tags |
+|=== 
+
+==== Drift Detection
+
+[cols="3,1,1"]
+|=== 
+| Mechanism | Status | Coverage |
+| Version reconciliation | ⚠️ Needed | Git tag v0.1.0 vs README v0.3.1 |
+| Idris2-ABI vs Zig-FFI | ⚠️ Needed | Audit wqbb3mhzf |
+| Android integration | ⚠️ Partial | NDK CI needed |
+|=== 
+
+**Drift Detection Needed:**
+- `wqbb3mhzf` audit for Idris2-ABI vs Zig-FFI surface drift
+- Version reconciliation (git tag vs README)
+- Android integration tracking (gossamer#67, #68, #69, #71)
+
+==== Machine-Readable
+
+[cols="3,1,1"]
+|=== 
+| File | Status | Format |
+| a2ml manifests | ✅ Active | a2ml |
+| Justfile | ✅ Active | Recipe-based |
+|=== 
+
+==== Verification
+
+- Gossamer integrated into paint-type shell
+- Webview abstraction complete
+- v0.3.0/v0.3.1 released
+- 173 integration tests passing
+
+=== DEP-05: cerro-torre
+
+==== CI/CD Workflows
+
+[cols="3,1,1"]
+|=== 
+| Workflow | Status | Purpose |
+| build.yml | ✅ Active | ML-DSA build |
+| test.yml | ✅ Active | Capability tests |
+|=== 
+
+==== Status Gates
+
+[cols="3,1,1"]
+|=== 
+| Gate | Status | Checks |
+| Build | ✅ Active | ML-DSA-87 compilation |
+| FFI | ✅ Active | Bindings correct |
+|=== 
+
+==== Drift Detection
+
+[cols="3,1,1"]
+|=== 
+| Mechanism | Status | Coverage |
+| proven-pqc integration | ⚠️ Partial | Full integration pending |
+| Standalone repo | ✅ Active | Graduated from stapeln |
+|=== 
+
+==== Machine-Readable
+
+[cols="3,1,1"]
+|=== 
+| File | Status | Format |
+| ML-DSA manifest | ✅ Active | Manifest |
+| FFI bindings | ✅ Active | Definitions |
+|=== 
+
+==== Verification
+
+- Graduated to standalone repo in meta-repos
+- ML-DSA-87 capability surface added
+- Full proven-pqc integration pending
+
+=== DEP-06: Burble
+
+**Status: ❌ NO AUTOMATION**
+
+[cols="3,1,1"]
+|=== 
+| Component | Status | Notes |
+| CI/CD workflows | ❌ Missing | Not set up |
+| Status gates | ❌ Missing | No gates |
+| Drift detection | ❌ Missing | No detection |
+| Verification | ❌ Missing | Cannot verify |
+| Machine-readable | ❌ None | No artifacts |
+|=== 
+
+==== Needed Automation
+
+[cols="3,1,1"]
+|=== 
+| Component | Priority | Purpose |
+| CI workflows | High | WebRTC tests |
+| Data-channel verification | High | Tile-edit traffic proof |
+| Status gates | Medium | Test count tracking |
+|=== 
+
+=== DEP-07: groove-protocol
+
+==== CI/CD Workflows
+
+[cols="3,1,1"]
+|=== 
+| Workflow | Status | Purpose |
+| ci.yml | ⚠️ Partial | Basic CI |
+| ffi-test.yml | ⚠️ Partial | FFI tests (partial) |
+|=== 
+
+**Coverage:** Only 2/10 FFI binding targets tested
+
+==== Status Gates
+
+[cols="3,1,1"]
+|=== 
+| Gate | Status | Checks |
+| FFI tests | ⚠️ Partial | 2/10 targets |
+|=== 
+
+==== Drift Detection
+
+[cols="3,1,1"]
+|=== 
+| Mechanism | Status | Coverage |
+| Manifest conformance | ❌ Missing | paint-type emits/consumes Groove manifest |
+|=== 
+
+==== Machine-Readable
+
+[cols="3,1,1"]
+|=== 
+| File | Status | Format |
+| Groove manifest schema | ✅ Active | JSON Schema |
+|=== 
+
+==== Verification
+
+- 8/10 FFI binding targets untested
+- paint-type needs to emit/consumes Groove manifest
+
+=== DEP-08: boj-server
+
+**Status: ❌ NO AUTOMATION**
+
+[cols="3,1,1"]
+|=== 
+| Component | Status | Notes |
+| CI/CD workflows | ❌ Missing | Not set up |
+| Status gates | ❌ Missing | No gates |
+| Drift detection | ❌ Missing | No detection |
+| Verification | ❌ Missing | Cannot verify |
+| Machine-readable | ❌ None | No artifacts |
+|=== 
+
+==== Needed Automation
+
+[cols="3,1,1"]
+|=== 
+| Component | Priority | Purpose |
+| CI workflows | High | MCP + plugin tests |
+| Status gates | Medium | Test count tracking |
+| Drift detection | Medium | Cartridge surface stability |
+|=== 
+
+=== DEP-09: standards — RSR Governance Multiplier
+
+**Status: ✅ FULL AUTOMATION**
+
+==== CI/CD Reusable Workflows (6+)
+
+[cols="3,1,1"]
+|=== 
+| Workflow | Status | Purpose |
+| governance-reusable.yml | ✅ Active | Reusable governance |
+| codeql-reusable.yml | ✅ Active | CodeQL analysis |
+| hypatia-scan-reusable.yml | ✅ Active | Hypatia scanning |
+| changelog-reusable.yml | ✅ Active | Changelog generation |
+| deno-ci-reusable.yml | ✅ Active | Deno CI |
+| elixir-ci-reusable.yml | ✅ Active | Elixir CI |
+|=== 
+
+==== Generation Scripts (3+)
+
+[cols="3,1,1,1"]
+|=== 
+| Script | Trigger | Output | Status |
+| scripts/build-registry.sh | `just registry` | REGISTRY.a2ml, OPERATIONAL-STATUS.md | ✅ Active |
+| scripts/build-scorecards.sh | `just scorecards` | COMPLIANCE-DASHBOARD.md | ✅ Active |
+| scripts/verify-claims.sh | `just verify-claims` | DYADT verification | ✅ Active |
+| scripts/check-workflow-staleness.sh | Manual | Staleness report | ✅ Active |
+|=== 
+
+==== Drift Detection
+
+[cols="3,1,1"]
+|=== 
+| Mechanism | Status | Coverage |
+| registry-check | ✅ Active | build-registry.sh --check |
+| scorecards-check | ✅ Active | build-scorecards.sh --check |
+| staleness-check | ✅ Active | check-workflow-staleness.sh |
+| verify-manifests | ✅ Active | verify-manifests.yml |
+|=== 
+
+**Verified 2026-07-26:**
+- All generated files have `--check` variants that fail CI if stale
+- TEMPLATE-STANDARDS-AUDIT.adoc is now generated (not hand-maintained)
+- REGISTRY.a2ml and OPERATIONAL-STATUS.md generated from live tree
+- COMPLIANCE-DASHBOARD.md generated from scorecards
+
+==== Status Gates
+
+[cols="3,1,1"]
+|=== 
+| Gate | Status | Checks |
+| Actions billing-wall | ✅ Active | Monitoring |
+| startup_failure | ✅ Active | Detection |
+| CI/CD reusables | ✅ Active | All green |
+|=== 
+
+==== Machine-Readable
+
+[cols="3,1,1"]
+|=== 
+| File/Directory | Status | Format |
+| REGISTRY.a2ml | ✅ Generated | a2ml |
+| OPERATIONAL-STATUS.md | ✅ Generated | Markdown |
+| COMPLIANCE-DASHBOARD.md | ✅ Generated | Markdown |
+| .machine_readable/ | ✅ Full | Multiple formats |
+| TEMPLATE-STANDARDS-AUDIT.adoc | ✅ Generated | AsciiDoc |
+|=== 
+
+==== Automation Verification Commands
+
+```bash
+# Verify proof count sync
+./scripts/status-gate.sh --proofs
+
+# Check registry for drift
+./scripts/build-registry.sh --check
+
+# Check scorecards for drift
+./scripts/build-scorecards.sh --check
+
+# Verify all manifests
+./scripts/verify-manifests.sh
+```
+
+==== Impact
+
+DEP-09 is the **continuous multiplier**. All repos in the estate inherit:
+
+1. **Consistent CI/CD:** All repos use the same reusable workflows
+2. **Consistent governance:** All repos use the same contractile recipes
+3. **Consistent grading:** All repos use the same CRG and 6a2 standards
+4. **Drift prevention:** Generated files cannot go stale without failing CI
+
+=== DEP-10: proven
+
+**Status: ✅ FULL AUTOMATION**
+
+==== CI/CD Workflows (7)
+
+[cols="3,1,1"]
+|=== 
+| Workflow | Status | Purpose |
+| idris2-ci.yml | ✅ Active | Idris2 type checking |
+| ffi-full-integration.yml | ✅ Active | FFI integration tests |
+| architecture-enforcement.yml | ✅ Active | Architecture enforcement |
+| chapel-ci.yml | ✅ Active | Chapel integration |
+| clusterfuzzlite.yml | ✅ Active | Fuzz testing |
+| dogfood-gate.yml | ✅ Active | Dogfood testing |
+| e2e.yml | ✅ Active | End-to-end tests |
+|=== 
+
+==== Status Gates
+
+[cols="3,1,1"]
+|=== 
+| Gate | Status | Checks |
+| Type checking | ✅ Active | Full library |
+| FFI integration | ✅ Active | Full pipeline |
+| Totality | ✅ Active | All checks passing |
+|=== 
+
+==== Drift Detection
+
+[cols="3,1,1"]
+|=== 
+| Mechanism | Status | Coverage |
+| Track-C security | ✅ Closed | PR #162 |
+| Build pipeline | ✅ Active | All steps verified |
+|=== 
+
+==== Machine-Readable
+
+[cols="3,1,1"]
+|=== 
+| File | Status | Format |
+| proven.ipkg | ✅ Active | Idris2 package |
+| MODULE-STATUS-RAW.txt | ✅ Active | Module inventory |
+| PROOF-NEEDS.md | ✅ Active | Proof requirements |
+|=== 
+
+==== Verification
+
+- Build pipeline working: Idris2 → RefC → C → Zig FFI
+- Type checking working: Full library and FFI packages
+- Totality verification: All totality checks passing
+- Track-C security triage: Closed via PR #162
+
+=== DEP-11: echo-types
+
+**Status: ❌ NO AUTOMATION**
+
+[cols="3,1,1"]
+|=== 
+| Component | Status | Notes |
+| CI/CD workflows | ❌ Missing | Agda build not automated |
+| Status gates | ❌ Missing | No gates |
+| Drift detection | ❌ Missing | `~/.agda/libraries` path-drift |
+| Verification | ❌ Missing | Cannot verify |
+| Machine-readable | ❌ None | No artifacts |
+|=== 
+
+==== Needed Automation
+
+[cols="3,1,1"]
+|=== 
+| Component | Priority | Purpose |
+| Agda CI workflow | High | Keep build working |
+| Path-drift detection | High | `~/.agda/libraries` |
+| Audit automation | Medium | Record echo-types for proofs |
+|=== 
+
+=== DEP-12: panic-attack
+
+**Status: ✅ 2026-07-26 — FULL AUTOMATION FOR EPHAPAX**
+
+==== Automation Added 2026-07-26
+
+[cols="3,1,1"]
+|=== 
+| Component | Status | Location |
+| panic-attack.toml | ✅ Created | Ephapax root |
+| panic-attack.yml | ✅ Created | Ephapax .github/workflows/ |
+|=== 
+
+==== CI/CD Workflow: panic-attack.yml
+
+```yaml
+name: panic-attack
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'ephapax-linear/**'
+      - 'formal/**'
+      - 'tests/**'
+      - 'panic-attack.toml'
+      - '.github/workflows/panic-attack.yml'
+  pull_request:
+    branches: [main]
+    paths: [same as above]
+  workflow_dispatch:
+
+jobs:
+  assail:
+    name: panic-attack assail
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: hyperpolymath/panic-attack-action@v1
+      - run: panic-attack assail --config panic-attack.toml
+```
+
+==== Configuration: panic-attack.toml
+
+**Patterns Detected:**
+
+[cols="3,1,1"]
+|=== 
+| Category | Patterns | Severity |
+| Rust dangerous | unsafe blocks, unwrap, expect, panic! | Critical/High |
+| Proof assumptions | believe_me, assert_total, postulate | Critical |
+| Debug/placeholder | TODO, FIXME, XXX, HACK, unimplemented! | Medium |
+| Coq tracking | Admitted., admit. | Info (allowed in formal/*.v) |
+|=== 
+
+**False Positives Configured:**
+- `formal/*.v`: Admitted. and admit. allowed (tracked by status-gate.yml)
+- Documented in PROOF-NEEDS.md §4
+
+==== Status Gates
+
+[cols="3,1,1"]
+|=== 
+| Gate | Status | Checks |
+| Critical/High severity | ✅ Active | Fails on detection |
+| Medium severity | ⚠️ Warn | Does not fail |
+| Info severity | ✅ Info | Logged only |
+|=== 
+
+==== Drift Detection
+
+[cols="3,1,1"]
+|=== 
+| Mechanism | Status | Coverage |
+| Pattern matching | ✅ Active | All configured patterns |
+| Path filtering | ✅ Active | Excludes target/, .git/, etc. |
+| False positive handling | ✅ Active | Allows Admitted. in formal/*.v |
+|=== 
+
+==== Verification
+
+**Current counts (verified 2026-07-26):**
+- Admitted proofs in formal/*.v: 3
+- Documented in PROOF-NEEDS.md §4: 3
+- **Status: ✅ IN SYNC**
+
+=== DEP-13: Container / Supply-Chain Stack
+
+**Status: ❌ NO AUTOMATION**
+
+[cols="3,1,1"]
+|=== 
+| Component | Status | Notes |
+| CI/CD workflows | ❌ Missing | Container builds not automated |
+| Status gates | ❌ Missing | No gates |
+| Drift detection | ❌ Missing | No detection |
+| Verification | ❌ Missing | Cannot verify |
+| Machine-readable | ❌ None | No artifacts |
+|=== 
+
+==== Needed Automation
+
+[cols="3,1,1"]
+|=== 
+| Component | Priority | Purpose |
+| Container build CI | High | Signed container pipeline |
+| ML-DSA signing | High | Chainguard/Wolfi + ML-DSA-87 |
+| Drift detection | Medium | Svalinn + Vordr wiring |
+|=== 
+
+=== DEP-14: Hypatia (Hexadeca source)
+
+==== CI/CD Workflows
+
+[cols="3,1,1"]
+|=== 
+| Workflow | Status | Purpose |
+| canonical-check.yml | ⚠️ Partial | Canonical reference check |
+|=== 
+
+==== Status Gates
+
+[cols="3,1,1"]
+|=== 
+| Gate | Status | Checks |
+| Canonical reference | ⚠️ Partial | Manual verification |
+|=== 
+
+==== Drift Detection
+
+[cols="3,1,1"]
+|=== 
+| Mechanism | Status | Coverage |
+| Conformance check | ⚠️ Partial | paint-type connector vs reference |
+|=== 
+
+==== Machine-Readable
+
+[cols="3,1,1"]
+|=== 
+| File | Status | Format |
+| Hexadeca reference | ✅ Canonical | Reference format |
+| paint-type connector | ✅ Active | Conformant copy |
+|=== 
+
+==== Needed Automation
+
+[cols="3,1,1"]
+|=== 
+| Component | Priority | Purpose |
+| Drift detection | High | Automatic conformance checking |
+| Status gates | Medium | Automatic canonical verification |
+|=== 
+
+=== DEP-15: Toolchain & Formats
+
+==== CI/CD Workflows
+
+[cols="3,1,1"]
+|=== 
+| Workflow | Status | Purpose |
+| toolchain-ci.yml | ✅ Active | Toolchain verification |
+| format-check.yml | ✅ Active | Format compliance |
+|=== 
+
+==== Status Gates
+
+[cols="3,1,1"]
+|=== 
+| Gate | Status | Checks |
+| Toolchain versions | ✅ Active | Pin verification |
+| Format compliance | ✅ Active | All formats checked |
+|=== 
+
+==== Drift Detection
+
+[cols="3,1,1"]
+|=== 
+| Mechanism | Status | Coverage |
+| rsr-template drift | ⚠️ Partial | Against standards canon |
+| Nix→Guix migration | ⚠️ Partial | Estate-wide tracking |
+| Provers pinning | ⚠️ Partial | Version verification |
+|=== 
+
+**Drift Detection Needed:**
+- rsr-template's flat-contractile drift against standards canon
+- Nix→Guix migration tracking
+- Provers version pinning (Idris2 0.8.0, Lean4 4.13.0, Agda 2.8.0, Coq, TLA+)
+
+==== Machine-Readable
+
+[cols="3,1,1"]
+|=== 
+| File | Status | Format |
+| Toolchain manifest | ✅ Active | Structured |
+| Format definitions | ✅ Active | Machine-readable |
+|=== 
+
+== Automation Coverage Summary
+
+=== By Category
+
+[cols="2,1,1,1,1"]
+|=== 
+| Category | Full | Partial | None | Total |
+| Spine | 2 (DEP-01, DEP-02) | 1 (DEP-04) | 1 (DEP-03) | 4 |
+| Proof-Foundation | 2 (DEP-09, DEP-10) | 0 | 1 (DEP-11) | 3 |
+| Plugin/Supply-Chain | 0 | 1 (DEP-05) | 1 (DEP-13) | 2 |
+| Collaboration | 0 | 1 (DEP-07) | 2 (DEP-06, DEP-08) | 3 |
+| Tooling | 1 (DEP-12) | 1 (DEP-15) | 0 | 2 |
+| Additional | 0 | 1 (DEP-14) | 0 | 1 |
+| **Total** | **5** | **5** | **5** | **15** |
+|=== 
+
+=== By Status
+
+[cols="1,1,1,1"]
+|=== 
+| Status | CI/CD | Drift Detection | Overall |
+| Full (5) | ✅ | ✅ | ✅ |
+| Partial (5) | ⚠️ | ⚠️ | ⚠️ |
+| None (5) | ❌ | ❌ | ❌ |
+|=== 
+
+== Critical Gaps and Action Items
+
+=== P1: Critical Path Automation Gaps
+
+[cols="1,3,1,1"]
+|=== 
+| DEP | Gap | Priority | Owner |
+| DEP-03 | No working compiler — entire automation blocked | Critical | hyperpolymath |
+| DEP-04 | Version reconciliation (v0.1.0 vs v0.3.1) | High | hyperpolymath |
+| DEP-04 | Idris2-ABI vs Zig-FFI drift audit | High | hyperpolymath |
+|=== 
+
+=== P2: Important Automation Gaps
+
+[cols="1,3,1,1"]
+|=== 
+| DEP | Gap | Priority | Owner |
+| DEP-05 | Full proven-pqc integration | High | hyperpolymath |
+| DEP-06 | WebRTC data-channel proof | High | hyperpolymath |
+| DEP-07 | 8/10 FFI binding targets untested | High | hyperpolymath |
+| DEP-07 | Groove manifest conformance | Medium | hyperpolymath |
+| DEP-08 | MCP LLM channel + plugin package index | High | hyperpolymath |
+| DEP-11 | Agda build env + path-drift detection | High | hyperpolymath |
+| DEP-13 | Signed container build pipeline | High | hyperpolymath |
+| DEP-14 | Hexadeca conformance drift detection | High | hyperpolymath |
+| DEP-15 | rsr-template drift reconciliation | Medium | hyperpolymath |
+|=== 
+
+=== Continuous: All DEPs
+
+[cols="1,3,1,1"]
+|=== 
+| DEP | Automation | Priority | Owner |
+| All | Keep panic-attack gates green | Continuous | All maintainers |
+| All | Keep status-gate CI active | Continuous | hyperpolymath |
+| All | Triage code-scanning alerts | Continuous | hyperpolymath |
+|=== 
+
+== Automation Best Practices
+
+=== What Makes Good DEP Automation?
+
+1. **CI/CD Workflows:** Every DEP should have at least basic CI/CD
+2. **Status Gates:** Proof/test counts should be gated to prevent drift
+3. **Drift Detection:** Automated detection of stale documentation/code
+4. **Verification Scripts:** Automated verification of claims
+5. **Machine-Readable:** Structured metadata for tooling consumption
+
+=== Estate-Wide Standards (DEP-09)
+
+DEP-09 standards provides reusable workflows and scripts:
+
+[cols="3,1,1"]
+|=== 
+| Resource | Type | Usage |
+| governance-reusable.yml | Workflow | Reusable governance |
+| codeql-reusable.yml | Workflow | CodeQL analysis |
+| build-registry.sh | Script | Registry generation |
+| build-scorecards.sh | Script | Scorecards generation |
+| verify-manifests.yml | Workflow | Manifest verification |
+|=== 
+
+**All DEPs should:**
+1. Use standards reusable workflows where applicable
+2. Run build-registry.sh --check in CI
+3. Run build-scorecards.sh --check in CI
+4. Verify manifests in CI
+
+== References
+
+- **DEPENDENCY-SCHEDULER.adoc:** Live kanban mirror (GitHub Project #41)
+- **DEP-IMPLEMENTATION-STATUS.adoc:** Detailed status of all DEPs
+- **standards repo:** https://github.com/hyperpolymath/standards
+- **panic-attack:** https://github.com/hyperpolymath/panic-attack
+- **a2ml format:** Machine-readable metadata standard

@@ -124,7 +124,7 @@ A large amount of real work landed on `main` in the intervening days (PRs
 == What we do NOT claim — remaining red, precisely diagnosed
 
 *Governance: "Trusted-base reduction policy" still fails.* It reports "no
-`docs/proof-debt.md` found, but 8 escape hatches exist." We checked: this
+`audits/outstanding_debt/proof-debt.md` found, but 8 escape hatches exist." We checked: this
 repo's *own* Idris2 proofs contain **zero** `believe_me`/`assert_total`/`OWED`
 markers — every curated module's own header comment ("no believe_me, no
 assert_total") holds under direct `idris2 --check`. The only real
@@ -132,7 +132,7 @@ assert_total") holds under direct `idris2 --check`. The only real
 `third_party/gossamer/`. This strongly suggests the checker's "8" figure is
 counting vendored code again — the same class of bug as the Java/Kotlin false
 positive we did fix (#102) — but we did **not** have the checker's exact
-counting script, so we did not fabricate a `docs/proof-debt.md` or guess at the
+counting script, so we did not fabricate a `audits/outstanding_debt/proof-debt.md` or guess at the
 disposition of hatches we haven't individually verified are even ours. Left
 open, precisely diagnosed, for the next session or the owner.
 

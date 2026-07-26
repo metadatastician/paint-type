@@ -18,9 +18,7 @@ project structure.
 [cols="1,2", options="header"]
 |===
 | Directory | Purpose
-| `boj-server/` | |
-| `panic-attacker/` | |
-| `ssg/` | |
+| `ssg/` | Static site generator integration |
 |===
 
 

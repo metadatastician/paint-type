@@ -115,7 +115,7 @@ just build          # Build everything
 just test           # Run all tests
 just doctor         # Self-diagnostic
 just lint           # Lint and format
-just panic-scan     # Security scan via panic-attacker
+just panic-scan     # Security scan via panic-attack
 just tour           # Guided tour of the codebase
 ----
 

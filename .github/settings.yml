@@ -103,6 +103,14 @@ labels:
     color: "c5def5"
     description: "Code refactoring with no functional change"
 
+  - name: "proof needed"
+    color: "fbcca0"
+    description: "Formal proof required for verification"
+
+  - name: "proof complete"
+    color: "006b75"
+    description: "Formal proof has been completed and verified"
+
 # ─── Branch Protection ─────────────────────────────────────────────────────────
 
 branches:

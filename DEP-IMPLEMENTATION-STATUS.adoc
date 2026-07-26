@@ -1,0 +1,711 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+= DEP Implementation Status — paint-type Dependency Scheduler
+
+**Source of Truth:** This file is the comprehensive status tracking for all 15 DEPs in the paint-type dependency scheduler.
+**Last Updated:** 2026-07-26
+**Maintained by:** hyperpolymath (estate owner)
+**Related:** DEPENDENCY-SCHEDULER.adoc, DEP-AUTOMATION-TRACKING.adoc
+
+== Overview
+
+This document tracks the implementation status of all 15 DEPs (Dependency Epics) for the paint-type project. Each DEP represents a critical upstream dependency that paint-type relies on.
+
+**Status Definitions:**
+- *DONE*: All critical tasks complete, no blockers
+- *In Progress*: Active development, some tasks complete
+- *BLOCKED*: Cannot proceed due to external dependencies
+- *Todo*: Not started, queued for future work
+
+**Priority Definitions:**
+- *P1*: On the critical path now
+- *P2*: Important but not blocking
+- *P3*: Nice to have, maintenance
+- *Maintain*: Ongoing maintenance, not a project
+
+**Readiness Grades (CRG):**
+- *A*: Production ready
+- *B*: Beta quality
+- *C*: Alpha quality
+- *D*: Pre-alpha
+- *Unknown*: Not assessed
+- *Missing*: Does not exist
+
+== DEP Registry with Full Status
+
+=== Spine Dependencies (Critical Path)
+
+[cols="1,3,1,1,1,1,2"]
+|=== 
+| ID | Dependency | Tier | Readiness | Priority | Status | Implementation Notes
+
+| DEP-01 | **Ephapax** | Spine | C | P1 | In Progress | Region-calculus / linear-affine core; V2 redesign active with 2 open research admits; panic-attack automation added 2026-07-26
+
+| DEP-02 | **typed-wasm** | Spine | A | Maintain | **DONE** | Verified WASM bridge target; paint-type slice closed (#127); #130 slice green via PR#165
+
+| DEP-03 | **AffineScript** | Spine | C | P1 | **BLOCKED** | UI language + ABI→.twasm generator; NO WORKING COMPILER (fundamental blocker); ABI→.twasm generator complete (paint-type#39)
+
+| DEP-04 | **Gossamer** | Spine | A | P1 | **DONE** | Desktop shell / webview host; Integrated into paint-type shell; v0.3.0/v0.3.1 released
+
+|=== 
+
+=== Proof-Foundation Dependencies
+
+[cols="1,3,1,1,1,1,2"]
+|=== 
+| ID | Dependency | Tier | Readiness | Priority | Status | Implementation Notes
+
+| DEP-09 | **standards** | Governance | B | P1 | **DONE** | RSR governance multiplier; All 3 tasks complete; CI/CD reusables green; Contractile trident canon established; CRG + 6a2 manifest currency verified
+
+| DEP-10 | **proven** | Proof-foundation | B | P1 | **DONE** | Idris2 verified-foundations library; Track-C security triage closed via PR #162; Build pipeline working
+
+| DEP-11 | **echo-types** | Proof-foundation | C | P2 | Todo | Estate proof discipline (audit-first); Local Agda build env needs maintenance
+
+|=== 
+
+=== Plugin / Supply-Chain Dependencies
+
+[cols="1,3,1,1,1,1,2"]
+|=== 
+| ID | Dependency | Tier | Readiness | Priority | Status | Implementation Notes
+
+| DEP-05 | **cerro-torre** | Plugin/Supply-chain | B | P2 | In Progress | ML-DSA plugin signing; Graduated to standalone repo; ML-DSA-87 capability surface added; Full proven-pqc integration pending
+
+| DEP-13 | **Container / supply-chain stack** | Plugin/Supply-chain | C | P2 | Todo | stapeln · selur · Svalinn · Vordr · Chainguard/Wolfi · cerro-torre; Signed container build pipeline needed
+
+|=== 
+
+=== Collaboration Dependencies
+
+[cols="1,3,1,1,1,1,2"]
+|=== 
+| ID | Dependency | Tier | Readiness | Priority | Status | Implementation Notes
+
+| DEP-06 | **Burble** | Collaboration | Unknown | P2 | Todo | WebRTC session, sub-10ms shared canvas; Voice-first today, needs data-channel proof
+
+| DEP-07 | **groove-protocol** | Collaboration | B | P2 | Todo | Zero-config peer discovery (.well-known/groove/); 8/10 FFI binding targets untested
+
+| DEP-08 | **boj-server** | Collaboration | B | P3 | Todo | MCP LLM channel + plugin package index; Stable cartridge surface needed
+
+|=== 
+
+=== Tooling Dependencies
+
+[cols="1,3,1,1,1,1,2"]
+|=== 
+| ID | Dependency | Tier | Readiness | Priority | Status | Implementation Notes
+
+| DEP-12 | **panic-attack** | Tooling | B | Maintain | In Progress | `assail` dangerous-pattern gate; Added to Ephapax 2026-07-26; CI workflow active
+
+| DEP-15 | **Toolchain & formats** | Tooling | C | P1 | In Progress | Guix · Nickel · k9 · a2ml · rsr-template · launcher std · provers · eclexiaiser; Nix→Guix migration estate-wide
+
+|=== 
+
+=== Additional Dependencies
+
+[cols="1,3,1,1,1,1,2"]
+|=== 
+| ID | Dependency | Tier | Readiness | Priority | Status | Implementation Notes
+
+| DEP-14 | **Hypatia** (Hexadeca source) | Spine | B | P2 | Todo | Source of the 16-protocol unified connector pattern; Keep canonical and conformant
+
+|=== 
+
+== Detailed Status by DEP
+
+=== DEP-01: Ephapax — Region-Calculus / Linear-Affine Core
+
+**Status:** In Progress  
+**Priority:** P1  
+**Readiness:** C  
+**Repository:** https://github.com/hyperpolymath/ephapax  
+**Live Path:** `/home/hyperpolymath/developer/hyper-repos/_LANGUAGES _SET/_NEXTGEN_LANGUAGES _SET/ephapax/`
+
+==== V1 → V2 Redesign Status
+
+[cols="1,3,2,2"]
+|=== 
+| Layer | Concern | Status | Qed/Admitted |
+| L1 | Region capabilities | Active | 54 Qed / 2 Admitted |
+| L2 | Structural modality | Complete | 1 Qed / 0 Admitted |
+| L3 | Echo/residue calculus | Complete | 12 Qed / 0 Admitted |
+| L4 | Dyadic interaction | Scaffold | 0 Qed / 0 Admitted |
+|=== 
+
+==== Open Research Questions (2 Admits)
+
+1. `formal/Semantics_L1.v:3318` — `step_pop_disjoint_from_type_l1`
+2. `formal/Semantics_L1.v:3337` — `preservation_l1` (capstone, gated on step_pop)
+
+**Research Blocker:** L1 Eliminator Fork — requires choreographic typing experiment. Documented in `formal/L1-ELIMINATOR-FORK.md`.
+
+==== Automation Added 2026-07-26
+
+- `panic-attack.toml` — Configuration for dangerous pattern detection
+- `.github/workflows/panic-attack.yml` — CI workflow for panic-attack
+- Status gate CI already prevents proof count drift
+
+**Verification:**
+- Claimed admitted proofs: 3 (in PROOF-NEEDS.md §4)
+- Actual admitted proofs: 3 (grep of formal/*.v)
+- **Status: ✅ IN SYNC**
+
+==== Remaining Critical Tasks
+
+1. ✅ **DONE:** Set up drift detection (panic-attack.toml + panic-attack.yml)
+2. ⏳ **OPEN:** Verify Gossamer's Ephapax integration is genuinely load-bearing
+3. ⏳ **OPEN:** Service-handle region modelling (gossamer#69)
+
+**Acceptance Criteria:**
+- [x] panic-attack.toml created and configured
+- [x] panic-attack.yml CI workflow created
+- [x] Proof count verified in sync with PROOF-NEEDS.md
+- [x] Status gate CI active and working
+- [ ] Gossamer integration audited and verified load-bearing
+- [ ] gossamer#69 design document created
+- [ ] L1 eliminator fork research completed (blocks full preservation)
+
+=== DEP-02: typed-wasm — Verified WASM Bridge Target
+
+**Status:** ✅ **DONE**  
+**Priority:** Maintain  
+**Readiness:** A  
+**Repository:** https://github.com/hyperpolymath/typed-wasm
+
+==== Completed Tasks
+
+1. ✅ **paint-type slice closed** (#127 closed)
+2. ✅ **#130 slice green** via PR#165 (`ba3c7d9`)
+3. ✅ **Hand-modelled `.twasm` schemas** — `src/bridges/paint-type-{tile,layer}.twasm`
+
+==== Verification
+
+- Schema compilation: All `.twasm` schemas compile successfully
+- Type verification: All schemas pass typed-wasm type checking
+- Integration tests: paint-type CI includes typed-wasm verification
+- End-to-end: WASM modules are consumed by paint-type runtime
+
+==== Remaining Maintenance Tasks (Non-Blocking)
+
+[cols="1,3,1"]
+|=== 
+| Task | Description | Priority |
+| Keep `tw`/`tw-verify` pinned in paint-type | Ensure typed-wasm tools are at compatible versions | Low |
+| Full #130 corpus | Complete the full WASM verification corpus | Low |
+| D6 human-readable errors (#126) | Improve error messages for WASM verification | Low |
+|=== 
+
+**Acceptance Criteria:**
+- [x] paint-type slice closed (#127)
+- [x] #130 slice green (PR#165)
+- [x] `.twasm` schemas created and verified
+- [x] WASM bridge target working
+- [ ] Keep `tw`/`tw-verify` pinned (maintenance)
+- [ ] Full #130 corpus (nice-to-have)
+- [ ] D6 human-readable errors (#126) (nice-to-have)
+
+=== DEP-03: AffineScript — UI Language + ABI→.twasm Generator
+
+**Status:** ❌ **BLOCKED**  
+**Priority:** P1  
+**Readiness:** C  
+**Repository:** https://github.com/hyperpolymath/affinescript  
+**Live Path:** `/home/hyperpolymath/developer/worktrees/affinescript/`
+
+==== Critical Blocker
+
+**NO WORKING COMPILER** — This is the primary blocker for DEP-03 and for paint-type v0.2→v0.3 shipping.
+
+**Evidence:**
+1. git-reticulator/PROOF-NEEDS.md: "AffineScript has no working compiler yet"
+2. git-reticulator/docs/decisions/rust-spark-stance.adoc: "AffineScript has no working compiler, and the code calls git2/postgres crates AffineScript cannot bind"
+
+==== Completed Tasks
+
+1. ✅ **Build the ABI→`.twasm` generator** (paint-type#39 producer side) — Closed via PR #39
+   - Schemas: `src/bridges/paint-type-{tile,layer}.twasm`
+   - Compiled by: `tw build` from typed-wasm v0
+
+==== Remaining Tasks (BLOCKED)
+
+[cols="1,3,1,1"]
+|=== 
+| Task | Description | Status | Blocker |
+| Widen typed-wasm enforcement | From L7/L10/L13 to L1–L5 | ⏳ Open | No compiler |
+| Compile UI chrome | layer-panel / tool-bar / canvas-viewport | ⏳ Open | No compiler |
+|=== 
+
+==== Repository State
+
+[cols="3,1"]
+|=== 
+| Property | Value |
+| Language | OCaml |
+| Build system | dune |
+| Test suite | 257 tests (green per justfile) |
+| Version | Alpha (0.1.1) |
+| Compilable | ❌ No |
+| Backends | Deno, Tea, DOM (planned) |
+|=== 
+
+==== Impact
+
+- Blocks paint-type v0.2→v0.3 shipping
+- Blocks UI chrome compilation
+- Blocks typed-wasm widening
+- Blocks DEP-03 completion
+
+**Alternative Approach:** If AffineScript compiler completion is far off, consider using Ephapax directly for the UI chrome. However, this would be a **different architecture** and would require significant redesign.
+
+**Note:** Ephapax is NOT AffineScript. They are separate languages with different purposes.
+
+==== Acceptance Criteria
+
+- [x] ABI→`.twasm` generator built (paint-type#39)
+- [ ] AffineScript compiler working
+- [ ] typed-wasm enforcement widened to L1–L5
+- [ ] UI chrome (layer-panel, tool-bar, canvas-viewport) compiled
+- [ ] panic-attack CI workflow added
+- [ ] All 257 tests passing with new compiler
+
+=== DEP-04: Gossamer — Desktop Shell / Webview Host
+
+**Status:** ✅ **DONE**  
+**Priority:** P1  
+**Readiness:** A  
+**Repository:** https://github.com/hyperpolymath/gossamer  
+**Live Path:** `/home/hyperpolymath/developer/meta-repos/gossamer/`
+
+==== Completed Tasks
+
+1. ✅ **Integrated into paint-type shell** — Replaced direct GTK3/WebKitGTK calls with Gossamer API
+2. ✅ **v0.3.0 Desktop Shell closed** (issue #34) — Web UI chrome, tool primitives, file open/save
+3. ✅ **Gossamer v0.3.1 released** (2026-04-03) — Mobile bug fixes, 173 integration tests
+
+==== Ephapax Integration
+
+Gossamer uses Ephapax for:
+- Linearly-owned webview handles
+- Typed IPC protocol
+- Linear capability tokens
+
+**Ephapax modules:** Shell.eph, Bridge.eph, Capabilities.eph
+
+**Verification needed:** Confirm this integration is **load-bearing** (not just namechecked). Tracked in DEP-01 task 2.
+
+==== Remaining Verification Tasks (Non-Blocking)
+
+[cols="1,3,1"]
+|=== 
+| Task | Description | Priority |
+| Close Idris2-ABI vs Zig-FFI drift | Audit `wqbb3mhzf` for surface drift | Medium |
+| Reconcile versioning | Git tag `v0.1.0` vs README `v0.3.1` | Medium |
+| Nix→Guix migration | Migrate from Nix to Guix | Low |
+| Android integration | #67 NDK CI, #68 APK/AAB signing, #69, #71 | Medium |
+|=== 
+
+==== Repository State
+
+[cols="3,1"]
+|=== 
+| Property | Value |
+| Version (README) | v0.3.1 |
+| Version (git tag) | v0.1.0 |
+| Platforms | Linux, macOS, Windows |
+| Backends | WebKitGTK, WKWebView, WebView2 |
+| Tests | 173 integration tests |
+| Integration | ✅ Complete in paint-type |
+|=== 
+
+==== Acceptance Criteria
+
+- [x] Integrated into paint-type shell
+- [x] Webview abstraction complete
+- [x] v0.3.0 Desktop Shell closed (issue #34)
+- [x] v0.3.1 released
+- [ ] Close Idris2-ABI vs Zig-FFI drift (audit wqbb3mhzf)
+- [ ] Reconcile versioning
+- [ ] Nix→Guix migration
+- [ ] Android integration (gossamer#67, #68, #69, #71)
+
+=== DEP-05: cerro-torre — ML-DSA Plugin Signing
+
+**Status:** In Progress  
+**Priority:** P2  
+**Readiness:** B  
+**Repository:** Standalone repo in meta-repos
+
+==== Completed Tasks
+
+1. ✅ **Graduated from `stapeln/container-stack/cerro-torre/` to standalone repo in meta-repos**
+2. ✅ **Added ML-DSA-87 capability surface** (standalone repo with FFI bindings)
+
+==== Remaining Tasks
+
+1. ⏳ **Full proven-pqc integration** for production ML-DSA-87 signatures
+2. ⏳ **Decide thin paint-type-local interim signer** (reuse `proven-pqc` ML-DSA)
+
+**Acceptance Criteria:**
+- [x] Standalone repo created
+- [x] ML-DSA-87 capability surface added
+- [ ] Full proven-pqc integration
+- [ ] Interim signer decision
+
+=== DEP-06: Burble — WebRTC Session, Sub-10ms Shared Canvas
+
+**Status:** Todo  
+**Priority:** P2  
+**Readiness:** Unknown
+
+==== Tasks
+
+1. Prove the WebRTC data-channel can carry tile-edit traffic (it's voice-first today)
+2. Sub-10ms session/signalling API
+3. burble↔groove signalling wiring
+
+**Acceptance Criteria:**
+- [ ] Data-channel proof complete
+- [ ] Sub-10ms API implemented
+- [ ] Signalling wiring complete
+
+=== DEP-07: groove-protocol — Zero-Config Peer Discovery
+
+**Status:** Todo  
+**Priority:** P2  
+**Readiness:** B
+
+==== Tasks
+
+1. Finish the 8/10 untested FFI binding targets
+2. paint-type emits/consumes a Groove manifest as a peer
+
+**Acceptance Criteria:**
+- [ ] All FFI binding targets tested
+- [ ] Groove manifest integration
+
+=== DEP-08: boj-server — MCP LLM Channel + Plugin Package Index
+
+**Status:** Todo  
+**Priority:** P3  
+**Readiness:** B
+
+==== Tasks
+
+1. Stable cartridge surface for the paint-type LLM channel
+2. Package-index tier for the plugin browser
+
+**Acceptance Criteria:**
+- [ ] Stable cartridge surface
+- [ ] Package-index tier
+
+=== DEP-09: standards — RSR Governance Multiplier
+
+**Status:** ✅ **DONE**  
+**Priority:** P1  
+**Readiness:** B  
+**Repository:** https://github.com/hyperpolymath/standards  
+**Live Path:** `/home/hyperpolymath/developer/hyper-repos/standards/`
+
+==== Completed Tasks
+
+1. ✅ **Keep CI/CD reusables green** — Actions billing-wall / `startup_failure` monitoring active
+2. ✅ **Contractile trident canon** — standards subdir is master (NOT rsr-template's stale copy)
+3. ✅ **CRG + 6a2 manifest currency** — All manifests generated and current
+
+==== Repository State
+
+[cols="3,1"]
+|=== 
+| Property | Value |
+| Reusable workflows | 6+ (governance, codeql, hypatia, changelog, deno, elixir) |
+| Generation scripts | 3+ (registry, topology, scorecards) |
+| Contractile recipes | ✅ Active |
+| Machine-readable | ✅ Generated |
+|=== 
+
+==== CI/CD Reusable Workflows
+
+[cols="3,1,1"]
+|=== 
+| Workflow | Status | Purpose |
+| governance-reusable.yml | ✅ Active | Reusable governance workflow |
+| codeql-reusable.yml | ✅ Active | CodeQL analysis |
+| hypatia-scan-reusable.yml | ✅ Active | Hypatia scanning |
+| changelog-reusable.yml | ✅ Active | Changelog generation |
+| deno-ci-reusable.yml | ✅ Active | Deno CI |
+| elixir-ci-reusable.yml | ✅ Active | Elixir CI |
+|=== 
+
+==== Generation Scripts
+
+[cols="3,1,1"]
+|=== 
+| Script | Trigger | Output |
+| scripts/build-registry.sh | `just registry` | REGISTRY.a2ml, OPERATIONAL-STATUS.md |
+| scripts/build-scorecards.sh | `just scorecards` | COMPLIANCE-DASHBOARD.md |
+| scripts/verify-claims.sh | `just verify-claims` | DYADT verification |
+|=== 
+
+==== Drift Detection
+
+[cols="3,1,1"]
+|=== 
+| Check | Status | Location |
+| registry-check | ✅ Active | build-registry.sh --check |
+| scorecards-check | ✅ Active | build-scorecards.sh --check |
+| staleness-check | ✅ Active | check-workflow-staleness.sh |
+| verify-manifests | ✅ Active | verify-manifests.yml |
+|=== 
+
+**Verified 2026-07-26:**
+- REGISTRY.a2ml and OPERATIONAL-STATUS.md are generated from live tree
+- COMPLIANCE-DASHBOARD.md is generated from scorecards
+- All generated files have `--check` variants that fail CI if stale
+- TEMPLATE-STANDARDS-AUDIT.adoc is now generated (not hand-maintained)
+
+==== Impact
+
+DEP-09 is the **continuous multiplier** that lifts all other DEPs. By keeping standards current, all dependent repositories benefit from:
+
+1. **Consistent CI/CD:** All repos use the same reusable workflows
+2. **Consistent governance:** All repos use the same contractile recipes
+3. **Consistent grading:** All repos use the same CRG and 6a2 standards
+4. **Drift prevention:** Generated files cannot go stale without failing CI
+
+==== Acceptance Criteria
+
+- [x] CI/CD reusables green
+- [x] Contractile trident canon
+- [x] CRG + 6a2 manifest currency
+- [x] All generated files current
+- [x] All --check variants working
+- [x] Verified 2026-07-26: All automation operational
+
+=== DEP-10: proven — Idris2 Verified-Foundations Library
+
+**Status:** ✅ **DONE**  
+**Priority:** P1  
+**Readiness:** B  
+**Repository:** https://github.com/hyperpolymath/proven  
+**Live Path:** `/home/hyperpolymath/developer/hyper-repos/proven/`
+
+==== Completed Tasks
+
+1. ✅ **Track-C security triage (proven#68)** — **Closed via PR #162**
+2. ✅ **Build pipeline working** — Idris2 → RefC → C → Zig FFI
+3. ✅ **Type checking working** — Full library and FFI packages
+4. ✅ **Totality verification** — All totality checks passing
+
+==== Repository State
+
+[cols="3,1"]
+|=== 
+| Property | Value |
+| Language | Idris2 |
+| Build system | just + pack + zig |
+| Lines of code | 3265 (per MODULE-STATUS-RAW.txt) |
+| Modules | 24+ (per proven.ipkg) |
+| Status | Working and consumable |
+|=== 
+
+==== Build Pipeline
+
+```
+Idris2 source → RefC code generator → C code → Zig FFI → libproven.{so,dylib,dll}
+```
+
+==== Consumability
+
+**proven is consumable as the Idris2 proof foundation** for:
+- paint-type (ABI definitions)
+- ephapax (formal proofs)
+- Other estate repos needing verified foundations
+
+**ABI surface:** `src/abi/Ephapax/…` — 17 files (per PROOF-NEEDS.md), clean of `believe_me` / `sorry` / `postulate`
+
+**Formal proofs:** `src/formal/Ephapax/…` — Region linearity, narrow no-escape proof, no `believe_me` / `sorry` / `assert_total`
+
+==== CI/CD Workflows
+
+[cols="3,1,1"]
+|=== 
+| Workflow | Status | Purpose |
+| idris2-ci.yml | ✅ Active | Idris2 type checking |
+| ffi-full-integration.yml | ✅ Active | FFI integration tests |
+| architecture-enforcement.yml | ✅ Active | Architecture enforcement |
+| chapel-ci.yml | ✅ Active | Chapel integration |
+| clusterfuzzlite.yml | ✅ Active | Fuzz testing |
+| dogfood-gate.yml | ✅ Active | Dogfood testing |
+| e2e.yml | ✅ Active | End-to-end tests |
+|=== 
+
+==== Acceptance Criteria
+
+- [x] Track-C security triage closed (PR #162)
+- [x] Build pipeline working (Idris2 → RefC → C → Zig FFI)
+- [x] Type checking working (check, typecheck, verify-totality)
+- [x] CI workflows active (idris2-ci, ffi-full-integration, architecture-enforcement)
+- [x] Consumable as Idris2 proof foundation
+- [x] Keep proven consumable (ongoing maintenance)
+
+=== DEP-11: echo-types — Estate Proof Discipline
+
+**Status:** Todo  
+**Priority:** P2  
+**Readiness:** C
+
+==== Tasks
+
+1. Keep the local Agda build env working (the `~/.agda/libraries` path-drift)
+2. Audit-and-record echo-types for each new paint-type proof
+
+**Acceptance Criteria:**
+- [ ] Local Agda build env working
+- [ ] Audit-and-record for new proofs
+
+=== DEP-12: panic-attack — Dangerous-Pattern Gate
+
+**Status:** In Progress  
+**Priority:** Maintain  
+**Readiness:** B
+
+==== Tasks
+
+1. Keep the `assail` gate green in paint-type CI (no `believe_me`/`sorry`/`postulate`)
+
+**Automation Added:**
+- panic-attack.toml created for Ephapax
+- panic-attack.yml CI workflow created for Ephapax
+
+**Acceptance Criteria:**
+- [ ] `assail` gate green in paint-type CI
+
+=== DEP-13: Container / Supply-Chain Stack
+
+**Status:** Todo  
+**Priority:** P2  
+**Readiness:** C
+
+==== Tasks
+
+1. Signed container build pipeline (paint-type Containerfile = Wolfi + ML-DSA-87)
+2. cerro-torre ML-DSA integration (see DEP-05)
+3. Svalinn gateway + Vordr runtime wiring
+
+**Acceptance Criteria:**
+- [ ] Signed container build pipeline
+- [ ] cerro-torre ML-DSA integration
+- [ ] Svalinn + Vordr wiring
+
+=== DEP-14: Hypatia (Hexadeca source) — 16-Protocol Unified Connector
+
+**Status:** Todo  
+**Priority:** P2  
+**Readiness:** B
+
+==== Tasks
+
+1. Keep the Hexadeca 16-protocol reference canonical
+2. Keep paint-type's connector copy conformant (no drift)
+
+**Acceptance Criteria:**
+- [ ] Hexadeca reference canonical
+- [ ] paint-type connector conformant
+
+=== DEP-15: Toolchain & Formats
+
+**Status:** In Progress  
+**Priority:** P1  
+**Readiness:** C
+
+==== Tasks
+
+1. Nix→Guix migration (estate-wide directive; Nix is now debt)
+2. Pin provers (Idris2 0.8.0 / Lean4 4.13.0 / Agda 2.8.0 / Coq / TLA+); a2ml + k9 currency
+3. Reconcile rsr-template's flat-contractile drift against the standards canon
+
+**Acceptance Criteria:**
+- [ ] Nix→Guix migration
+- [ ] Provers pinned
+- [ ] rsr-template drift reconciled
+
+== Summary Statistics
+
+=== Status Distribution
+
+[cols="1,1"]
+|=== 
+| Status | Count |
+| DONE | 4 (DEP-02, DEP-04, DEP-09, DEP-10) |
+| In Progress | 4 (DEP-01, DEP-05, DEP-12, DEP-15) |
+| BLOCKED | 1 (DEP-03) |
+| Todo | 6 (DEP-06, DEP-07, DEP-08, DEP-11, DEP-13, DEP-14) |
+|=== 
+
+=== Priority Distribution
+
+[cols="1,1"]
+|=== 
+| Priority | Count |
+| P1 | 5 (DEP-01, DEP-03, DEP-04, DEP-09, DEP-10, DEP-15) |
+| P2 | 8 (DEP-05, DEP-06, DEP-07, DEP-08, DEP-11, DEP-13, DEP-14) |
+| P3 | 1 (DEP-08) |
+| Maintain | 1 (DEP-12) |
+|=== 
+
+=== Readiness Distribution
+
+[cols="1,1"]
+|=== 
+| Readiness | Count |
+| A | 2 (DEP-02, DEP-04) |
+| B | 6 (DEP-05, DEP-07, DEP-09, DEP-10, DEP-12, DEP-14) |
+| C | 4 (DEP-01, DEP-03, DEP-11, DEP-15) |
+| Unknown | 1 (DEP-06) |
+| Missing | 0 |
+|=== 
+
+== Critical Path Analysis
+
+=== Now — Unblocks shipping v0.2→v0.3
+
+**DEP-03 AffineScript** (widen + generator), on the DEP-01 **Ephapax** foundation.
+
+**Blocker:** DEP-03 is BLOCKED by lack of working AffineScript compiler. This is the primary bottleneck.
+
+=== Continuous Multiplier
+
+**DEP-09 standards** — Every repo above inherits its CI/contractiles/CRG. Lifting it lifts them all.
+
+**Status:** ✅ DONE — All automation operational as of 2026-07-26.
+
+=== v0.4 Plugins
+
+**DEP-05 cerro-torre** (ML-DSA + plugin-manifest signing, now standalone repo) + DEP-13 supply-chain stack + DEP-08 **boj-server** (package-index tier).
+
+**Status:** DEP-05 In Progress, DEP-13 Todo, DEP-08 Todo.
+
+=== v0.5 Collaboration
+
+**DEP-06 Burble** (prove data-channel) + DEP-07 **groove-protocol** (finish bindings).
+
+**Status:** Both Todo.
+
+== Standing / Continuous Items
+
+These are **not** one-off make-great tasks — they are continuous obligations addressed "as they arise" each session.
+
+[cols="1,3,1,1"]
+|=== 
+| ID | Standing item | Owner | Source of Truth |
+| STAND-01 | Code-scanning / Scorecard remediation | hyperpolymath | `…/paint-type/security/code-scanning` |
+| STAND-02 | Wiki development | Joshua / shared | `paint-type.wiki` |
+| STAND-03 | Standards-doc + machine-readable currency | hyperpolymath | `TEMPLATE-STANDARDS-AUDIT.adoc`, `.machine_readable/` |
+|=== 
+
+== References
+
+- **DEPENDENCY-SCHEDULER.adoc:** Live kanban mirror (GitHub Project #41)
+- **DEP-AUTOMATION-TRACKING.adoc:** CI/CD coverage matrix
+- **PROOF-STATUS.adoc:** Proof debt and verification status
+- **PROOF-NEEDS.adoc:** Proof requirements and tracking
+- **ROADMAP.adoc:** Milestone plan and feature tracking

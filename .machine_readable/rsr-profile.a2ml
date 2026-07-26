@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (c) 2026 Joshua Jewell (JoshuaJewell) <paint-type@pm.me>
+#
+# rsr-profile.a2ml — paint-type's declared RSR v2.0 capabilities.
+#
+# Authored in the A2ML record dialect (hyperpolymath/standards
+# a2ml/RECORD-DIALECT-SPEC.adoc). It declares which capabilities this repo has,
+# per TEMPLATE-APPLICABILITY-POLICY.adoc; the RSR v2.0 conformance oracle
+# (hypatia Hypatia.Rules.RsrConformance) uses `capabilities` to compute the
+# APPLICABLE criteria set — a gated criterion is scored only when its gating
+# capability appears below; everything else is `na` and excluded from the
+# denominator.
+#
+# paint-type is a cross-platform image editor with formal ABI, Rust engine,
+# Zig FFI bridge, and Idris2 proofs.
+
+[rsr-profile]
+version = "1.0.0"
+spec = "rsr-criteria-v2"
+declares-against = "2.0.0-draft"
+# Effective capability set for paint-type
+capabilities = [
+  "rust",               # src/ephapax/ image engine in Rust with linear types
+  "idris2",             # src/interface/Abi/ (dependent-typed ABI definitions)
+  "zig",                # src/interface/ffi/ (zero-cost C ABI bridge)
+  "affinescript",       # AffineScript for bridge layer (typed-wasm)
+  "bash",               # scripts/*.sh automation
+  "cli",                # CLI entry points
+  "library",            # paint-type as a library
+  "ffi",                # C-ABI FFI seam (Zig)
+  "abi",                # formally specified ABI: Idris2 definitions
+  "formal-proofs",      # verification/proofs/ (CRDT merge, undo graph, tile invariants)
+  "docs-site",          # www/ static site
+  "container",          # container/ + .devcontainer/
+  "reproducible-build", # build/ Justfile
+  "benchmarks",         # benches/ + tests/
+  "governance-tier",    # GOVERNANCE.adoc + MAINTAINERS + CODEOWNERS
+  "collaboration",      # Burble WebRTC + Groove discovery for real-time collaboration
+]
+
+[notes]
+# paint-type capabilities:
+#   rust - Ephapax image engine with linear types for tile safety
+#   idris2 - ABI definitions with dependent types for pointer safety
+#   zig - FFI bridge implementation
+#   affinescript - typed-wasm bridge layer generated from Idris2
+#   cli - command-line interface
+#   library - paint-type can be used as a library
+#   ffi - C ABI for cross-language integration
+#   abi - formally verified ABI specifications
+#   formal-proofs - in-tree proofs for CRDT properties, undo graph, tile invariants
+#   docs-site - static documentation site
+#   container - container configuration
+#   reproducible-build - Justfile build system
+#   benchmarks - performance and correctness tests
+#   governance-tier - full governance documentation
+#   collaboration - real-time collaboration via Burble + Groove

@@ -1,0 +1,35 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+= scripts
+:description: Internal automation scripts for paint.type project lifecycle
+
+This directory is part of the paint.type project.
+
+== Purpose
+
+Internal automation logic for the project lifecycle, including:
+
+- Forge sync operations
+- Verification triggers
+- Maintenance tasks
+
+== Subdirectories
+
+[cols="1,2", options="header"]
+|===
+| Directory | Purpose
+| `forge/` | Forge synchronization scripts
+| `lifecycle/` | Lifecycle management scripts
+| `maintenance/` | Maintenance and cleanup scripts
+| `verification/` | Verification and validation scripts
+|===
+
+== AI Manifest Structure
+
+* `0.2-AI-MANIFEST.a2ml` (this file) - Level 2 manifest for `.machine_readable/scripts/`
+
+== Related Files
+
+* link:../0.1-AI-MANIFEST.a2ml[Parent AI Manifest]
+* link:../README.adoc[Parent Directory README]
+* link:../../.machine_readable/[Machine Readable Metadata root]

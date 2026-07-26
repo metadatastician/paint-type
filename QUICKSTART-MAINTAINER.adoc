@@ -92,7 +92,7 @@ just build-release
 
 * License: AGPL-3.0-or-later (Palimpsest License)
 * All GitHub Actions SHA-pinned
-* `panic-attacker` scan runs on every PR
+* `panic-attack` scan runs on every PR
 * OpenSSF Scorecard: see badge in README
 * Security contact: paint-type@pm.me
 

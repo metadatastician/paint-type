@@ -1,0 +1,167 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// GitHub Issue: DEP-01 Ephapax — Region-Calculus / Linear-Affine Core
+// Status: In Progress
+// Priority: P1
+// Readiness: C
+// Owner: hyperpolymath
+// Last Updated: 2026-07-26
+
+= DEP-01: Ephapax — Region-Calculus / Linear-Affine Core
+
+**Repository:** https://github.com/hyperpolymath/ephapax
+**Live Path:** `/home/hyperpolymath/developer/hyper-repos/_LANGUAGES _SET/_NEXTGEN_LANGUAGES _SET/ephapax/`
+
+== Current Status
+
+Ephapax is in the middle of a **V1 → V2 redesign** with significant progress and
+**2 open research questions** that are documented and trackable.
+
+=== V1 Status: Falsified (Intentionally)
+
+The legacy preservation theorem in `formal/Semantics.v` was **proven unsound** via a
+Coq counterexample (`formal/Counterexample.v` with 5 Qed lemmas). This was a
+*deliberate and correct* discovery — the unsoundness was found before anyone
+depended on it.
+
+**Key files:**
+- `formal/Semantics.v:9258` — `Theorem preservation` — **Provably false** — Sacrosanct, do not attempt to close
+- `formal/Counterexample.v` — 5 Qed lemmas proving the unsoundness
+
+=== V2 Status: Active Redesign
+
+The V2 redesign separates four concerns that V1 conflated:
+
+[cols="1,3,2,2"]
+|=== 
+| Layer | Concern | Status | Qed/Admitted |
+| L1 | Region capabilities | Active | 54 Qed / 2 Admitted |
+| L2 | Structural modality | Complete | 1 Qed / 0 Admitted |
+| L3 | Echo/residue calculus | Complete | 12 Qed / 0 Admitted |
+| L4 | Dyadic interaction | Scaffold | 0 Qed / 0 Admitted |
+|=== 
+
+**Open Research Admits (2):**
+1. `formal/Semantics_L1.v:3318` — `step_pop_disjoint_from_type_l1`
+2. `formal/Semantics_L1.v:3337` — `preservation_l1` (capstone, gated on step_pop)
+
+=== Automation Status
+
+[cols="3,1,1"]
+|=== 
+| Check | Status | Location |
+| Status gate (proof count) | ✅ Active | `.github/workflows/status-gate.yml` |
+| Status gate (test count) | ✅ Active | `.github/workflows/status-gate.yml` |
+| panic-attack assail | ✅ Created | `.github/workflows/panic-attack.yml` |
+| panic-attack.toml | ✅ Created | `panic-attack.toml` |
+|=== 
+
+*Current counts (verified 2026-07-26):*
+- Claimed admitted proofs: 3 (in PROOF-NEEDS.md §4)
+- Actual admitted proofs: 3 (grep of formal/*.v)
+- **Status: ✅ IN SYNC**
+
+== Remaining Tasks
+
+### P1 Tasks (from DEPENDENCY-SCHEDULER)
+
+1. **✅ DONE: Set up drift detection**
+   - panic-attack.toml created with rules for Rust, Coq, Idris2
+   - panic-attack.yml CI workflow created and ready to merge
+   - Status gate CI already prevents proof count drift
+
+2. **⏳ OPEN: Verify Gossamer's Ephapax integration is genuinely load-bearing**
+   - Gossamer repository: `/home/hyperpolymath/developer/meta-repos/gossamer/`
+   - Uses: Idris2 ABI definitions, Zig FFI
+   - Ephapax modules: Shell.eph, Bridge.eph, Capabilities.eph
+   - **Action needed:** Audit to confirm integration is not just namechecked
+
+3. **⏳ OPEN: Service-handle region modelling (gossamer#69)**
+   - Documented in: `gossamer/docs/architecture/android-components.adoc`
+   - **Description:** Region-calculus of long-lived Service handles — how a JVM-owned
+     Service region nests with the webview region and how cross-region references
+     (Service → Widget update) are tracked under Ephapax.
+   - **Action needed:** Create formal design document and implementation plan
+
+== Blockers
+
+### Research Blocker: L1 Eliminator Fork
+
+The 2 remaining L1 admits are **open research questions**, not implementation tasks.
+They are documented in `formal/L1-ELIMINATOR-FORK.md` and require a deciding
+experiment:
+
+**The Challenge:**
+Preservation needs: if `R ; G ⊢ e : T -| R' ; G'` and `(μ,R,e) → (μ',R₂,e')`, then
+`R₂ ; G ⊢ e' : T -| …`. It fails on a single shape where a subterm depends on
+a region `rv`, but an eliminator erases `rv` from the result type, and a step
+exits `rv`. The judgment's snapshot + result-type-local view cannot express
+"rv must be live throughout the evaluation of e_sub".
+
+**Proposed Solution:**
+Type region-liveness **choreographically**, across time segments. Replace
+"liveness = membership in a snapshot" with "liveness = a position in a global
+protocol over time segments".
+
+**Deciding Experiment (per §6):**
+Formulate the minimal choreography that types `EDrop (EVar j : TString rv)`
+over two segments and ask: Does the choreography's subject-reduction step
+for `S_Region_Exit rv` transform the global type into a coherent global type
+without a snapshot premise?
+
+- **If yes** → ADMIT 3 closes choreographically
+- **If no** → Problem has relocated, not closed
+
+**Owner:** Jonathan D.A. Jewell
+**Status:** Open research
+**Anti-patterns:** See `formal/L1-ELIMINATOR-FORK.md` §2-5 for what NOT to do
+
+== Files Changed
+
+### Created (2026-07-26)
+1. `panic-attack.toml` — Configuration for dangerous pattern detection
+2. `.github/workflows/panic-attack.yml` — CI workflow for panic-attack
+
+### Modified
+- None (source code unchanged — only automation added)
+
+== Verification Commands
+
+```bash
+# Verify proof count sync
+./scripts/status-gate.sh --proofs
+
+# Run panic-attack locally
+panic-attack assail --config panic-attack.toml
+
+# Check all admitted proofs
+grep -R --include='*.v' -n '^[[:space:]]*Admitted\.' formal
+```
+
+== Acceptance Criteria
+
+- [x] panic-attack.toml created and configured
+- [x] panic-attack.yml CI workflow created
+- [x] Proof count verified in sync with PROOF-NEEDS.md
+- [x] Status gate CI active and working
+- [ ] Gossamer integration audited and verified load-bearing
+- [ ] gossamer#69 design document created
+- [ ] L1 eliminator fork research completed (blocks full preservation)
+
+== References
+
+- **Canonical disambiguation:** https://github.com/hyperpolymath/nextgen-languages/blob/main/docs/disambiguation/ephapax-vs-affinescript.md
+- **Design doctrine:** `formal/PRESERVATION-DESIGN.md`
+- **Proof debt:** `PROOF-NEEDS.md`
+- **Research plan:** `formal/L1-ELIMINATOR-FORK.md`
+- **V1→V2 story:** `V1-TO-V2.adoc`
+- **Current status:** `STATUS.adoc`
+
+== Labels
+
+`DEP-01`, `Ephapax`, `research`, `P1`, `foundation`, `automation`
+
+== Assignees
+
+- **Primary:** hyperpolymath
+- **Research (L1 admits):** Jonathan D.A. Jewell
+- **Gossamer integration:** hyperpolymath

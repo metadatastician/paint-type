@@ -1,0 +1,171 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// GitHub Issue: DEP-04 Gossamer — Desktop Shell / Webview Host
+// Status: DONE
+// Priority: P1
+// Readiness: A
+// Owner: hyperpolymath
+// Last Updated: 2026-07-26
+
+= DEP-04: Gossamer — Desktop Shell / Webview Host
+
+**Repository:** https://github.com/hyperpolymath/gossamer
+**Live Path:** `/home/hyperpolymath/developer/meta-repos/gossamer/`
+
+== Current Status
+
+**DEP-04 is DONE** — Gossamer is integrated into paint-type shell and the webview
+abstraction is complete.
+
+From DEPENDENCY-SCHEDULER: "Gossamer now at Readiness A/Done. DEP-04 **Gossamer** now
+at Readiness A/Done."
+
+From ROADMAP.adoc: "v0.3.0 Desktop Shell **closed** (issue #34)"
+
+=== Completed Tasks
+
+1. ✅ **Integrated into paint-type shell**
+   - Replaced direct GTK3/WebKitGTK calls with Gossamer API
+   - Webview abstraction complete
+   - Cross-platform support: Linux, macOS, Windows
+
+2. ✅ **v0.3.0 Desktop Shell closed** (issue #34)
+   - Web UI chrome: layer panel, tool bar, canvas viewport
+   - Tool primitives: brush, eraser, selection, fill
+   - Platform integration: file open/save (PNG, RGBA16F)
+   - Cross-platform build (Linux, macOS, Windows)
+
+3. ✅ **Gossamer v0.3.1 released** (2026-04-03)
+   - Mobile bug fixes
+   - 173 integration tests
+   - Package distribution
+
+=== Remaining Tasks (Verification)
+
+These are **verification and maintenance tasks** that do not block DEP-04
+completion but should be addressed:
+
+[cols="1,3,1"]
+|=== 
+| Task | Description | Priority |
+| Close Idris2-ABI vs Zig-FFI drift | Audit `wqbb3mhzf` for surface drift | Medium |
+| Reconcile versioning | Git tag `v0.1.0` vs README `v0.3.1` | Medium |
+| Nix→Guix migration | Migrate from Nix to Guix | Low |
+| Android integration | #67 NDK CI, #68 APK/AAB signing, #69, #71 | Medium |
+|=== 
+
+=== Details
+
+### Idris2-ABI vs Zig-FFI Surface Drift
+
+**Reference:** gossamer#69 (mentioned in DEP-01, but also relevant here)
+
+**Action:** Audit the Idris2 ABI definitions against the full Zig FFI implementation
+to ensure there is no drift between the two surfaces.
+
+**File to audit:** `wqbb3mhzf` (reference in DEPENDENCY-SCHEDULER line 63)
+
+### Version Reconciliation
+
+**Current state:**
+- Git tag: v0.1.0
+- README.adoc: v0.3.1
+- ROADMAP.adoc: v0.3.0
+
+**Action:** Reconcile these version numbers and ensure consistency across
+all documentation.
+
+### Nix→Guix Migration
+
+**Estate directive:** Nix is now debt (per DEP-15)
+
+**Action:** Migrate Gossamer's build system from Nix to Guix.
+
+**Note:** This is part of the estate-wide Nix→Guix migration.
+
+### Android Integration
+
+**Issues:**
+- gossamer#67: NDK CI
+- gossamer#68: APK/AAB signing
+- gossamer#69: Ephapax Service handles (also tracked in DEP-01)
+- gossamer#71: JVM shims
+
+**Action:** Complete Android integration for Gossamer.
+
+=== Repository State
+
+[cols="3,1"]
+|=== 
+| Property | Value |
+| Version (README) | v0.3.1 |
+| Version (git tag) | v0.1.0 |
+| Platforms | Linux, macOS, Windows |
+| Backends | WebKitGTK, WKWebView, WebView2 |
+| Tests | 173 integration tests |
+| Integration | ✅ Complete in paint-type |
+|=== 
+
+=== Ephapax Integration
+
+Gossamer uses Ephapax for:
+- Linearly-owned webview handles
+- Typed IPC protocol
+- Linear capability tokens
+
+**Ephapax modules:**
+- Shell.eph
+- Bridge.eph
+- Capabilities.eph
+
+**Verification needed:** Confirm this integration is **load-bearing** (not just
+namechecked). This is tracked in DEP-01 task 2.
+
+=== Automation
+
+[cols="3,1,1"]
+|=== 
+| Check | Status | Location |
+| CI workflows | ✅ Active | .github/workflows/ |
+| Integration tests | ✅ 173 passing | tests/ |
+| Cross-platform builds | ✅ Working | Justfile |
+| panic-attack | ❌ Needed | Pending |
+|=== 
+
+=== Acceptance Criteria
+
+- [x] Integrated into paint-type shell
+- [x] Webview abstraction complete
+- [x] v0.3.0 Desktop Shell closed (issue #34)
+- [x] v0.3.1 released
+- [ ] Close Idris2-ABI vs Zig-FFI drift (audit wqbb3mhzf)
+- [ ] Reconcile versioning
+- [ ] Nix→Guix migration
+- [ ] Android integration (gossamer#67, #68, #69, #71)
+
+== References
+
+- **Repository:** https://github.com/hyperpolymath/gossamer
+- **Issue #34:** v0.3.0 Desktop Shell
+- **DEP-01 Task 2:** Verify Ephapax integration is load-bearing
+- **gossamer#67:** NDK CI
+- **gossamer#68:** APK/AAB signing
+- **gossamer#69:** Ephapax Service handles
+- **gossamer#71:** JVM shims
+
+== Labels
+
+`DEP-04`, `Gossamer`, `done`, `P1`, `verification-needed`
+
+== Assignees
+
+- **Primary:** hyperpolymath
+- **Integration:** paint-type maintainers
+- **Android:** Gossamer maintainers
+
+== Closing Note
+
+DEP-04 is **considered done** for the critical path. Gossamer is integrated into
+paint-type shell, the webview abstraction is complete, and v0.3.0/v0.3.1 are
+released. Remaining tasks are verification and maintenance items.
+
+**Status: DONE** ✅

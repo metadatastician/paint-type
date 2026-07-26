@@ -15,6 +15,7 @@ Reference / fixture images for paint.type examples (e.g. undo-graph render snaps
 
 ## Canonical Files
 
+- `README_images.adoc` — Directory documentation
 - `undo_grid.png` — PNG asset
 - `undo_t0_blank.png` — PNG asset
 - `undo_t1_red.png` — PNG asset
@@ -27,12 +28,12 @@ Reference / fixture images for paint.type examples (e.g. undo-graph render snaps
 
 1. All A2ML state files must live in `.machine_readable/` ONLY, never in the repo root.
 2. Each directory at layer 2 must have its own `0.2-AI-MANIFEST.a2ml`.
-3. Each directory must have a `README.adoc` describing purpose, contents, and function.
+3. Each directory must have a `README*.adoc` describing purpose, contents, and function.
 4. SPDX license identifiers must be consistent across all files (AGPL-3.0-or-later).
 
 ## Startup Checklist for Agents
 
 1. Read this file (`0.2-AI-MANIFEST.a2ml`).
-2. Read `README.adoc` for directory overview.
+2. Read `README_images.adoc` for directory overview.
 3. For subdirectories, navigate to their respective manifest files.
 4. Never edit `.machine_readable/` files directly.
