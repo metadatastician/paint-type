@@ -34,6 +34,7 @@ on:
       - '.github/workflows/e2e.yml'
   workflow_dispatch:
 permissions:
+  actions: read
   contents: read
 concurrency:
   group: e2e-pipeline-${{ github.ref }}

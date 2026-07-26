@@ -4,6 +4,7 @@
 name: Code Quality
 on: [push, pull_request]
 permissions:
+  actions: read
   contents: read
 jobs:
   lint:

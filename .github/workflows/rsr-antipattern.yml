@@ -12,6 +12,7 @@ on:
   pull_request:
     branches: [main, master, develop]
 permissions:
+  actions: read
   contents: read
 jobs:
   antipattern-check:

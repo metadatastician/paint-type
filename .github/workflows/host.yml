@@ -11,6 +11,7 @@ on:
       - '.github/workflows/host.yml'
   pull_request:
 permissions:
+  actions: read
   contents: read
 jobs:
   build-and-test:

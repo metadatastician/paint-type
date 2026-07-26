@@ -24,6 +24,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 permissions:
+  actions: read
   contents: read
 env:
   # typed-wasm PR #165 — the .twasm source-parser seam that unblocks #39.
