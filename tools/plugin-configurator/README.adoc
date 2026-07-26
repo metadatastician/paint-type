@@ -1,0 +1,300 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+= Plugin Configurator
+:description: Tool for managing plugin configurations in paint.type
+
+This directory contains the **paint-type Plugin Configurator** tool, responsible for managing plugin configuration files: parsing, validating, merging, and generating configurations.
+
+== Purpose
+
+The configurator tool provides comprehensive configuration management for paint-type plugins:
+
+* Generate default configurations for plugins
+* Validate configuration files against schemas
+* Merge configurations from multiple sources with priority ordering
+* Support for multiple configuration formats (JSON, YAML, TOML)
+* List and inspect configuration layers
+
+== Architecture
+
+The configurator is implemented as a Rust CLI tool using:
+
+* `clap` for command-line argument parsing
+* `serde_json`, `serde_yaml`, and `toml` for format support
+* `anyhow` for error handling
+* `tracing` for logging
+
+== Configuration Formats
+
+The tool supports three configuration formats:
+
+* **JSON** - Standard JSON format
+* **YAML** - YAML 1.2 format
+* **TOML** - TOML v0.8 format (default)
+
+Format is auto-detected from file extensions or can be explicitly specified.
+
+== Configuration Layers
+
+Configuration is resolved from multiple layers in priority order (higher number = higher priority):
+
+. *Plugin defaults* - `plugins/<plugin-id>/config.toml` - Plugin-provided defaults
+. *User overrides* - `~/.paint-type/plugins/<plugin-id>/config.toml` - User-specific settings
+. *Project overrides* - `project/plugins/<plugin-id>/config.toml` - Project-specific settings
+. *Environment variables* - `PAINT_TYPE_<PLUGIN_ID>_*` - Runtime overrides
+. *CLI arguments* - Command-line overrides (highest priority)
+
+== CLI Commands
+
+=== Generate
+
+Generate a default configuration for a plugin:
+
+[source,bash]
+----
+plugin-configurator generate <plugin-id> --output config.toml [--format json|yaml|toml]
+----
+
+* `<plugin-id>` - The plugin identifier
+* `--output` / `-o` - Output file path (required)
+* `--format` / `-f` - Configuration format: `json`, `yaml`, or `toml` (default: `toml`)
+
+==== Example
+
+[source,bash]
+----
+plugin-configurator generate my-plugin --output my-plugin-config.toml
+----
+
+This generates a default configuration with:
+
+* `plugin_id` - The plugin identifier
+* `version` - Configuration version
+* `enabled` - Whether the plugin is active
+* `log_level` - Logging verbosity
+* `capabilities` - Required plugin capabilities
+* `settings` - Plugin-specific settings object
+
+=== Validate
+
+Validate a configuration file:
+
+[source,bash]
+----
+plugin-configurator validate <path> [--format json|yaml|toml] [--strict]
+----
+
+* `<path>` - Path to the configuration file to validate
+* `--format` / `-f` - Force a specific format (auto-detected from extension by default)
+* `--strict` - Enable strict validation (additional checks beyond parsing)
+
+==== Example
+
+[source,bash]
+----
+plugin-configurator validate plugins/my-plugin/config.yaml
+plugin-configurator validate config.json --format json --strict
+----
+
+=== Merge
+
+Merge multiple configuration files into a single output:
+
+[source,bash]
+----
+plugin-configurator merge <input1> [input2 ...] --output merged.toml [--format json|yaml|toml] [--strategy override|deep-merge]
+----
+
+* `<input1> [input2 ...]` - Input configuration files to merge
+* `--output` / `-o` - Output file path (required)
+* `--format` / `-f` - Output format: `json`, `yaml`, or `toml` (default: `toml`)
+* `--strategy` / `-s` - Merge strategy:
+  ** `override` - Each input completely replaces the previous merged result
+  ** `deep-merge` (default) - Deep merge all inputs, with later inputs overriding earlier ones at each level
+
+==== Example
+
+[source,bash]
+----
+# Deep merge plugin defaults with user overrides
+plugin-configurator merge \
+  plugins/my-plugin/config.toml \
+  ~/.paint-type/plugins/my-plugin/config.toml \
+  --output final-config.toml --strategy deep-merge
+
+# Override: use only the last file
+plugin-configurator merge \
+  base.toml \
+  override.toml \
+  --output result.toml --strategy override
+----
+
+=== List
+
+List configuration layers for a plugin:
+
+[source,bash]
+----
+plugin-configurator list <plugin-id> [--verbose]
+----
+
+* `<plugin-id>` - The plugin identifier
+* `--verbose` / `-v` - Show additional details about each layer
+
+==== Example
+
+[source,bash]
+----
+plugin-configurator list my-plugin --verbose
+----
+
+Output:
+
+----
+Configuration layers for plugin 'my-plugin':
+
+1. Plugin (my-plugin/config.toml) - Plugin default configuration
+2. User (~/.paint-type/plugins/my-plugin/config.toml) - User overrides
+3. Project (project/plugins/my-plugin/config.toml) - Project-specific
+
+Note: Verbose mode would show actual values from each layer
+----
+
+== Configuration Schema
+
+Default generated configurations follow this schema:
+
+[source,json]
+----
+{
+  "plugin_id": "<plugin-identifier>",
+  "version": "1.0.0",
+  "enabled": true,
+  "log_level": "info",
+  "capabilities": ["CanvasRead", "CanvasWrite"],
+  "settings": {}
+}
+----
+
+== Merge Strategy Details
+
+=== Deep Merge
+
+The `deep-merge` strategy recursively combines configurations:
+
+* Objects are merged at each level
+* Arrays are concatenated
+* Scalar values are replaced
+
+Example:
+
+[source,json]
+----
+// Input 1
+{
+  "plugin_id": "my-plugin",
+  "settings": {
+    "color": "red",
+    "size": 10
+  }
+}
+
+// Input 2
+{
+  "settings": {
+    "size": 20,
+    "opacity": 0.5
+  }
+}
+
+// Result (deep-merge)
+{
+  "plugin_id": "my-plugin",
+  "settings": {
+    "color": "red",
+    "size": 20,
+    "opacity": 0.5
+  }
+}
+----
+
+=== Override
+
+The `override` strategy completely replaces the merged configuration with each input:
+
+[source,json]
+----
+// Input 1
+{"a": 1, "b": 2}
+
+// Input 2
+{"c": 3}
+
+// Result (override) = Input 2
+{"c": 3}
+----
+
+== Error Handling
+
+The tool uses structured error messages with context:
+
+* File not found errors include the attempted path
+* Parse errors include line and column information
+* Validation errors describe the specific validation failure
+
+== Exit Codes
+
+| Exit Code | Meaning |
+|-----------|---------|
+| 0 | Success |
+| 1 | General error |
+| 2 | Configuration parse error |
+| 3 | Validation error |
+| 4 | Merge conflict (when strict mode is enabled) |
+
+== Building
+
+[source,bash]
+----
+cd tools/plugin-configurator
+cargo build --release
+----
+
+The built binary will be at `target/release/plugin-configurator`.
+
+== Running
+
+[source,bash]
+----
+# Run directly
+cargo run -- --help
+
+# Or use the built binary
+./target/release/plugin-configurator --help
+----
+
+== Logging
+
+Set the `RUST_LOG` environment variable to control logging:
+
+[source,bash]
+----
+# Default (info level)
+RUST_LOG=info plugin-configurator generate my-plugin -o config.toml
+
+# Debug logging
+RUST_LOG=debug plugin-configurator merge a.toml b.toml -o merged.toml
+----
+
+== Inspiration
+
+The configurator design draws from:
+
+* **boj-server/boj-server** - Configuration management patterns
+* **panll** - Multi-layer configuration with override precedence
+* **Standard JSON/YAML/TOML tools** - Format handling conventions
+
+== See Also
+
+* <<Plugin Provisioner,tools/plugin-provisioner/README.adoc>> - Plugin deployment tool
+* <<Plugin System Design,docs/issues/plugin-toolset/04-configurator.md>> - Design specification
