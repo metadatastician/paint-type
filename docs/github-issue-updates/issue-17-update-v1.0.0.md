@@ -7,12 +7,17 @@ Plugin System (issue #14) is now **complete** and unblocks the remaining v1.0.0 
 
 ### 🔄 Currently In Progress
 
+**Plugin Toolset:**
+- ✅ Configurator Tool (issue #7) — Complete and pushed
+- ✅ Provisioner Tool (issue #6) — Complete and pushed
+
 **Security Proofs (unblocked by v0.4.0):**
 - ✅ SEC-1: TLA+ spec created (`verification/proofs/tlaplus/PluginSandbox.tla`)
 - ✅ SEC-2: TLA+ spec created (`verification/proofs/tlaplus/PluginApiSurface.tla`)
 - 🔄 Next: Implement transition definitions and model-check with TLC
 
 **Commits:**
+- `27d2194` feat(plugin-toolset): Add plugin-configurator tool (Issue #7)
 - `66d872e` feat(v1.0.0): Start SEC-1/2 security proofs for plugin system
 - `99326db` docs(ROADMAP): Update v1.0.0 tracking to issue #17
 

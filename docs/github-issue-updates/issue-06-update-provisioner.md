@@ -60,6 +60,4 @@ See: `docs/issues/plugin-toolset/03-provisioner.md`
 
 ---
 
-**Action for GitHub:**
-- Update issue status to reflect implementation is complete
-- Consider closing if all acceptance criteria are met
+**Action for GitHub:** Close this issue - implementation is complete and pushed.
