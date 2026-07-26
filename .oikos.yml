@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: MPL-2.0
+# Minimal OikosBot configuration for paint-type
+# Full options: https://github.com/hyperpolymath/oikosbot/blob/main/config/oikos.yaml
+
+# Operating mode: consultant (ask), advisor (recommend), regulator (enforce)
+mode: advisor
+
+# Score thresholds
+thresholds:
+  eco_minimum:
+    carbon: 50
+    energy: 50
+    enforcement: warning  # Warn but don't block
+
+# Analysis exclusions (paint-type specific)
+exclude:
+  - "**/node_modules/**"
+  - "**/.git/**"
+  - "**/target/**"
+  - "**/build/**"
+  - "**/.zig-cache/**"
+  - "**/.cargo/**"
+  - "**/third_party/**"
+  - "**/.well-known/**"
+  - "**/src/backends/fpga/**"  # Hardware-specific, not software eco
+  - "**/src/backends/gpu/**"   # Hardware-specific
+
+# Language support for paint-type
+analysis:
+  languages:
+    - rust
+    - idris
+    - zig
+    - haskell
+    - typescript
+    - python
+
+# Reporting
+reporting:
+  pr_comments:
+    enabled: true
+    include_scores: true
+    include_recommendations: true
+    max_recommendations: 5
+    include_pareto_analysis: true
+  sarif:
+    enabled: true
+    upload_to_github: true
