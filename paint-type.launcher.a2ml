@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: CC-BY-SA-4.0
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# paint-type.launcher.a2ml — per-app launcher config for paint.type Image Editor.
+# Compliant with launcher-standard.a2ml v0.3.0
+
+[project]
+name         = "paint-type"
+display      = "paint.type"
+description  = "The open, cross-platform image editor Paint.NET users are actually asking for"
+categories   = ["Graphics", "Editor", "Development"]
+version      = "0.2.0"
+license      = "AGPL-3.0-or-later"
+
+[repo]
+# NOTE: repo-dir is resolved at runtime from the launcher script location.
+# Do NOT hardcode absolute paths. Leave empty or use relative paths.
+path = ""
+
+[runtime]
+# paint.type is a GUI application, not a server
+# Using "process" kind since it doesn't serve a URL
+kind = "process"
+startup-command-search = [
+    "{repo-dir}/target/release/paint-type",
+    "{repo-dir}/paint-type",
+    "paint-type",
+]
+# Per launcher-standard.a2ml [runtime] section:
+# PID files MUST use XDG_RUNTIME_DIR or TMPDIR, NEVER /tmp directly
+# Log files MUST use XDG_STATE_HOME, NEVER /tmp directly
+pid-file = "${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}/paint-type.pid"
+log-file = "${XDG_STATE_HOME:-$HOME/.local/state}/paint-type/paint-type.log"
+wait-for-url-timeout-seconds = 10
+
+[version-output]
+# Per launcher-standard.a2ml [version-output] section
+first-line-format = "paint.type {version} ({build-sha-short}) [{platform}]"
+example = "paint.type 0.2.0 (abc1234) [linux-x86_64]"
+exit-code = 0
+
+[icon]
+source = "{repo-dir}/assets/icon-256.png"
