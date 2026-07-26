@@ -1,4 +1,4 @@
-SPDX-License-Identifier: CC-BY-SA-4.0
+SPDX-License-Identifier: AGPL-3.0-or-later
 SPDX-FileCopyrightText: 2024-2026 Joshua Jewell (JoshuaJewell) <paint-type@pm.me>
 
 paint.type — Licensing
@@ -6,7 +6,7 @@ paint.type — Licensing
 paint.type's own work is dual-licensed by scope:
 
   * SOURCE CODE — GNU Affero General Public License v3.0 or later
-    (AGPL-3.0-or-later).
+    (AGPL-3.0-or-later) — THIS IS THE PRIMARY LICENSE FOR THE PROJECT.
     Full text: LICENSES/AGPL-3.0-or-later.txt · https://www.gnu.org/licenses/agpl-3.0.html
 
   * DOCUMENTATION & CONTENT — Creative Commons Attribution-ShareAlike 4.0
