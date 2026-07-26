@@ -1,129 +1,115 @@
 -- SPDX-License-Identifier: CC-BY-SA-4.0
 -- TLA+ specification for SEC-2: Plugin API surface confinement
--- 
--- Proof obligation: The API surface exposed to plugins is minimal and
--- confined. Plugins can only access capabilities explicitly granted
--- in their manifest. No implicit or backdoor access to host functions.
 
 ---- MODULE PluginApiSurface ----
-EXTENDS Naturals, Sequences, TLC, PluginSandbox
+EXTENDS Naturals, Sequences, TLC
 
----- CONSTANTS ----
-\* Complete set of host API functions
-HostApiFunctions: {
-    "canvas_read_pixels",
-    "canvas_write_pixels", 
-    "layer_create",
-    "layer_delete",
-    "layer_reorder",
-    "file_read",
-    "file_write",
-    "network_fetch",
-    "log_debug",
-    "log_info",
-    "log_warn",
-    "log_error"
-}
+CONSTANTS
+    HostApiFunctions,  \* Complete set of host API functions
+    SafeApiFunctions,  \* API functions available without capabilities
+    ApiToCap           \* Mapping from API functions to required capabilities
 
-\* API functions available without capabilities (safe subset)
-SafeApiFunctions: {"log_debug", "log_info", "log_warn", "log_error"}
+VARIABLES
+    api_calls,        \* Current plugin API call history (for audit trail)
+    api_surface,      \* API surface registry (which functions are exposed to which plugin)
+    plugin_caps,      \* Currently granted capabilities for each plugin
+    plugin_active     \* Plugin execution state (active/inactive)
 
-\* Mapping from API functions to required capabilities
-ApiToCap: [
-    "canvas_read_pixels" |-> {"CanvasRead"},
-    "canvas_write_pixels" |-> {"CanvasWrite"},
-    "layer_create" |-> {"LayerAccess"},
-    "layer_delete" |-> {"LayerAccess"},
-    "layer_reorder" |-> {"LayerAccess"},
-    "file_read" |-> {"FileIO"},
-    "file_write" |-> {"FileIO"},
-    "network_fetch" |-> {"Network"},
-    "log_debug" |-> {},
-    "log_info" |-> {},
-    "log_warn" |-> {},
-    "log_error" |-> {}
-]
+(* Type definitions *)
+PluginId == STRING
 
----- VARIABLES ----
-\* Current plugin API call history (for audit trail)
-api_calls: [PluginId -> SEQUENCE <<PluginId, STRING, STRING>>]
+(* Check if a plugin has the required capabilities for a function *)
+has_required_caps(p, func) == 
+    ApiToCap[func] \subseteq plugin_caps[p]
 
-\* API surface registry (which functions are exposed to which plugin)
-api_surface: [PluginId -> SUBSET HostApiFunctions]
-
----- DEFINITIONS ----
-\* Check if a plugin can call a specific API function
+(* Check if a plugin can call a specific API function *)
 can_call_api(p, func) == 
     /\ func \in api_surface[p]
-    /\ LET required_caps = ApiToCap[func] IN
-        /\ required_caps = {}  \* Safe functions need no capabilities
-            \/ required_caps \subseteq plugin_caps[p]  \* Other functions need all required caps
+    /\ (ApiToCap[func] = {} \/ has_required_caps(p, func))
 
-\* Get all API functions a plugin can access
+(* Get all API functions a plugin can access *)
 accessible_api(p) == {func \in HostApiFunctions : can_call_api(p, func)}
 
----- SAFETY PROPERTIES ----
+(* Manifest-based API surface for a plugin *)
+ManifestApiSurface(p) == {func \in HostApiFunctions : func \in {"canvas_read_pixels", "canvas_write_pixels", "log_debug"}}
 
-\* SEC-2: API Surface Confinement
-\* Plugins can only call API functions that are both:
-\*   1. In their granted API surface
-\*   2. For which they have all required capabilities
-THEOREM ApiSurfaceConfinement == 
-    []<>[](
-        \E p \in DOMAIN plugin_active, func \in HostApiFunctions, args \in STRING :
-            /\ plugin_active[p]
-            /\ ~can_call_api(p, func)
-            /\ ApiCall(p, func, args)  \* Plugin attempts to call API function
-            => ApiCallRejected(p, func, "Capability or API access denied")
-    )
-
-\* SEC-2a: API surface is minimal (no functions beyond declared set)
-THEOREM ApiSurfaceMinimal == 
-    []<>[](
-        \E p \in DOMAIN plugin_active, func \in STRING :
-            /\ plugin_active[p]
-            /\ func \notin HostApiFunctions
-            /\ ApiCall(p, func, @)  \* Call to undeclared function
-            => ApiCallRejected(p, func, "Unknown API function")
-    )
-
-\* SEC-2b: API surface matches manifest declaration
-THEOREM ApiSurfaceMatchesManifest == 
-    []<>[](
-        \E p \in DOMAIN plugin_active :
-            /\ plugin_active[p]
-            => api_surface[p] = ManifestApiSurface(p)
-    )
-
-\* SEC-2c: Capability requirements are enforced
-THEOREM CapabilityEnforcement == 
-    []<>[](
-        \E p \in DOMAIN plugin_active, func \in HostApiFunctions :
-            /\ plugin_active[p]
-            /\ func \in api_surface[p]
-            /\ ApiCall(p, func, @)
-            /\ LET required = ApiToCap[func] IN
-            => required \subseteq plugin_caps[p]
-    )
-
----- INITIAL STATE ----
+(* Initial state *)
 Init == 
-    /\ \* Initialize with empty API surfaces
-    api_calls = [p \in PluginId |-> <<>>]
+    /\ api_calls = [p \in PluginId |-> <<>>]
     /\ api_surface = [p \in PluginId |-> {}]
+    /\ plugin_caps = [p \in PluginId |-> {}]
+    /\ plugin_active = [p \in PluginId |-> FALSE]
 
----- NEXT STATE ----
-\* Placeholder - actual transitions would include:
-\* - LoadPlugin: Sets api_surface[p] based on manifest
-\* - GrantCapability: Adds capabilities to plugin_caps[p]
-\* - InvokePlugin: Checks can_call_api before allowing call
+(* Load a plugin with its API surface based on manifest *)
+LoadPluginWithApi(pid, caps, api_funcs) == 
+    /\ pid \notin DOMAIN plugin_active
+    /\ caps \subseteq {"CanvasRead", "CanvasWrite", "LayerAccess", "FileIO", "Network"}
+    /\ api_funcs \subseteq HostApiFunctions
+    /\ plugin_active' = [plugin_active EXCEPT ![pid] = TRUE]
+    /\ plugin_caps' = [plugin_caps EXCEPT ![pid] = caps]
+    /\ api_surface' = [api_surface EXCEPT ![pid] = api_funcs]
+    /\ UNCHANGED api_calls
+
+(* Grant capability to a plugin *)
+GrantCapability(pid, cap) == 
+    /\ pid \in DOMAIN plugin_active
+    /\ plugin_active[pid]
+    /\ cap \in {"CanvasRead", "CanvasWrite", "LayerAccess", "FileIO", "Network"}
+    /\ plugin_caps' = [plugin_caps EXCEPT ![pid] = plugin_caps[pid] \cup {cap}]
+    /\ UNCHANGED <<api_calls, api_surface, plugin_active>>
+
+(* Invoke a plugin API call *)
+InvokeApi(pid, func, args) == 
+    /\ pid \in DOMAIN plugin_active
+    /\ plugin_active[pid]
+    /\ func \in HostApiFunctions
+    /\ can_call_api(pid, func)
+    /\ api_calls' = [api_calls EXCEPT ![pid] = Append(api_calls[pid], <<pid, func, args>>)]
+    /\ UNCHANGED <<plugin_caps, plugin_active, api_surface>>
+
+(* Reject an API call due to missing capability or access *)
+ApiCallRejected(pid, func, reason) == 
+    /\ pid \in DOMAIN plugin_active
+    /\ plugin_active[pid]
+    /\ api_calls' = [api_calls EXCEPT ![pid] = Append(api_calls[pid], <<pid, func, "REJECTED: " \o reason>>)]
+    /\ UNCHANGED <<plugin_caps, plugin_active, api_surface>>
+
+(* SEC-2: API Surface Confinement *)
+(* Plugins can only call API functions that are both in their API surface and have capabilities *)
+ApiSurfaceConfinement == 
+    \E p \in DOMAIN plugin_active, g \in HostApiFunctions, args \in STRING :
+        /\ plugin_active[p]
+        /\ ~can_call_api(p, g)
+        => ApiCallRejected(p, g, "Capability or API access denied")
+
+(* SEC-2a: API surface is minimal (no functions beyond declared set) *)
+ApiSurfaceMinimal == 
+    \E p \in DOMAIN plugin_active, h \in STRING :
+        /\ plugin_active[p]
+        /\ h \notin HostApiFunctions
+        => ApiCallRejected(p, h, "Unknown API function")
+
+(* SEC-2b: API surface matches manifest declaration *)
+ApiSurfaceMatchesManifest == 
+    \E p \in DOMAIN plugin_active :
+        /\ plugin_active[p]
+        => api_surface[p] = ManifestApiSurface(p)
+
+(* SEC-2c: Capability requirements are enforced *)
+CapabilityEnforcement == 
+    \E p \in DOMAIN plugin_active, k \in HostApiFunctions :
+        /\ plugin_active[p]
+        /\ k \in api_surface[p]
+        => has_required_caps(p, k)
+
+(* Next state relation *)
 Next == 
-    UNCHANGED (api_calls, api_surface)
+    \E p1 \in PluginId, caps \in SUBSET {"CanvasRead", "CanvasWrite", "LayerAccess", "FileIO", "Network"}, api_funcs \in SUBSET HostApiFunctions : LoadPluginWithApi(p1, caps, api_funcs)
+    \/ \E p2 \in DOMAIN plugin_active, cap \in {"CanvasRead", "CanvasWrite", "LayerAccess", "FileIO", "Network"} : GrantCapability(p2, cap)
+    \/ \E p3 \in DOMAIN plugin_active, q \in HostApiFunctions, args \in STRING : InvokeApi(p3, q, args)
+    \/ \E p4 \in DOMAIN plugin_active, r \in STRING, reason \in STRING : ApiCallRejected(p4, r, reason)
+
+(* Safety properties *)
+Spec == Init /\ [][Next]_<<api_calls, api_surface, plugin_caps, plugin_active>>
 
 ====
-
-\* SEC-2: Plugin API surface is confined and capability-gated
-\* Status: SPECIFIED (TLA+ skeleton created)
-\* Next: Implement transition definitions and model-check with TLC
-\* Dependencies: v0.4.0 Plugin System (issue #14) - COMPLETE
-\* Related: PluginSandbox.tla (SEC-1) provides memory isolation foundation
