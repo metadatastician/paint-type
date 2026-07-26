@@ -242,7 +242,7 @@ The proximal seams (within paint-type) are size-checked, layout-proven, and pani
 
 * https://github.com/metadatastician/paint-type/wiki[Wiki Home] — single-page routing hub pointing at the in-repo source of truth
 * link:EXPLAINME.adoc[EXPLAINME.adoc] — repository structure guide
-* link:TOPOLOGY.adoc[TOPOLOGY.adoc] — component architecture
+* link:OPERATIONAL-STATUS.adoc[OPERATIONAL-STATUS.adoc] — component architecture
 * link:ROADMAP.adoc[ROADMAP.adoc] — milestone plan
 * link:PROOF-STATUS.adoc[PROOF-STATUS.adoc] / link:TEST-NEEDS.adoc[TEST-NEEDS.adoc] — proof + test coverage status
 * link:QUICKSTART-DEV.adoc[QUICKSTART-DEV] / link:QUICKSTART-USER.adoc[QUICKSTART-USER] / link:QUICKSTART-MAINTAINER.adoc[QUICKSTART-MAINTAINER]

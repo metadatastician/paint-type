@@ -30,7 +30,7 @@
 - [ ] `.machine_readable/ECOSYSTEM.a2ml` updated (if integrations changed)
 - [ ] `.machine_readable/META.a2ml` updated (if architectural decisions changed)
 - [ ] Documentation updated for user-facing changes
-- [ ] `TOPOLOGY.md` updated (if architecture changed)
+- [ ] `OPERATIONAL-STATUS.adoc` updated (if architecture changed)
 - [ ] `CHANGELOG` or release notes updated
 - [ ] New dependencies reviewed for license compatibility (AGPL-3.0-or-later / MPL-2.0)
 - [ ] ABI/FFI changes validated (`src/interface/abi/` and `src/interface/ffi/` consistent)

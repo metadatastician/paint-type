@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: CC-BY-SA-4.0
-= TOPOLOGY.adoc — Generation Guide
+= OPERATIONAL-STATUS / TOPOLOGY — Generation Guide
 Joshua Jewell (JoshuaJewell) <paint-type@pm.me>
 :toc:
 :sectnums:
 
-== What Is TOPOLOGY.adoc?
+== What Is OPERATIONAL-STATUS / TOPOLOGY?
 
 A single-file visual map of any project's architecture and completion status.
 It lives in the repo root and contains:
@@ -32,7 +32,7 @@ Use this prompt (works with Claude, Gemini, ChatGPT, or any LLM with repo access
 
 [source,text]
 ----
-Read the entire repository and produce a TOPOLOGY.adoc file for the repo root.
+Read the entire repository and produce an OPERATIONAL-STATUS.adoc (or TOPOLOGY.adoc) file for the repo root.
 
 The file must contain exactly three sections:
 
@@ -61,7 +61,7 @@ The file must contain exactly three sections:
 Add a header comment with SPDX-License-Identifier and Last updated date.
 End with an "Update Protocol" section explaining how to maintain the file.
 
-Use the template at TOPOLOGY.adoc in paint-type as a structural reference,
+Use the template at OPERATIONAL-STATUS.adoc in paint-type as a structural reference,
 but make the content completely specific to THIS project.
 ----
 
@@ -69,7 +69,7 @@ but make the content completely specific to THIS project.
 
 [source,bash]
 ----
-cp /path/to/paint-type/TOPOLOGY.adoc ./TOPOLOGY.adoc
+cp /path/to/paint-type/OPERATIONAL-STATUS.adoc ./OPERATIONAL-STATUS.adoc
 # Then edit: replace placeholders, draw the real architecture, fill the dashboard
 ----
 
@@ -79,8 +79,8 @@ cp /path/to/paint-type/TOPOLOGY.adoc ./TOPOLOGY.adoc
 ----
 # From the repos root, generate for every repo that lacks one
 for repo in /path/to/your/repos/*/; do
-  if [ ! -f "$repo/TOPOLOGY.adoc" ]; then
-    echo "NEEDS TOPOLOGY: $(basename $repo)"
+  if [ ! -f "$repo/OPERATIONAL-STATUS.adoc" ] && [ ! -f "$repo/TOPOLOGY.adoc" ]; then
+    echo "NEEDS OPERATIONAL-STATUS/TOPOLOGY: $(basename $repo)"
   fi
 done
 ----
@@ -140,14 +140,14 @@ Always 10 characters wide. Use full blocks only (no half-blocks).
 
 == Integration With Other RSR Files
 
-TOPOLOGY.adoc complements but does not replace:
+OPERATIONAL-STATUS/TOPOLOGY complements but does not replace:
 
 - **STATE.a2ml** — machine-readable state (tasks, blockers, next actions)
 - **ECOSYSTEM.a2ml** — position in the wider project ecosystem
 - **META.a2ml** — architecture decisions and design rationale
 - **0-AI-MANIFEST.a2ml** — AI agent entry point and invariants
 
-TOPOLOGY.adoc is the _visual summary_ for humans; the a2ml files are the
+OPERATIONAL-STATUS/TOPOLOGY is the _visual summary_ for humans; the a2ml files are the
 _structured data_ for tooling. Both should agree.
 
 == Copyright

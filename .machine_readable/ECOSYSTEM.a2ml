@@ -1,7 +1,7 @@
 ;; SPDX-License-Identifier: AGPL-3.0-or-later
 ;; Ecosystem position and relationships
 ;; Generated: 2026-07-26
-;; Source of truth: ROADMAP.adoc, TOPOLOGY.adoc, DEPENDENCY-SCHEDULER.adoc
+;; Source of truth: ROADMAP.adoc, OPERATIONAL-STATUS.adoc, DEPENDENCY-SCHEDULER.adoc
 (ecosystem
   (version "1.1.0")
   (name "paint-type")

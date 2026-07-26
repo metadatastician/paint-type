@@ -53,6 +53,6 @@ Ephapax skeleton are all in place. No user-visible functionality yet.
 - Part of hyperpolymath/palimpsest ecosystem
 - Contact: paint-type@pm.me
 - See `EXPLAINME.adoc` for full directory structure guide
-- See `TOPOLOGY.adoc` for architecture topology
+- See `OPERATIONAL-STATUS.adoc` for architecture topology
 - See `ROADMAP.adoc` for milestone plan
 - Read `0-AI-MANIFEST.a2ml` and `.machine_readable/MUST.contractile` before making changes

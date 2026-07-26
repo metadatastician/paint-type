@@ -92,7 +92,7 @@ and boj-server gateway integration blocked on upstream. Last updated: 2026-07-25
 - `AUDIT.adoc` (local audit gate summary)
 - `README.adoc` (project overview)
 - `EXPLAINME.adoc` (directory structure guide)
-- `TOPOLOGY.adoc` (architecture topology)
+- `OPERATIONAL-STATUS.adoc` (architecture topology)
 - `ROADMAP.adoc` (milestone plan)
 - `session/README.md` (session-binding usage)
 - `.machine_readable/` (machine-readable repo policy/state files)

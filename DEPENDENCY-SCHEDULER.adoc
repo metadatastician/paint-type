@@ -8,7 +8,10 @@
 
 **Live board:** https://github.com/users/hyperpolymath/projects/41 — *paint-type Dependency Scheduler*
 **Maintained by:** hyperpolymath (estate owner). paint-type is JoshuaJewell's; these are the upstream estate repos it depends on.
-**Last synced:** 2026-06-14.
+**Last synced:** 2026-07-26.
+**Automation status:** See DEP-AUTOMATION-TRACKING.adoc for CI/CD coverage matrix.
+**Implementation status:** See DEP-IMPLEMENTATION-STATUS.adoc for detailed status of each DEP.
+**New 2026-07-26:** DEP-AUTOMATION-TRACKING.adoc and DEP-IMPLEMENTATION-STATUS.adoc created with comprehensive coverage.
 
 ## Purpose
 
@@ -27,14 +30,14 @@ updated on next sync.
 |----|------------|------|-------|-----------|----------|--------|--------------------------------|
 | DEP-01 (#71) | **Ephapax** | Spine | hyperpolymath | C | P1 | In&nbsp;Progress | Region-calculus / linear-affine core; `paint_core` is ex-ephapax; Gossamer's safety backend · all |
 | DEP-02 (#72) | **typed-wasm** | Spine | hyperpolymath | A | Maintain | **Done** | Verified WASM bridge target · v0.2 (paint-type slice closed) |
-| DEP-03 (#73) | **AffineScript** | Spine | hyperpolymath | C | P1 | In&nbsp;Progress | UI language + ABI→`.twasm` generator · v0.2/v0.3 |
+| DEP-03 (#73) | **AffineScript** | Spine | hyperpolymath | C | P1 | **BLOCKED** | UI language + ABI→`.twasm` generator · v0.2/v0.3 (NO WORKING COMPILER) |
 | DEP-04 (#74) | **Gossamer** | Spine | hyperpolymath | A | P1 | **Done** | Desktop shell / webview host · v0.3 (integrated into paint-type shell) |
 | DEP-05 | **cerro-torre** | Plugin/Supply-chain | hyperpolymath | B | P2 | In&nbsp;Progress | ML-DSA plugin signing · v0.4 (standalone repo created, proven-pqc integration pending) |
 | DEP-06 | **Burble** | Collaboration | hyperpolymath (son-shared, AGPL) | Unknown | P2 | Todo | WebRTC session, sub-10ms shared canvas · v0.5 |
 | DEP-07 | **groove-protocol** | Collaboration | hyperpolymath | B | P2 | Todo | Zero-config peer discovery (`.well-known/groove/`) · v0.5 |
 | DEP-08 | **boj-server** | Collaboration | hyperpolymath | B | P3 | Todo | MCP LLM channel + plugin package index · v0.4/v0.5 |
-| DEP-09 (#75) | **standards** | Governance | hyperpolymath | B | P1 | Done | RSR governance multiplier (CI reusables, contractiles, CRG, 6a2, session-mgmt) · all |
-| DEP-10 (#76) | **proven** | Proof-foundation | hyperpolymath | B | P1 | In&nbsp;Progress | Idris2 verified-foundations library · all |
+| DEP-09 (#75) | **standards** | Governance | hyperpolymath | B | P1 | **Done** | RSR governance multiplier (CI reusables, contractiles, CRG, 6a2, session-mgmt) · all |
+| DEP-10 (#76) | **proven** | Proof-foundation | hyperpolymath | B | P1 | **Done** | Idris2 verified-foundations library · all (Track-C security triage closed via PR #162) |
 | DEP-11 | **echo-types** | Proof-foundation | hyperpolymath | C | P2 | Todo | Estate proof discipline (audit-first) · all |
 | DEP-12 | **panic-attack** | Tooling | hyperpolymath | B | Maintain | In&nbsp;Progress | `assail` dangerous-pattern gate · all |
 | DEP-13 | **Container / supply-chain stack** | Plugin/Supply-chain | hyperpolymath | C | P2 | Todo | stapeln · selur · Svalinn · Vordr · Chainguard/Wolfi · cerro-torre · v0.4+ |
@@ -53,10 +56,10 @@ updated on next sync.
 - [ ] Keep `tw`/`tw-verify` pinned in paint-type.
 - [ ] (Non-critical) full #130 corpus; D6 human-readable errors (#126).
 
-### DEP-03 AffineScript — *P1: widen + generator*
-- [ ] Widen typed-wasm enforcement from L7/L10/L13 to L1–L5 (#462 access-sites, #562 fixtures).
+### DEP-03 AffineScript — *P1: widen + generator* **BLOCKED**
+- [ ] Widen typed-wasm enforcement from L7/L10/L13 to L1–L5 (#462 access-sites, #562 fixtures). **BLOCKED: No working compiler**
 - [x] Build the ABI→`.twasm` generator (paint-type#39 producer side).
-- [ ] Compile the UI chrome (layer-panel / tool-bar / canvas-viewport).
+- [ ] Compile the UI chrome (layer-panel / tool-bar / canvas-viewport). **BLOCKED: No working compiler**
 
 ### DEP-04 Gossamer — *P1: close drift, fix versioning*
 - [x] Integrated into paint-type shell (replaced direct GTK3/WebKitGTK calls with Gossamer API)
@@ -90,7 +93,7 @@ updated on next sync.
 - [x] CRG + 6a2 manifest currency.
 
 ### DEP-10 proven
-- [ ] Keep `proven` consumable as the Idris2 proof foundation.
+- [x] Keep `proven` consumable as the Idris2 proof foundation.
 - [x] Track-C security triage (proven#68) — **Closed via PR #162**.
 
 ### DEP-11 echo-types
@@ -115,12 +118,12 @@ updated on next sync.
 
 ## Critical path (sequencing)
 
-1. **Now — unblocks shipping v0.2→v0.3:** DEP-03 **AffineScript** (widen + generator), on the DEP-01 **Ephapax** foundation. DEP-04 **Gossamer** integrated into paint-type shell — webview abstraction complete.
+1. **Now — unblocks shipping v0.2→v0.3:** DEP-03 **AffineScript** (widen + generator), on the DEP-01 **Ephapax** foundation. DEP-04 **Gossamer** integrated into paint-type shell — webview abstraction complete. **BLOCKER: DEP-03 has no working compiler — this is the primary bottleneck for v0.2→v0.3.**
 2. **Continuous multiplier:** DEP-09 **standards** — every repo above inherits its CI/contractiles/CRG; lifting it lifts them all.
 3. **v0.4 plugins:** DEP-05 **cerro-torre** (ML-DSA + plugin-manifest signing, now standalone repo) + DEP-13 supply-chain stack + DEP-08 **boj-server** (package-index tier).
 4. **v0.5 collaboration:** DEP-06 **Burble** (prove data-channel) + DEP-07 **groove-protocol** (finish bindings).
 
-**Leverage insight:** The spine (DEP-01..04) is now unblocked with Gossamer integration complete. DEP-04 **Gossamer** now at Readiness A/Done. DEP-05 **cerro-torre** graduated to standalone repo (Readiness B/In Progress). v0.3 Desktop Shell (issue #34) and v0.4 Plugin System (issue #35) can now proceed.
+**Leverage insight:** The spine (DEP-01..04) has DEP-02, DEP-04 at Readiness A/Done. DEP-01 **Ephapax** In Progress with V2 redesign (2 open research admits). DEP-03 **AffineScript** **BLOCKED** (no working compiler) — this is the critical path blocker. DEP-04 **Gossamer** at Readiness A/Done with integration complete. DEP-05 **cerro-torre** graduated to standalone repo (Readiness B/In Progress). v0.3 Desktop Shell (issue #34) **closed**. v0.4 Plugin System (issue #35) **closed**. v0.5 Collaboration can proceed but blocked on upstream Burble/boj-server.
 
 ## Standing / continuous items
 
@@ -148,11 +151,16 @@ to "do we add/subtract as they occur?": no — one standing item, a recurring tr
 - [ ] Mirror this dependency scheduler into a wiki page Joshua can browse
 
 ### STAND-03 Standards-doc + machine-readable currency
-The `TEMPLATE-STANDARDS-AUDIT.adoc` (now v1.2, 2026-07-26) is now generated from live tree — the root cause of the "yikes". Fix the instance **and** the class:
+**✅ FULLY RESOLVED 2026-07-26**
+
+The `TEMPLATE-STANDARDS-AUDIT.adoc` (now v1.2, 2026-07-26) is now generated from live tree — the root cause of the "yikes" has been fixed:
 - [x] Regenerate `TEMPLATE-STANDARDS-AUDIT.adoc` to current state (post `paint_core` rename, Hexadeca, MVP, proofs)
 - [x] Make the audit **generated** (a `just standards-audit` recipe that emits it from the live tree) so it can't drift — not hand-maintained
 - [x] Strengthen `verify-manifests.yml` to flag stale `STATE`/`ECOSYSTEM`/`META.a2ml` vs reality (drift-as-CI-failure)
 - [x] Run a machine-readable **currency checkpoint** as part of every substantial change (estate pattern, e.g. gossamer#76)
+- [x] **Verified 2026-07-26**: All generated files are current and automation is working.
+- [x] **DEP-AUTOMATION-TRACKING.adoc created** — Comprehensive automation matrix for all 15 DEPs
+- [x] **DEP-IMPLEMENTATION-STATUS.adoc created** — Detailed status tracking for all 15 DEPs
 
 ## Maintenance / bot protocol
 

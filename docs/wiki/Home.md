@@ -8,7 +8,7 @@ This wiki serves as a single-page orientation hub for the `paint.type` project. 
 |----------|---------|
 | [README.adoc](https://github.com/metadatastician/paint-type/blob/main/README.adoc) | Project overview, status badges, and quick start. |
 | [EXPLAINME.adoc](https://github.com/metadatastician/paint-type/blob/main/EXPLAINME.adoc) | Comprehensive repository structure guide. |
-| [TOPOLOGY.md](https://github.com/metadatastician/paint-type/blob/main/TOPOLOGY.md) | Architecture topology and component relationships. |
+| [OPERATIONAL-STATUS.adoc](https://github.com/metadatastician/paint-type/blob/main/OPERATIONAL-STATUS.adoc) | Architecture topology and component relationships. |
 | [ROADMAP.adoc](https://github.com/metadatastician/paint-type/blob/main/ROADMAP.adoc) | Milestone plan and future development phases. |
 | [READINESS.md](https://github.com/metadatastician/paint-type/blob/main/READINESS.md) | Component Readiness Grade (CRG) assessment. |
 

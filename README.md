@@ -243,7 +243,7 @@ recovery path on libpt ABI mismatch.
 - <a href="EXPLAINME.adoc" class="adoc">EXPLAINME</a> — repository
   structure guide
 
-- <a href="TOPOLOGY.adoc" class="adoc">TOPOLOGY</a> — component
+- <a href="OPERATIONAL-STATUS.adoc" class="adoc">OPERATIONAL-STATUS</a> — component
   architecture
 
 - <a href="ROADMAP.adoc" class="adoc">ROADMAP</a> — milestone plan

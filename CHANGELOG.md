@@ -70,7 +70,7 @@ verified by typed-wasm (paint-type#39 closed).
 #### Docs
 - EXPLAINME path fixes + v0.2.0 marked current (PR #26).
 - Status docs synced after PRs #27 / #28 / #29 (PR #30).
-- Post-15-PR comprehensive doc sync across README / EXPLAINME / TOPOLOGY /
+- Post-15-PR comprehensive doc sync across README / EXPLAINME / OPERATIONAL-STATUS /
   ROADMAP / READINESS / PROOF-NEEDS / QUICKSTART-* / `.machine_readable/*` /
   `docs/STATE-VISUALIZER.adoc` / `Justfile` (PR #46).
 

@@ -154,7 +154,7 @@ Or read `0-AI-MANIFEST.a2ml` and `llm-warmup-dev.adoc` directly.
 == Get Help
 
 * **Architecture**: link:EXPLAINME.adoc[EXPLAINME.adoc]
-* **Topology**: link:TOPOLOGY.adoc[TOPOLOGY.adoc]
+* **Operational Status**: link:OPERATIONAL-STATUS.adoc[OPERATIONAL-STATUS.adoc]
 * **Roadmap**: link:ROADMAP.adoc[ROADMAP.adoc]
 * **Report issue**: https://github.com/metadatastician/paint-type/issues
 * **Contact**: paint-type@pm.me
