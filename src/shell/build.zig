@@ -46,6 +46,13 @@ pub fn build(b: *std.Build) void {
             mod.linkFramework("Cocoa", .{});
             mod.linkFramework("WebKit", .{});
         },
+        .windows => {
+            // Windows: Win32 + WebView2 dependencies
+            mod.linkSystemLibrary("ole32", .{});
+            mod.linkSystemLibrary("user32", .{});
+            mod.linkSystemLibrary("kernel32", .{});
+            // WebView2Loader.dll is loaded at runtime via LoadLibrary
+        },
         else => {},
     }
 
@@ -53,8 +60,8 @@ pub fn build(b: *std.Build) void {
     // This will use the system library path
     mod.linkSystemLibrary("gossamer", .{});
 
-    // Add include path for gossamer.h
-    mod.addIncludePath(b.path("../../gossamer/src/interface"));
+    // Add include path for gossamer.h - use local third_party gossamer header
+    mod.addIncludePath(b.path("../../../paint-type/third_party/gossamer"));
 
     const exe = b.addExecutable(.{
         .name = "paint-type-shell",
