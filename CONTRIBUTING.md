@@ -1,46 +1,116 @@
-<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
-# Contributing to paint-type
+# Clone the repository
+git clone https://github.com/hyperpolymath/squisher-corpus.git
+cd squisher-corpus
 
-1. Fork the repository at https://github.com/metadatastician/paint-type
-2. Create a feature branch (`feat/short-description`, `fix/issue-number`, etc.)
-3. Ensure SPDX headers on all new files (`// SPDX-License-Identifier: AGPL-3.0-or-later`)
-4. Run `just test` — all tests must pass
-5. Run `just lint` — no lint errors
-6. Submit a pull request against `main`
+# Using Nix (recommended for reproducibility)
+nix develop
 
-**Owner:** Joshua Jewell <paint-type@pm.me>
+# Or using toolbox/distrobox
+toolbox create squisher-corpus-dev
+toolbox enter squisher-corpus-dev
+# Install dependencies manually
 
-See `.github/CONTRIBUTING.md` for the full contribution guide.
+# Verify setup
+just check   # or: cargo check / mix compile / etc.
+just test    # Run test suite
+```
 
-## Platform support: best-effort macOS / iOS / Windows
+### Repository Structure
+```
+squisher-corpus/
+├── src/                 # Source code (Perimeter 1-2)
+├── lib/                 # Library code (Perimeter 1-2)
+├── extensions/          # Extensions (Perimeter 2)
+├── plugins/             # Plugins (Perimeter 2)
+├── tools/               # Tooling (Perimeter 2)
+├── docs/                # Documentation (Perimeter 3)
+│   ├── architecture/    # ADRs, specs (Perimeter 2)
+│   └── proposals/       # RFCs (Perimeter 3)
+├── examples/            # Examples (Perimeter 3)
+├── spec/                # Spec tests (Perimeter 3)
+├── tests/               # Test suite (Perimeter 2-3)
+├── .well-known/         # Protocol files (Perimeter 1-3)
+├── .github/             # GitHub config (Perimeter 1)
+│   ├── ISSUE_TEMPLATE/
+│   └── workflows/
+├── CHANGELOG.md
+├── CODE_OF_CONDUCT.md
+├── CONTRIBUTING.md      # This file
+├── GOVERNANCE.md
+├── LICENSE
+├── MAINTAINERS.md
+├── README.adoc
+├── SECURITY.md
+├── flake.nix            # Nix flake (Perimeter 1)
+└── Justfile             # Task runner (Perimeter 1)
+```
 
-paint-type is developed and CI-gated on **Linux**, which is our verified,
-first-class platform. We take cross-platform seriously but are honest about
-where it stands today:
+---
 
-- **Build/link coverage — all platforms (gated).** Every PR cross-compiles the
-  full native vertical (Zig dispatcher + CPU-reference backend + the libpt FFI
-  library) to **macOS (aarch64 + x86_64)** and **Windows (x86_64)** from Linux
-  via `zig build -Dtarget=…`. If it stops building for a target, CI fails.
-- **Native test execution — macOS / Windows is best-effort.** The
-  `macos-latest` / `windows-latest` legs of `.github/workflows/cross-platform.yml`
-  actually *run* the test suite on each OS, but are marked `continue-on-error`:
-  they run and surface their results without blocking `main` while native
-  execution (linker/path quirks, the Cocoa/WebView shell backends) is shaken out.
-- **iOS — not yet started.** Aspirational; no shell backend exists yet.
+## How to Contribute
 
-### We'd love your help 🍎
+### Reporting Bugs
 
-If you run **macOS, iOS, or Windows** and want to contribute, this is one of the
-highest-leverage places to help — no deep knowledge of the internals required to
-start:
+**Before reporting**:
+1. Search existing issues
+2. Check if it's already fixed in `main`
+3. Determine which perimeter the bug affects
 
-- Run the native leg locally (`zig build && zig build test`, then
-  `cargo test --all-targets` in `src/paint_core`) and report what breaks.
-- Send fixes for native linking / path issues, or a macOS (Cocoa/WebKit) or
-  Windows (WebView2) backend for the desktop shell (`src/shell/`).
-- Share crash logs, screenshots, and platform notes.
+**When reporting**:
 
-Open or comment on the platform-testing tracking issue (see the issues tab,
-label `platform-support` / `help wanted`) and tag your PRs with the OS you
-tested on. Best-effort from us, warmly credited from you.
+Use the [bug report template](.github/ISSUE_TEMPLATE/bug_report.md) and include:
+
+- Clear, descriptive title
+- Environment details (OS, versions, toolchain)
+- Steps to reproduce
+- Expected vs actual behaviour
+- Logs, screenshots, or minimal reproduction
+
+### Suggesting Features
+
+**Before suggesting**:
+1. Check the [roadmap](ROADMAP.md) if available
+2. Search existing issues and discussions
+3. Consider which perimeter the feature belongs to
+
+**When suggesting**:
+
+Use the [feature request template](.github/ISSUE_TEMPLATE/feature_request.md) and include:
+
+- Problem statement (what pain point does this solve?)
+- Proposed solution
+- Alternatives considered
+- Which perimeter this affects
+
+### Your First Contribution
+
+Look for issues labelled:
+
+- [`good first issue`](https://github.com/hyperpolymath/squisher-corpus/labels/good%20first%20issue) — Simple Perimeter 3 tasks
+- [`help wanted`](https://github.com/hyperpolymath/squisher-corpus/labels/help%20wanted) — Community help needed
+- [`documentation`](https://github.com/hyperpolymath/squisher-corpus/labels/documentation) — Docs improvements
+- [`perimeter-3`](https://github.com/hyperpolymath/squisher-corpus/labels/perimeter-3) — Community sandbox scope
+
+---
+
+## Development Workflow
+
+### Branch Naming
+```
+docs/short-description       # Documentation (P3)
+test/what-added              # Test additions (P3)
+feat/short-description       # New features (P2)
+fix/issue-number-description # Bug fixes (P2)
+refactor/what-changed        # Code improvements (P2)
+security/what-fixed          # Security fixes (P1-2)
+```
+
+### Commit Messages
+
+We follow [Conventional Commits](https://www.conventionalcommits.org/):
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer]
