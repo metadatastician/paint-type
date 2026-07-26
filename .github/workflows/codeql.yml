@@ -26,19 +26,19 @@ jobs:
         # Add more languages as needed
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@29b1f65c1f735799893313399435a59f54045865 # v3
         with:
           languages: ${{ matrix.language }}
           # Uncomment if you have a CodeQL database to restore
           # database: ${{ matrix.language }}
 
       - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
+        uses: github/codeql-action/autobuild@29b1f65c1f735799893313399435a59f54045865 # v3
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@29b1f65c1f735799893313399435a59f54045865 # v3
         with:
           category: /language:${{ matrix.language }}
