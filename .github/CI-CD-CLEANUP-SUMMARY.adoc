@@ -101,7 +101,7 @@ host.yml                 # Host-related checks
 idris-ci.yml             # Idris2 CI
 instant-sync.yml         # Instant sync checks
 mirror.yml               # Mirror workflow
-npm-bun-blocker.yml      # Block npm/bun usage
+runtime-policy.yml      # Block npm/bun usage
 openssf-compliance.yml   # OpenSSF compliance checks
 quality.yml              # Code quality (updated)
 release.yml              # Release workflow
@@ -114,7 +114,6 @@ scorecard.yml            # Scorecard checks
 secret-scanner.yml       # Secret scanning (updated)
 security-policy.yml      # Security policy checks
 static-analysis-gate.yml # Static analysis (comprehensive)
-ts-blocker.yml          # TypeScript blocker
 verify-manifests.yml     # Manifest verification
 wellknown-enforcement.yml # Well-known enforcement
 workflow-linter.yml      # Workflow linting
