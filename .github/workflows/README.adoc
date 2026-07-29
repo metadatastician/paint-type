@@ -44,10 +44,9 @@ The workflows in this directory:
 
 === Language and Tool Policy
 
-* `npm-bun-blocker.yml`:: Blocks any usage of npm or bun package managers. Enforces
+* `runtime-policy.yml`:: Blocks any usage of npm or bun package managers. Enforces
   Deno as the approved JavaScript runtime.
 
-* `ts-blocker.yml`:: Blocks TypeScript file creation or modification. Enforces
   ReScript or other approved alternatives.
 
 === Quality and Maintenance
