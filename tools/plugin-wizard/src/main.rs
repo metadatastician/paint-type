@@ -541,61 +541,102 @@ fn generate_minter_toml(config: &WizardConfig) -> String {
         .map(String::from)
         .collect();
     
-    let mut toml = format!(
-        "name = \"{}\"
-
-description = \"{}\"
-
-version = \"{}\"
-
-id = \"{}\"
-
-author = \"{}\"
-
-plugin_type = \"{}\"
-
-wasm_entry = \"{}\"
-
-license = \"{}\"
-",
-        config.name,
-        config.description,
-        config.version,
-        config.id,
-        config.author,
-        plugin_type_to_str(&config.plugin_type),
-        config.wasm_entry,
-        config.license
-    );
+    // Pre-calculate total capacity to avoid reallocations
+    let estimated_capacity = config.name.len() + config.description.len() +
+        config.version.len() + config.id.len() + config.author.len() +
+        plugin_type_to_str(&config.plugin_type).len() + config.wasm_entry.len() +
+        config.license.len() + config.author_email.as_deref().map_or(0, |s| s.len()) +
+        config.homepage.as_deref().map_or(0, |s| s.len()) +
+        config.icon.as_deref().map_or(0, |s| s.len()) +
+        capabilities.iter().map(|s| s.len()).sum::<usize>() +
+        config.tags.iter().map(|s| s.len()).sum::<usize>();
     
+    let mut toml = String::with_capacity(estimated_capacity + 512); // Extra space for TOML structure
+    
+    // Name
+    toml.push_str("name = \"");
+    toml.push_str(&config.name);
+    toml.push_str("\"\n\n");
+    
+    // Description
+    toml.push_str("description = \"");
+    toml.push_str(&config.description);
+    toml.push_str("\"\n\n");
+    
+    // Version
+    toml.push_str("version = \"");
+    toml.push_str(&config.version);
+    toml.push_str("\"\n\n");
+    
+    // ID
+    toml.push_str("id = \"");
+    toml.push_str(&config.id);
+    toml.push_str("\"\n\n");
+    
+    // Author
+    toml.push_str("author = \"");
+    toml.push_str(&config.author);
+    toml.push_str("\"\n\n");
+    
+    // Plugin type
+    let plugin_type_str = plugin_type_to_str(&config.plugin_type);
+    toml.push_str("plugin_type = \"");
+    toml.push_str(&plugin_type_str);
+    toml.push_str("\"\n\n");
+    
+    // WASM entry
+    toml.push_str("wasm_entry = \"");
+    toml.push_str(&config.wasm_entry);
+    toml.push_str("\"\n\n");
+    
+    // License
+    toml.push_str("license = \"");
+    toml.push_str(&config.license);
+    toml.push_str("\"\n\n");
+    
+    // Author email
     if let Some(email) = &config.author_email {
-        toml.push_str(&format!("\nauthor_email = \"{}\"", email));
+        toml.push_str("author_email = \"");
+        toml.push_str(email);
+        toml.push_str("\"\n\n");
     }
     
+    // Homepage
     if let Some(homepage) = &config.homepage {
-        toml.push_str(&format!("\nhomepage = \"{}\"", homepage));
+        toml.push_str("homepage = \"");
+        toml.push_str(homepage);
+        toml.push_str("\"\n\n");
     }
     
+    // Icon
     if let Some(icon) = &config.icon {
-        toml.push_str(&format!("\nicon = \"{}\"", icon));
+        toml.push_str("icon = \"");
+        toml.push_str(icon);
+        toml.push_str("\"\n\n");
     }
     
+    // Capabilities
     if !capabilities.is_empty() {
-        toml.push_str("\n\n[capabilities]\n");
+        toml.push_str("\n[capabilities]\n");
         for cap in capabilities {
-            toml.push_str(&format!("  {} = true\n", cap));
+            toml.push_str("  ");
+            toml.push_str(&cap);
+            toml.push_str(" = true\n");
         }
     }
     
+    // Tags
     if !config.tags.is_empty() {
         toml.push_str("\n\ntags = [");
         for (i, tag) in config.tags.iter().enumerate() {
             if i > 0 {
                 toml.push_str(", ");
             }
-            toml.push_str(&format!("\"{}\"", tag));
+            toml.push('"');
+            toml.push_str(tag);
+            toml.push('"');
         }
-        toml.push_str("]");
+        toml.push(']');
     }
     
     toml
@@ -763,19 +804,19 @@ fn format_capabilities(caps: &[PluginCapability]) -> String {
     if caps.is_empty() {
         return String::new();
     }
-    caps.iter()
-        .map(|c| format!("PluginCapability::{}", match c {
-            PluginCapability::CanvasRead => "CanvasRead",
-            PluginCapability::CanvasWrite => "CanvasWrite",
-            PluginCapability::LayerAccess => "LayerAccess",
-            PluginCapability::SelectionAccess => "SelectionAccess",
-            PluginCapability::FileAccess => "FileAccess",
-            PluginCapability::NetworkAccess => "NetworkAccess",
-            PluginCapability::UserInterface => "UserInterface",
-            PluginCapability::PersistentStorage => "PersistentStorage",
-        }))
-        .collect::<Vec<_>>()
-        .join(", ")
+    let cap_strs: Vec<&str> = caps.iter()
+        .map(|c| match c {
+            PluginCapability::CanvasRead => "PluginCapability::CanvasRead",
+            PluginCapability::CanvasWrite => "PluginCapability::CanvasWrite",
+            PluginCapability::LayerAccess => "PluginCapability::LayerAccess",
+            PluginCapability::SelectionAccess => "PluginCapability::SelectionAccess",
+            PluginCapability::FileAccess => "PluginCapability::FileAccess",
+            PluginCapability::NetworkAccess => "PluginCapability::NetworkAccess",
+            PluginCapability::UserInterface => "PluginCapability::UserInterface",
+            PluginCapability::PersistentStorage => "PluginCapability::PersistentStorage",
+        })
+        .collect();
+    cap_strs.join(", ")
 }
 
 /// Format tags for Rust code
@@ -783,10 +824,19 @@ fn format_tags(tags: &[String]) -> String {
     if tags.is_empty() {
         return String::new();
     }
-    tags.iter()
-        .map(|t| format!("\"{}\"", t))
-        .collect::<Vec<_>>()
-        .join(", ")
+    // Pre-calculate total capacity
+    let total_len: usize = tags.iter().map(|t| t.len() + 3).sum(); // +3 for quotes and comma/space
+    let mut result = String::with_capacity(total_len);
+    
+    for (i, t) in tags.iter().enumerate() {
+        if i > 0 {
+            result.push_str(", ");
+        }
+        result.push('"');
+        result.push_str(t);
+        result.push('"');
+    }
+    result
 }
 
 /// Convert to CamelCase
@@ -885,7 +935,10 @@ fn generate_readme(config: &WizardConfig) -> String {
         },
         config.author,
         if let Some(email) = &config.author_email {
-            format!("<{}", email)
+            let mut email_str = String::with_capacity(email.len() + 2);
+            email_str.push('<');
+            email_str.push_str(email);
+            email_str
         } else {
             String::new()
         },
@@ -904,7 +957,15 @@ fn generate_license(spdx: &str) -> String {
         "AGPL-3.0-or-later" => AGPL_LICENSE.to_string(),
         "MIT" => MIT_LICENSE.to_string(),
         "Apache-2.0" => APACHE_LICENSE.to_string(),
-        _ => format!("SPDX-License-Identifier: {}\n\nLicense text: See {}\n", spdx, spdx),
+        _ => {
+            let mut result = String::with_capacity(spdx.len() * 2 + 40);
+            result.push_str("SPDX-License-Identifier: ");
+            result.push_str(spdx);
+            result.push_str("\n\nLicense text: See ");
+            result.push_str(spdx);
+            result.push_str("\n");
+            result
+        }
     }
 }
 
