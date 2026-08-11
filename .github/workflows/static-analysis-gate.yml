@@ -7,6 +7,11 @@ on:
     branches: ['**']
   push:
     branches: [main, master]
+
+concurrency:
+  group: static-analysis-gate-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   actions: read
   contents: read

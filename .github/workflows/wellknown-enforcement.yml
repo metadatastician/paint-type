@@ -13,6 +13,11 @@ on:
     # Weekly expiry check
     - cron: '0 9 * * *'
   workflow_dispatch:
+
+concurrency:
+  group: wellknown-enforcement-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   actions: read
   contents: read

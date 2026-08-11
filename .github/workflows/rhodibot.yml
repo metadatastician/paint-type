@@ -18,6 +18,11 @@ on:
   workflow_run:
     workflows: ["Hypatia Neurosymbolic Analysis"]
     types: [completed]
+
+concurrency:
+  group: rhodibot
+  cancel-in-progress: true
+
 permissions:
   actions: read
   contents: write

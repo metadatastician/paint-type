@@ -12,6 +12,10 @@ on:
   push:
     branches: [main, master]
 
+concurrency:
+  group: dogfood-gate-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   actions: read
   contents: read

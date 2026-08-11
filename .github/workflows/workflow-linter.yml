@@ -12,6 +12,10 @@ on:
       - '.github/workflows/**'
   workflow_dispatch:
 
+concurrency:
+  group: workflow-linter-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   actions: read
   contents: read

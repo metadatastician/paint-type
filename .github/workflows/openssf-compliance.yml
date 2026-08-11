@@ -8,6 +8,11 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+
+concurrency:
+  group: openssf-compliance-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   actions: read
   contents: read

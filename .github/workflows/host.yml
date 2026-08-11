@@ -10,6 +10,11 @@ on:
       - 'third_party/gossamer/**'
       - '.github/workflows/host.yml'
   pull_request:
+
+concurrency:
+  group: host-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   actions: read
   contents: read

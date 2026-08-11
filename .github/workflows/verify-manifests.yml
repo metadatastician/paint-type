@@ -9,6 +9,11 @@ on:
     # Run daily at midnight UTC
     - cron: '0 0 * * *'
   workflow_dispatch:
+
+concurrency:
+  group: verify-manifests-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   actions: read
   contents: read

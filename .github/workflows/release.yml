@@ -9,6 +9,11 @@ on:
   push:
     tags:
       - 'v*'
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   actions: read
   contents: read

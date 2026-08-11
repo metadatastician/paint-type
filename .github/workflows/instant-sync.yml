@@ -6,6 +6,11 @@ on:
     branches: [main, master]
   release:
     types: [published]
+
+concurrency:
+  group: instant-sync-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   actions: read
   contents: read
