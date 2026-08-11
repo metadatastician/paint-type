@@ -283,16 +283,34 @@ fn load_plugin_manifest(path: &Path) -> Result<PluginManifest> {
 /// Generate a harness manifest from a plugin manifest
 fn generate_harness_manifest(plugin_manifest: &PluginManifest, target: &str) -> HarnessManifest {
     let plugin_id_normalized = plugin_manifest.id.replace('.', "-");
-    let service_id = format!("paint-type-plugin-{}", plugin_id_normalized);
+    let mut service_id = String::with_capacity(20 + plugin_id_normalized.len());
+    service_id.push_str("paint-type-plugin-");
+    service_id.push_str(&plugin_id_normalized);
+    
+    let mut default_endpoint = String::with_capacity(15 + target.len() + plugin_manifest.id.len());
+    default_endpoint.push_str("paint-type://");
+    default_endpoint.push_str(target);
+    default_endpoint.push('/');
+    default_endpoint.push_str(&plugin_manifest.id);
+    
+    let mut paint_type_endpoint = String::with_capacity(15 + target.len() + plugin_manifest.id.len());
+    paint_type_endpoint.push_str("paint-type://");
+    paint_type_endpoint.push_str(target);
+    paint_type_endpoint.push('/');
+    paint_type_endpoint.push_str(&plugin_manifest.id);
+    
+    let mut wasm_endpoint = String::with_capacity(7 + plugin_manifest.wasm_entry.len());
+    wasm_endpoint.push_str("wasm://");
+    wasm_endpoint.push_str(&plugin_manifest.wasm_entry);
     
     HarnessManifest {
         schema: "paint-type-harness/v1".to_string(),
         service_id,
         plugin_id: plugin_manifest.id.clone(),
-        default_endpoint: format!("paint-type://{}/{}", target, plugin_manifest.id),
+        default_endpoint,
         runtime_endpoints: RuntimeEndpoints {
-            paint_type: Some(format!("paint-type://{}/{}", target, plugin_manifest.id)),
-            wasm: Some(format!("wasm://{}", plugin_manifest.wasm_entry)),
+            paint_type: Some(paint_type_endpoint),
+            wasm: Some(wasm_endpoint),
             http: None,
         },
         health_check: Some(HealthCheckConfig {
@@ -351,7 +369,9 @@ fn test_plugin(plugin_dir: &Path, config: &HarnessConfig) -> Result<TestResult> 
     };
     
     // Check for WASM file
-    let wasm_path = plugin_dir.join("target").join("wasm32-unknown-unknown").join("release").join(format!("{}.wasm", manifest.id.replace('.', "-")));
+    let mut wasm_filename = manifest.id.replace('.', "-");
+    wasm_filename.push_str(".wasm");
+    let wasm_path = plugin_dir.join("target").join("wasm32-unknown-unknown").join("release").join(wasm_filename);
     if !wasm_path.exists() {
         warnings.push(format!("WASM file not found at {}", wasm_path.display()));
         warnings.push("Run 'cargo build --release' to build the plugin".to_string());

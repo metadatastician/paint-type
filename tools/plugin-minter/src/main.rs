@@ -195,22 +195,48 @@ fn copy_dir_all(src: &Path, dst: &Path) -> Result<()> {
 /// Replace placeholders in a file with actual values
 fn replace_placeholders(content: &str, cfg: &MinterConfig, crate_name: &str) -> String {
     let camel_name = to_camel_case(&cfg.name);
+    let api_version = cfg.api_version.to_string();
+    let author_email = cfg.author_email.as_deref().unwrap_or("");
+    let homepage = cfg.homepage.as_deref().unwrap_or("");
+    let icon = cfg.icon.as_deref().unwrap_or("");
     
-    content
-        .replace("PLUGIN_ID", &cfg.id)
-        .replace("PLUGIN_VERSION", &cfg.version)
-        .replace("PLUGIN_NAME", &cfg.name)
-        .replace("PLUGIN_DESCRIPTION", &cfg.description)
-        .replace("PLUGIN_AUTHOR", &cfg.author)
-        .replace("PLUGIN_TYPE", &cfg.plugin_type)
-        .replace("PLUGIN_WASM_ENTRY", &cfg.wasm_entry)
-        .replace("PLUGIN_API_VERSION", &cfg.api_version.to_string())
-        .replace("PLUGIN_LICENSE", &cfg.license)
-        .replace("PLUGIN_CRATE_NAME", crate_name)
-        .replace("PLUGIN_CAMEL_NAME", &camel_name)
-        .replace("PLUGIN_AUTHOR_EMAIL", cfg.author_email.as_deref().unwrap_or(""))
-        .replace("PLUGIN_HOMEPAGE", cfg.homepage.as_deref().unwrap_or(""))
-        .replace("PLUGIN_ICON", cfg.icon.as_deref().unwrap_or(""))
+    // Use a more efficient approach: collect all replacements and apply in order
+    // This avoids the N^2 complexity of chained replace
+    let replacements: Vec<(&str, &str)> = vec![
+        ("PLUGIN_ID", cfg.id.as_str()),
+        ("PLUGIN_VERSION", cfg.version.as_str()),
+        ("PLUGIN_NAME", cfg.name.as_str()),
+        ("PLUGIN_DESCRIPTION", cfg.description.as_str()),
+        ("PLUGIN_AUTHOR", cfg.author.as_str()),
+        ("PLUGIN_TYPE", cfg.plugin_type.as_str()),
+        ("PLUGIN_WASM_ENTRY", cfg.wasm_entry.as_str()),
+        ("PLUGIN_API_VERSION", api_version.as_str()),
+        ("PLUGIN_LICENSE", cfg.license.as_str()),
+        ("PLUGIN_CRATE_NAME", crate_name),
+        ("PLUGIN_CAMEL_NAME", camel_name.as_str()),
+        ("PLUGIN_AUTHOR_EMAIL", author_email),
+        ("PLUGIN_HOMEPAGE", homepage),
+        ("PLUGIN_ICON", icon),
+    ];
+    
+    // Apply replacements in order
+    let mut current: String = content.to_string();
+    for (placeholder, replacement) in replacements {
+        if current.contains(placeholder) {
+            let mut new_string = String::with_capacity(current.len() + replacement.len());
+            let mut last_end = 0;
+            while let Some(pos) = current[last_end..].find(placeholder) {
+                let absolute_pos = last_end + pos;
+                new_string.push_str(&current[last_end..absolute_pos]);
+                new_string.push_str(replacement);
+                last_end = absolute_pos + placeholder.len();
+            }
+            new_string.push_str(&current[last_end..]);
+            current = new_string;
+        }
+    }
+    
+    current
 }
 
 /// Mint a new plugin from configuration
@@ -245,10 +271,16 @@ fn mint(config_path: &Path, explicit_dest: Option<&str>) -> Result<()> {
         fs::rename(&temp_template_dir, &final_dest)?;
     }
     
-    let actual_dest = if final_dest.exists() { final_dest } else { dest.clone() };
+    // Determine actual destination without cloning
+    let actual_dest: &Path = if final_dest.exists() { 
+        &final_dest 
+    } else { 
+        &dest 
+    };
     
     // Now replace placeholders in all files recursively
-    let mut stack = vec![actual_dest.clone()];
+    let mut stack: Vec<PathBuf> = Vec::with_capacity(32);
+    stack.push(actual_dest.to_path_buf());
     
     while let Some(dir) = stack.pop() {
         for entry in fs::read_dir(&dir)? {

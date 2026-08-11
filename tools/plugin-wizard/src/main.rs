@@ -322,8 +322,8 @@ fn run_interactive_wizard(args: &Args) -> Result<WizardConfig> {
     }
     
     // Plugin ID
-    if args.id.is_some() {
-        config.id = args.id.clone().unwrap();
+    if let Some(ref id) = args.id {
+        config.id = id.clone();
         validate_id(&config.id)?;
     } else {
         loop {
@@ -336,8 +336,8 @@ fn run_interactive_wizard(args: &Args) -> Result<WizardConfig> {
     }
     
     // Plugin name
-    if args.name.is_some() {
-        config.name = args.name.clone().unwrap();
+    if let Some(ref name) = args.name {
+        config.name = name.clone();
         validate_name(&config.name)?;
     } else {
         loop {
@@ -354,8 +354,8 @@ fn run_interactive_wizard(args: &Args) -> Result<WizardConfig> {
     config.version = get_input(&term, version_prompt, Some("0.1.0"))?;
     
     // Plugin description
-    if args.description.is_some() {
-        config.description = args.description.clone().unwrap();
+    if let Some(ref desc) = args.description {
+        config.description = desc.clone();
     } else {
         let prompt = "Short description:";
         config.description = get_input(&term, prompt, None)?;
@@ -443,12 +443,28 @@ fn run_interactive_wizard(args: &Args) -> Result<WizardConfig> {
     }
     
     // Output directory
-    if args.output.is_some() {
-        config.output_dir = args.output.clone().unwrap();
+    if let Some(ref output) = args.output {
+        config.output_dir = output.clone();
     } else {
-        let default_dir = format!("./plugin-{}", config.name.to_lowercase().replace(' ', "-"));
-        let dir_prompt = &format!("Output directory (default: {}):", default_dir);
-        config.output_dir = PathBuf::from(get_input(&term, dir_prompt, Some(&default_dir))?);
+        let mut default_dir = String::with_capacity(12 + config.name.len());
+        default_dir.push_str("./plugin-");
+        let name_lower = config.name.to_lowercase();
+        let mut name_dashed = String::with_capacity(name_lower.len());
+        for c in name_lower.chars() {
+            if c == ' ' {
+                name_dashed.push('-');
+            } else {
+                name_dashed.push(c);
+            }
+        }
+        default_dir.push_str(&name_dashed);
+        
+        let mut dir_prompt = String::with_capacity(30 + default_dir.len());
+        dir_prompt.push_str("Output directory (default: ");
+        dir_prompt.push_str(&default_dir);
+        dir_prompt.push(':');
+        
+        config.output_dir = PathBuf::from(get_input(&term, &dir_prompt, Some(&default_dir))?);
     }
     
     // Create minter.toml for reproducibility
@@ -587,51 +603,88 @@ license = \"{}\"
 
 /// Generate a plugin.toml manifest
 fn generate_plugin_toml(config: &WizardConfig) -> String {
-    let mut toml = format!(
-        "id = \"{}\"
-
-name = \"{}\"
-
-description = \"{}\"
-
-version = \"{}\"
-
-",
-        config.id,
-        config.name,
-        config.description,
-        config.version
-    );
+    // Pre-calculate total capacity to avoid reallocations
+    let estimated_capacity = config.id.len() + config.name.len() + config.description.len() +
+        config.version.len() + config.author.len() + config.wasm_entry.len() +
+        config.license.len() + config.plugin_type.to_string().len();
     
+    let mut toml = String::with_capacity(estimated_capacity + 512); // Extra space for TOML structure
+    
+    // ID
+    toml.push_str("id = \"");
+    toml.push_str(&config.id);
+    toml.push_str("\"\n\n");
+    
+    // Name
+    toml.push_str("name = \"");
+    toml.push_str(&config.name);
+    toml.push_str("\"\n\n");
+    
+    // Description
+    toml.push_str("description = \"");
+    toml.push_str(&config.description);
+    toml.push_str("\"\n\n");
+    
+    // Version
+    toml.push_str("version = \"");
+    toml.push_str(&config.version);
+    toml.push_str("\"\n\n");
+    
+    // Long description
     if let Some(long_desc) = &config.long_description {
-        toml.push_str(&format!("long_description = \"\"\"\n{}\n\"\"\"\n\n", long_desc));
+        toml.push_str("long_description = \"\"\"\n");
+        toml.push_str(long_desc);
+        toml.push_str("\n\"\"\"\n\n");
     }
     
-    toml.push_str(&format!("author = \"{}\"\n\n", config.author));
+    // Author
+    toml.push_str("author = \"");
+    toml.push_str(&config.author);
+    toml.push_str("\"\n\n");
     
+    // Author email
     if let Some(email) = &config.author_email {
-        toml.push_str(&format!("author_email = \"{}\"\n\n", email));
+        toml.push_str("author_email = \"");
+        toml.push_str(email);
+        toml.push_str("\"\n\n");
     }
     
-    toml.push_str(&format!(
-        "plugin_type = \"{}\"\n\nwasm_entry = \"{}\"\n\nlicense = \"{}\"\n\n",
-        plugin_type_to_str(&config.plugin_type),
-        config.wasm_entry,
-        config.license
-    ));
+    // Plugin type
+    let plugin_type_str = plugin_type_to_str(&config.plugin_type);
+    toml.push_str("plugin_type = \"");
+    toml.push_str(&plugin_type_str);
+    toml.push_str("\"\n\n");
     
+    // WASM entry
+    toml.push_str("wasm_entry = \"");
+    toml.push_str(&config.wasm_entry);
+    toml.push_str("\"\n\n");
+    
+    // License
+    toml.push_str("license = \"");
+    toml.push_str(&config.license);
+    toml.push_str("\"\n\n");
+    
+    // Homepage
     if let Some(homepage) = &config.homepage {
-        toml.push_str(&format!("homepage = \"{}\"\n\n", homepage));
+        toml.push_str("homepage = \"");
+        toml.push_str(homepage);
+        toml.push_str("\"\n\n");
     }
     
+    // Icon
     if let Some(icon) = &config.icon {
-        toml.push_str(&format!("icon = \"{}\"\n\n", icon));
+        toml.push_str("icon = \"");
+        toml.push_str(icon);
+        toml.push_str("\"\n\n");
     }
     
     // Capabilities
     toml.push_str("[capabilities]\n");
     for cap in &config.capabilities {
-        toml.push_str(&format!("  {} = true\n", capability_to_str(cap)));
+        toml.push_str("  ");
+        toml.push_str(capability_to_str(cap));
+        toml.push_str(" = true\n");
     }
     
     // Tags
@@ -641,9 +694,11 @@ version = \"{}\"
             if i > 0 {
                 toml.push_str(", ");
             }
-            toml.push_str(&format!("\"{}\"", tag));
+            toml.push('\"');
+            toml.push_str(tag);
+            toml.push('\"');
         }
-        toml.push_str("]");
+        toml.push(']');
     }
     
     toml

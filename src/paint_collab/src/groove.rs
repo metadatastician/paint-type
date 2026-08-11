@@ -106,49 +106,95 @@ impl GrooveManifest {
     /// Serialise to canonical, schema-conformant JSON. Hand-rolled (no serde
     /// dependency) and deterministic: `BTreeMap` ordering makes output stable.
     pub fn to_json(&self) -> String {
-        let mut s = String::new();
+        // Pre-calculate total capacity for efficiency
+        let estimated_capacity = 512 + // Fixed overhead
+            self.groove_version.len() + self.service_id.len() + self.service_version.len() +
+            self.health.len() + self.consumes.len() * 16 + self.applicability.len() * 16 +
+            self.capabilities.len() * 128 + self.endpoints.len() * 64;
+        
+        let mut s = String::with_capacity(estimated_capacity);
         s.push_str("{\n");
-        s.push_str(&format!("  \"groove_version\": {},\n", jstr(&self.groove_version)));
-        s.push_str(&format!("  \"service_id\": {},\n", jstr(&self.service_id)));
-        s.push_str(&format!(
-            "  \"service_version\": {},\n",
-            jstr(&self.service_version)
-        ));
+        
+        // groove_version
+        s.push_str("  \"groove_version\": ");
+        s.push_str(&jstr(&self.groove_version));
+        s.push_str(",\n");
+        
+        // service_id
+        s.push_str("  \"service_id\": ");
+        s.push_str(&jstr(&self.service_id));
+        s.push_str(",\n");
+        
+        // service_version
+        s.push_str("  \"service_version\": ");
+        s.push_str(&jstr(&self.service_version));
+        s.push_str(",\n");
+        
+        // capabilities
         s.push_str("  \"capabilities\": {\n");
         let caps: Vec<_> = self.capabilities.iter().collect();
         for (i, (name, cap)) in caps.iter().enumerate() {
-            s.push_str(&format!("    {}: {{\n", jstr(name)));
-            s.push_str(&format!("      \"type\": {},\n", jstr(&cap.cap_type)));
-            s.push_str(&format!(
-                "      \"description\": {},\n",
-                jstr(&cap.description)
-            ));
-            s.push_str(&format!("      \"protocol\": {},\n", jstr(&cap.protocol)));
-            s.push_str(&format!("      \"endpoint\": {},\n", jstr(&cap.endpoint)));
-            s.push_str(&format!(
-                "      \"requires_auth\": {},\n",
-                cap.requires_auth
-            ));
-            s.push_str(&format!(
-                "      \"panel_compatible\": {}\n",
-                cap.panel_compatible
-            ));
+            s.push_str("    ");
+            s.push_str(&jstr(name));
+            s.push_str(": {\n");
+            
+            s.push_str("      \"type\": ");
+            s.push_str(&jstr(&cap.cap_type));
+            s.push_str(",\n");
+            
+            s.push_str("      \"description\": ");
+            s.push_str(&jstr(&cap.description));
+            s.push_str(",\n");
+            
+            s.push_str("      \"protocol\": ");
+            s.push_str(&jstr(&cap.protocol));
+            s.push_str(",\n");
+            
+            s.push_str("      \"endpoint\": ");
+            s.push_str(&jstr(&cap.endpoint));
+            s.push_str(",\n");
+            
+            s.push_str("      \"requires_auth\": ");
+            s.push_str(&cap.requires_auth.to_string());
+            s.push_str(",\n");
+            
+            s.push_str("      \"panel_compatible\": ");
+            s.push_str(&cap.panel_compatible.to_string());
+            s.push_str("\n");
+            
             s.push_str(if i + 1 == caps.len() { "    }\n" } else { "    },\n" });
         }
         s.push_str("  },\n");
-        s.push_str(&format!("  \"consumes\": {},\n", jarr(&self.consumes)));
+        
+        // consumes
+        s.push_str("  \"consumes\": ");
+        s.push_str(&jarr(&self.consumes));
+        s.push_str(",\n");
+        
+        // endpoints
         s.push_str("  \"endpoints\": {\n");
         let eps: Vec<_> = self.endpoints.iter().collect();
         for (i, (k, v)) in eps.iter().enumerate() {
+            s.push_str("    ");
+            s.push_str(&jstr(k));
+            s.push_str(": ");
+            s.push_str(&jstr(v));
             let comma = if i + 1 == eps.len() { "" } else { "," };
-            s.push_str(&format!("    {}: {}{}\n", jstr(k), jstr(v), comma));
+            s.push_str(comma);
+            s.push_str("\n");
         }
         s.push_str("  },\n");
-        s.push_str(&format!("  \"health\": {},\n", jstr(&self.health)));
-        s.push_str(&format!(
-            "  \"applicability\": {}\n",
-            jarr(&self.applicability)
-        ));
+        
+        // health
+        s.push_str("  \"health\": ");
+        s.push_str(&jstr(&self.health));
+        s.push_str(",\n");
+        
+        // applicability
+        s.push_str("  \"applicability\": ");
+        s.push_str(&jarr(&self.applicability));
+        s.push_str("\n");
+        
         s.push_str("}\n");
         s
     }

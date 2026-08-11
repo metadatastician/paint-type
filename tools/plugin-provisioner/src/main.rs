@@ -19,6 +19,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::fs::{self, File};
+use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
 use tracing::{debug, error, info, warn};
 use walkdir::WalkDir;
@@ -71,17 +72,27 @@ impl ProvisioningState {
             validated_plugins: HashSet::new(),
             installed_plugins: HashSet::new(),
             configured_plugins: HashSet::new(),
-            provisioning_log: Vec::new(),
-            errors: Vec::new(),
+            provisioning_log: Vec::with_capacity(128),
+            errors: Vec::with_capacity(32),
         }
     }
 
-    pub fn log(&mut self, message: &str) {
+    pub fn log(&mut self, message: String) {
+        self.provisioning_log.push(message.clone());
+        info!("{}", self.provisioning_log.last().unwrap());
+    }
+
+    pub fn log_str(&mut self, message: &str) {
         self.provisioning_log.push(message.to_string());
         info!("{}", message);
     }
 
-    pub fn error(&mut self, message: &str) {
+    pub fn error(&mut self, message: String) {
+        self.errors.push(message.clone());
+        error!("{}", self.errors.last().unwrap());
+    }
+
+    pub fn error_str(&mut self, message: &str) {
         self.errors.push(message.to_string());
         error!("{}", message);
     }
@@ -131,9 +142,17 @@ impl DeploymentResult {
 
 /// Compute SHA-256 checksum of a file
 fn compute_checksum(file_path: &Path) -> Result<String> {
-    let mut file = File::open(file_path).context("Failed to open file for checksum")?;
+    let file = File::open(file_path).context("Failed to open file for checksum")?;
+    let mut reader = BufReader::with_capacity(8192, file);
     let mut hasher = Sha256::new();
-    let _ = std::io::copy(&mut file, &mut hasher).context("Failed to read file for checksum")?;
+    let mut buffer = [0u8; 8192];
+    loop {
+        let bytes_read = reader.read(&mut buffer).context("Failed to read file for checksum")?;
+        if bytes_read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..bytes_read]);
+    }
     Ok(hex::encode(hasher.finalize()))
 }
 
@@ -195,18 +214,18 @@ fn provision_plugin(
     target_dir: &Path,
     state: &mut ProvisioningState,
 ) -> Result<DeploymentResult> {
-    state.log(&format!("Starting provisioning from: {}", source_dir.display()));
+    state.log(format!("Starting provisioning from: {}", source_dir.display()));
     state.phase = ProvisioningPhase::ResolvingDependencies;
 
     // Load manifest
     let manifest = load_manifest_from_dir(source_dir)
         .context("Failed to load plugin manifest")?;
-    state.log(&format!("Loaded manifest for plugin: {}", manifest.id));
+    state.log(format!("Loaded manifest for plugin: {}", manifest.id));
 
     // Validate manifest
     state.phase = ProvisioningPhase::Validating;
     validate_manifest(&manifest).context("Manifest validation failed")?;
-    state.log("Manifest validated successfully");
+    state.log_str("Manifest validated successfully");
 
     // Create target directory
     let plugin_target = target_dir.join(manifest.id.as_str());
@@ -214,7 +233,7 @@ fn provision_plugin(
 
     // Copy plugin files
     state.phase = ProvisioningPhase::Installing;
-    state.log("Copying plugin files...");
+    state.log_str("Copying plugin files...");
 
     // Copy manifest
     let manifest_src = source_dir.join("plugin.toml");
@@ -240,36 +259,42 @@ fn provision_plugin(
     let wasm_dst = plugin_target.join(wasm_src.file_name().unwrap_or_default());
     let checksum = copy_file_with_checksum(&wasm_src, &wasm_dst)
         .context("Failed to copy WASM module")?;
-    state.log(&format!("WASM module copied: {}", wasm_dst.display()));
+    state.log(format!("WASM module copied: {}", wasm_dst.display()));
 
     // Copy other files (README, LICENSE, etc.)
+    // Pre-allocate path buffers to reduce allocations in loop
+    let manifest_toml = Path::new("plugin.toml");
+    let manifest_json = Path::new("plugin.json");
+    let wasm_entry_path = Path::new(&manifest.wasm_entry);
+    
     for entry in WalkDir::new(source_dir) {
         let entry = entry.context("Failed to walk source directory")?;
-        let rel_path = entry.path().strip_prefix(source_dir).unwrap_or(entry.path());
-        let dst_path = plugin_target.join(rel_path);
-
+        let entry_path = entry.path();
+        let rel_path = entry_path.strip_prefix(source_dir).unwrap_or(entry_path);
+        
         // Skip manifest files (already copied)
-        if rel_path == Path::new("plugin.toml") || rel_path == Path::new("plugin.json") {
+        if rel_path == manifest_toml || rel_path == manifest_json {
             continue;
         }
 
         // Skip WASM file (already copied)
-        if rel_path == Path::new(&manifest.wasm_entry) {
+        if rel_path == wasm_entry_path {
             continue;
         }
 
         if entry.file_type().is_file() {
+            let dst_path = plugin_target.join(rel_path);
             if let Some(parent) = dst_path.parent() {
                 ensure_dir_exists(parent)?;
             }
-            fs::copy(entry.path(), &dst_path).context("Failed to copy plugin file")?;
+            fs::copy(entry_path, &dst_path).context("Failed to copy plugin file")?;
             debug!("Copied: {}", rel_path.display());
         }
     }
 
     // Create plugin config
     state.phase = ProvisioningPhase::Configuring;
-    state.log("Creating plugin configuration...");
+    state.log_str("Creating plugin configuration...");
 
     let plugin_config = PluginConfig {
         id: manifest.id.clone(),
@@ -286,7 +311,7 @@ fn provision_plugin(
 
     // Generate deployment result
     state.phase = ProvisioningPhase::Complete;
-    state.log("Provisioning complete");
+    state.log_str("Provisioning complete");
 
     let result = DeploymentResult {
         plugin_id: manifest.id.clone(),
@@ -313,7 +338,7 @@ fn list_plugins(target_dir: &Path, detailed: bool) -> Result<()> {
     println!("\nDeployed Plugins:");
     println!("{}", "=".repeat(60));
 
-    let mut plugins: Vec<(PathBuf, PluginManifest)> = Vec::new();
+    let mut plugins: Vec<(PathBuf, PluginManifest)> = Vec::with_capacity(64);
 
     for entry in WalkDir::new(target_dir) {
         let entry = entry.context("Failed to walk target directory")?;
@@ -321,17 +346,20 @@ fn list_plugins(target_dir: &Path, detailed: bool) -> Result<()> {
             continue;
         }
 
-        let manifest_path = entry.path().join("plugin.toml");
-        if manifest_path.exists() {
-            if let Ok(manifest) = PluginManifest::from_toml_file(&manifest_path) {
-                plugins.push((entry.path().to_path_buf(), manifest));
+        let dir_path = entry.path();
+        let manifest_toml_path = dir_path.join("plugin.toml");
+        let manifest_json_path = dir_path.join("plugin.json");
+        
+        if manifest_toml_path.exists() {
+            if let Ok(manifest) = PluginManifest::from_toml_file(&manifest_toml_path) {
+                plugins.push((dir_path.to_path_buf(), manifest));
+                continue;
             }
         }
 
-        let manifest_path = entry.path().join("plugin.json");
-        if manifest_path.exists() {
-            if let Ok(manifest) = PluginManifest::from_json_file(&manifest_path) {
-                plugins.push((entry.path().to_path_buf(), manifest));
+        if manifest_json_path.exists() {
+            if let Ok(manifest) = PluginManifest::from_json_file(&manifest_json_path) {
+                plugins.push((dir_path.to_path_buf(), manifest));
             }
         }
     }
