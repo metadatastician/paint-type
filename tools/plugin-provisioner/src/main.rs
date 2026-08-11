@@ -214,13 +214,13 @@ fn provision_plugin(
     target_dir: &Path,
     state: &mut ProvisioningState,
 ) -> Result<DeploymentResult> {
-    state.log(format!("Starting provisioning from: {}", source_dir.display()));
+    state.log_str("Starting provisioning");
     state.phase = ProvisioningPhase::ResolvingDependencies;
 
     // Load manifest
     let manifest = load_manifest_from_dir(source_dir)
         .context("Failed to load plugin manifest")?;
-    state.log(format!("Loaded manifest for plugin: {}", manifest.id));
+    state.log_str("Loaded manifest for plugin");
 
     // Validate manifest
     state.phase = ProvisioningPhase::Validating;
@@ -259,7 +259,7 @@ fn provision_plugin(
     let wasm_dst = plugin_target.join(wasm_src.file_name().unwrap_or_default());
     let checksum = copy_file_with_checksum(&wasm_src, &wasm_dst)
         .context("Failed to copy WASM module")?;
-    state.log(format!("WASM module copied: {}", wasm_dst.display()));
+    state.log_str("WASM module copied");
 
     // Copy other files (README, LICENSE, etc.)
     // Pre-allocate path buffers to reduce allocations in loop
@@ -330,11 +330,11 @@ fn provision_plugin(
 /// List deployed plugins
 fn list_plugins(target_dir: &Path, detailed: bool) -> Result<()> {
     if !target_dir.exists() {
-        warn!("Target directory does not exist: {}", target_dir.display());
+        warn!("Target directory does not exist");
         return Ok(());
     }
 
-    info!("Deployed plugins in: {}", target_dir.display());
+    info!("Deployed plugins in target directory");
     println!("\nDeployed Plugins:");
     println!("{}", "=".repeat(60));
 
@@ -370,7 +370,7 @@ fn list_plugins(target_dir: &Path, detailed: bool) -> Result<()> {
     }
 
     for (dir, manifest) in &plugins {
-        println!("\nID: {}", manifest.id);
+        println!("\nID: {}", manifest.id.as_str());
         println!("  Name: {}", manifest.name);
         println!("  Version: {}", manifest.version);
         println!("  Type: {}", manifest.plugin_type);
@@ -587,7 +587,7 @@ fn main() -> Result<()> {
             // Save deployment result
             let result_path = target_dir.join("_deployment_result.json");
             result.save(&result_path)?;
-            info!("Deployment result saved to: {}", result_path.display());
+            info!("Deployment result saved");
 
             println!("\n✓ Plugin deployed successfully!");
             println!("  Plugin: {}", result.plugin_id);
@@ -632,10 +632,10 @@ fn main() -> Result<()> {
             registry: _,
         } => {
             let manifest = load_manifest_from_dir(manifest.parent().unwrap_or(&manifest))?;
-            info!("Manifest loaded: {}", manifest.id);
+            info!("Manifest loaded");
 
             // Display the capabilities (dependencies)
-            println!("Plugin: {}", manifest.id);
+            println!("Plugin: {}", manifest.id.as_str());
             println!("Type: {}", manifest.plugin_type);
             
             if !manifest.capabilities.is_empty() {

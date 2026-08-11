@@ -294,41 +294,41 @@ impl PluginManifest {
     /// Validate the manifest
     pub fn validate(&self) -> Result<(), PluginError> {
         if self.id.0.is_empty() {
-            return Err(PluginError::ManifestValidation("id is required".to_string()));
+            return Err(PluginError::ManifestValidation(String::from("id is required")));
         }
 
         if !self.id.0.contains('.') {
             return Err(PluginError::ManifestValidation(
-                "id must be in reverse domain notation (e.g., com.example.plugin)".to_string(),
+                String::from("id must be in reverse domain notation (e.g., com.example.plugin)"),
             ));
         }
 
         if self.name.is_empty() {
-            return Err(PluginError::ManifestValidation("name is required".to_string()));
+            return Err(PluginError::ManifestValidation(String::from("name is required")));
         }
 
         if self.description.is_empty() {
-            return Err(PluginError::ManifestValidation("description is required".to_string()));
+            return Err(PluginError::ManifestValidation(String::from("description is required")));
         }
 
         if self.author.is_empty() {
-            return Err(PluginError::ManifestValidation("author is required".to_string()));
+            return Err(PluginError::ManifestValidation(String::from("author is required")));
         }
 
         if self.wasm_entry.is_empty() {
-            return Err(PluginError::ManifestValidation("wasm_entry is required".to_string()));
+            return Err(PluginError::ManifestValidation(String::from("wasm_entry is required")));
         }
 
         if self.license.is_empty() {
-            return Err(PluginError::ManifestValidation("license is required".to_string()));
+            return Err(PluginError::ManifestValidation(String::from("license is required")));
         }
 
         if self.api_version < PluginVersion::MIN_API_VERSION {
-            return Err(PluginError::UnsupportedVersion(self.version.clone()));
+            return Err(PluginError::UnsupportedVersion(self.version));
         }
 
         if !self.version.is_compatible() {
-            return Err(PluginError::UnsupportedVersion(self.version.clone()));
+            return Err(PluginError::UnsupportedVersion(self.version));
         }
 
         Ok(())
