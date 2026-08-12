@@ -23,4 +23,4 @@ jobs:
       security-events: write
       id-token: write
     # Mark as non-critical to prevent workflow failure due to estate-wide issues
-    continue-on-error: true
+    # NOTE: continue-on-error removed - not allowed on jobs that use "uses:"
