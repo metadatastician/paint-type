@@ -51,7 +51,7 @@ jobs:
         with:
           version: 0.15.1
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@v2.86.3
+        uses: taiki-e/install-action@v2.86.7
         with:
           tool: cargo-llvm-cov
       - name: Install kcov (best-effort, Zig coverage)
