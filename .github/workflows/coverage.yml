@@ -1,3 +1,4 @@
+# This workflow is managed by gh actions-lock.
 # SPDX-License-Identifier: PMPL-1.0-or-later
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
@@ -36,21 +37,21 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+        uses: actions/checkout@v7.0.1
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@4be9e76fd7c4901c61fb841f559994984270fce7 # stable
         with:
           components: llvm-tools-preview
       - name: Cache cargo registry and build
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        uses: Swatinem/rust-cache@v2.9.2
         with:
           workspaces: src/paint_core
       - name: Install Zig 0.15
-        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v1
+        uses: mlugg/setup-zig@v2.2.1
         with:
           version: 0.15.1
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@7f4eb899022d8fe70b20c4f3de697aa85c309026 # v2
+        uses: taiki-e/install-action@v2.85.11
         with:
           tool: cargo-llvm-cov
       - name: Install kcov (best-effort, Zig coverage)
@@ -143,7 +144,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload Rust LCOV artifact
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: rust-coverage-lcov
           path: src/paint_core/lcov.info
@@ -151,7 +152,7 @@ jobs:
           retention-days: 30
       - name: Upload Zig kcov artifact
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: zig-coverage
           path: coverage/zig
@@ -162,7 +163,7 @@ jobs:
       # missing token, so we guard explicitly and never fail.
       - name: Publish to Codecov (optional)
         if: ${{ env.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        uses: codecov/codecov-action@v7.0.0
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:

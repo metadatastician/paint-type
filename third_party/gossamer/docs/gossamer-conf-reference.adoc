@@ -13,10 +13,10 @@ Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 `gossamer.conf.json` is the declarative configuration file for Gossamer webview
 applications. It serves the same role as Tauri's `tauri.conf.json` but extends it
 with Gossamer-specific features: capability tokens, Ephapax linear-type module
-integration, expanded mobile support, and a Deno-first build pipeline.
+integration, expanded mobile support, and a -first build pipeline.
 
 The file lives at the root of your Gossamer project (typically alongside
-`Justfile` and `deno.json`).
+`Justfile` and `.json`).
 
 === Schema Reference
 
@@ -86,7 +86,7 @@ The schema is also available locally at `schema/gossamer.conf.schema.json`.
 == Build Configuration
 
 The `build` section configures the frontend build pipeline. Gossamer is
-**Deno-first** -- npm is not supported.
+**-first** -- npm is not supported.
 
 [source,json]
 ----
@@ -94,9 +94,9 @@ The `build` section configures the frontend build pipeline. Gossamer is
   "build": {
     "frontendDist": "../public",
     "devUrl": "http://localhost:4040/",
-    "beforeDevCommand": "deno task dev",
-    "beforeBuildCommand": "deno task build",
-    "runner": "deno"
+    "beforeDevCommand": " task dev",
+    "beforeBuildCommand": " task build",
+    "runner": ""
   }
 }
 ----
@@ -127,28 +127,28 @@ The `build` section configures the frontend build pipeline. Gossamer is
 
 | `runner`
 | `string`
-| `"deno"`
-| Task runner: `"deno"` (primary) or `"bun"` (fallback). npm is not supported.
+| `""`
+| Task runner: `""` (primary) or `"bun"` (fallback). npm is not supported.
 |===
 
 === Migration from Tauri
 
 If migrating from a Tauri project, your `beforeDevCommand` and
 `beforeBuildCommand` translate directly. Replace any `npm run` or `yarn`
-invocations with `deno task`:
+invocations with ` task`:
 
 [cols="1,1", options="header"]
 |===
 | Tauri (before) | Gossamer (after)
 
 | `npm run dev`
-| `deno task dev`
+| ` task dev`
 
 | `yarn build`
-| `deno task build`
+| ` task build`
 
 | `npx vite build`
-| `deno task build` (configure in `deno.json`)
+| ` task build` (configure in `.json`)
 |===
 
 == App Configuration
@@ -741,9 +741,9 @@ A full configuration for PanLL migrated from Tauri to Gossamer:
   "build": {
     "frontendDist": "../public",
     "devUrl": "http://localhost:4040/public/",
-    "beforeDevCommand": "deno task bundle && deno task bundle:watch & deno task css:watch & deno task serve:dev",
-    "beforeBuildCommand": "deno task bundle && deno task css:build",
-    "runner": "deno"
+    "beforeDevCommand": " task bundle &&  task bundle:watch &  task css:watch &  task serve:dev",
+    "beforeBuildCommand": " task bundle &&  task css:build",
+    "runner": ""
   },
   "app": {
     "windows": [{
@@ -807,8 +807,8 @@ A full configuration for PanLL migrated from Tauri to Gossamer:
 | Feature | Tauri | Gossamer
 
 | Build runner
-| npm/yarn/pnpm/bun/deno
-| Deno (primary), Bun (fallback). npm banned.
+| npm/yarn/pnpm/bun/
+|  (primary), Bun (fallback). npm banned.
 
 | Capability model
 | Static plugin permissions

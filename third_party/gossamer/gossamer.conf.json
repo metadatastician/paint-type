@@ -6,8 +6,8 @@
   "build": {
     "frontendDist": "../public",
     "devUrl": "http://localhost:4040/",
-    "beforeDevCommand": "deno task dev",
-    "beforeBuildCommand": "deno task build",
+    "beforeDevCommand": " task dev",
+    "beforeBuildCommand": " task build",
     "watch": {
       "paths": ["public/", "src/"],
       "extensions": [".html", ".js", ".css", ".res.js"],

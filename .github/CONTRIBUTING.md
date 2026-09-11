@@ -158,7 +158,7 @@ just panic-scan # No new security issues
 - Tile memory is linearly typed — no aliased mutable tile references
 - `believe_me` count must remain zero in all Idris2 files
 - SPDX-License-Identifier header required on every new file
-- No new TypeScript or Python files
+- No new  or Python files
 
 ---
 

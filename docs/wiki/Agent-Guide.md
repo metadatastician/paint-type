@@ -309,7 +309,7 @@ If asked to explore alternatives, document that using **Ephapax directly** for U
 - Let generated files go stale (they have --check variants)
 
 **Use:**
-- Reusable workflows (governance, codeql, hypatia, changelog, deno, elixir)
+- Reusable workflows (governance, codeql, hypatia, changelog, , elixir)
 - Generation scripts (build-registry.sh, build-scorecards.sh, verify-claims.sh)
 
 ### DEP-10: proven

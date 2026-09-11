@@ -1,3 +1,4 @@
+# This workflow is managed by gh actions-lock.
 # SPDX-License-Identifier: PMPL-1.0-or-later
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-License-Identifier: CC-BY-SA-4.0
@@ -21,7 +22,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7.0.1
       - name: Check file permissions
         run: |
           find . -type f -perm /111 -name "*.sh" | head -10 || true
@@ -33,14 +34,14 @@ jobs:
         run: |
           find . -type f -size +1M -not -path "./.git/*" | head -10 || echo "No large files"
       - name: EditorConfig check
-        uses: editorconfig-checker/action-editorconfig-checker@840e866d93b8e032123c23bac69dece044d4d84c # v2.2.0
+        uses: editorconfig-checker/action-editorconfig-checker@v2.2.0
         continue-on-error: true
   docs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7.0.1
       - name: Check documentation
         run: |
           MISSING=""

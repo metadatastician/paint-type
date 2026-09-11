@@ -319,7 +319,7 @@ bots prioritise finding hidden problems over documenting known ones.
 - Ring 0: Convert the import statements, build RuntimeBridge
 - Ring 0.5: Wait — Gossamer doesn't have file dialogs. Build them (dialog.zig)
 - Ring 0.5: Wait — Gossamer doesn't have a config format. Create it (gossamer.conf.json + JSON Schema)
-- Ring 1: Create ReScript bindings package (@gossamer/api)
+- Ring 1: Create  bindings package (@gossamer/api)
 - Ring 1: Update panel harness schema to v2 (runtime-agnostic URIs)
 - Ring 1: Build and test (verify the Zig FFI compiles clean)
 - Ring 2: Convert all 14 repos (batch with parallel agents)
@@ -568,7 +568,7 @@ Pass 4: Meander agent works next 3 items
 
 **Why sequential, not parallel:**
 - File contention: two agents editing the same files cause build breaks
-- Build mutex: only one compiler can run at a time (ReScript, Rust, etc.)
+- Build mutex: only one compiler can run at a time (, Rust, etc.)
 - Coordination overhead: parallel agents communicate through a dispatcher
   bottleneck, killing the latency benefit
 
@@ -721,7 +721,7 @@ Developed during the Gossamer migration session (2026-03-22) where a simple
 - 8 Ephapax modules
 - Full mobile support (iOS + Android)
 - Config schema + JSON Schema + reference docs
-- 2 ReScript binding packages (15 modules)
+- 2  binding packages (15 modules)
 - Panel harness v2
 - Minter template updates
 - Cross-project learnings for Burble, IDApTIK, PanLL
@@ -791,7 +791,7 @@ Applied convergent meandering to Stapeln UI, second session:
 - **Goal drift:** Task was "develop the UI" (user-facing). Meander
   converged on infrastructure (routers, import flows, deprecation fixes).
   Good for developers, not what was asked.
-- **The linear alternative:** `rescript build → fix all errors → build again`
+- **The linear alternative:** ` build → fix all errors → build again`
   would have found the same compilation issues faster and with guaranteed
   coverage. Meandering is not always the best tool.
 - **Over-convergence:** Added URL routing and popstate listeners to code

@@ -143,7 +143,7 @@ Full-featured framework ready for production use.
 
 == Integration Targets
 
-* [ ] **IDApTIK** — Replace Tauri for desktop builds (same ReScript frontend)
+* [ ] **IDApTIK** — Replace Tauri for desktop builds (same  frontend)
 * [ ] **PanLL** — Gossamer as native panel shell
 * [ ] **Burble** — Gossamer as voice client UI
 
@@ -151,5 +151,5 @@ Full-featured framework ready for production use.
 
 * Garbage collection — regions + linear types only
 * Runtime type information — all types erased at compile time
-* Node.js/npm dependency — Deno or nothing
+* Node.js/npm dependency —  or nothing
 * Electron compatibility layer — clean break, not a shim

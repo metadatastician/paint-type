@@ -71,9 +71,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.0] — 2026-03-23
 
 ### Added
-- **Async IPC**: `gossamer_channel_bind_async()` spawns callback on worker thread with `g_idle_add` posting response back to GTK main thread; 256-slot inflight tracker with `std.Thread.Mutex`; Rust binding `app.command_async()`; ReScript already Promise-based
-- **CSP enforcement**: `gossamer_set_csp(handle, csp_string)` export; CLI auto-applies CSP from `gossamer.conf.json` `security.csp`; Rust `app.set_csp()`; ReScript `Gossamer.Security.setCsp()`
-- **Streaming IPC** (backend-to-frontend push): `gossamer_emit(handle, event_name, payload)` export; thread-safe via `g_idle_add`; JS `window.__gossamer_on(name, callback)` returns unsubscribe; Rust `app.emit(name, payload)`; ReScript `Gossamer.Event.on(name, callback)`
+- **Async IPC**: `gossamer_channel_bind_async()` spawns callback on worker thread with `g_idle_add` posting response back to GTK main thread; 256-slot inflight tracker with `std.Thread.Mutex`; Rust binding `app.command_async()`;  already Promise-based
+- **CSP enforcement**: `gossamer_set_csp(handle, csp_string)` export; CLI auto-applies CSP from `gossamer.conf.json` `security.csp`; Rust `app.set_csp()`;  `Gossamer.Security.setCsp()`
+- **Streaming IPC** (backend-to-frontend push): `gossamer_emit(handle, event_name, payload)` export; thread-safe via `g_idle_add`; JS `window.__gossamer_on(name, callback)` returns unsubscribe; Rust `app.emit(name, payload)`;  `Gossamer.Event.on(name, callback)`
 - **Hot reload**: `gossamer dev` now watches `build.watch.paths` (or `frontendDist` fallback) for file changes and auto-reloads the webview via `g_idle_add` + `gossamer_eval("location.reload(true)")`; configurable extensions, debounce, and poll interval; separate `file_watcher.zig` module with polling thread
 - 13 new unit tests (7 async IPC, 6 streaming IPC)
 

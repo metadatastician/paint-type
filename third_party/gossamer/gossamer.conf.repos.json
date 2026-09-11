@@ -6,8 +6,8 @@
   "build": {
     "frontendDist": "../public",
     "devUrl": "http://localhost:8000/",
-    "beforeDevCommand": "deno task dev",
-    "beforeBuildCommand": "deno task build"
+    "beforeDevCommand": " task dev",
+    "beforeBuildCommand": " task build"
   },
   "app": {
     "windows": [{

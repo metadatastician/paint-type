@@ -9,7 +9,7 @@ Gossamer is structured as four layers, each with a distinct responsibility.
 
 ## Layer 1: Web Frontend
 
-Standard HTML, CSS, and JavaScript (or ReScript) running inside the OS-provided webview. No custom rendering engine, no bundled browser.
+Standard HTML, CSS, and JavaScript (or ) running inside the OS-provided webview. No custom rendering engine, no bundled browser.
 
 ## Layer 2: Ephapax Application Layer
 

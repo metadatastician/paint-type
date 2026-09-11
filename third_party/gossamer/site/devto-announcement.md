@@ -72,7 +72,7 @@ I've verified end-to-end on Fedora Linux:
 - `gossamer_run(handle)` → blocks on event loop, window visible
 - Close window → handle consumed, process exits cleanly
 
-I even wrapped an existing application (a game level editor) with Gossamer, replacing its Tauri 2.0 backend. The ReScript frontend didn't change at all — same HTML/CSS/JS, different native shell.
+I even wrapped an existing application (a game level editor) with Gossamer, replacing its Tauri 2.0 backend. The  frontend didn't change at all — same HTML/CSS/JS, different native shell.
 
 ## Comparison
 

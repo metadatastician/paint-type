@@ -42,7 +42,7 @@ Ephapax skeleton are all in place. No user-visible functionality yet.
 
 - All cross-language boundaries go through the Idris2 ABI + Zig FFI
 - Tile memory is linearly typed — no aliased mutable tile references
-- No new TypeScript, Python, or Go files
+- No new , Python, or Go files
 - SPDX-License-Identifier on every source file
 - No `believe_me`, `assert_total`, `Admitted`, `sorry` in proof files
 

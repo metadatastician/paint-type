@@ -76,7 +76,7 @@ conformance/               Linear type conformance tests
 - Synchronous IPC: gossamer_channel_send / gossamer_channel_bind
 - Async IPC: gossamer_channel_bind_async (worker threads, 256 inflight)
 - CSP enforcement: gossamer_set_csp + CLI auto-apply from gossamer.conf.json
-- Streaming events: gossamer_emit with JS/Rust/ReScript subscribe/unsubscribe
+- Streaming events: gossamer_emit with JS/Rust/ subscribe/unsubscribe
 - Thread-local error safety: clearError on all 16+ exported entries
 - Capability registry: 256 slots, FIFO eviction
 - Dialog system: c_allocator consistent
@@ -87,7 +87,7 @@ conformance/               Linear type conformance tests
 - **Build**: Zig 0.14+, pkg-config
 - **Type checking**: Ephapax compiler (built from ~/Documents/hyperpolymath-repos/ephapax)
 - **ABI layer**: Idris2 0.7+ (optional)
-- **Bindings**: Rust (gossamer-rs crate), ReScript
+- **Bindings**: Rust (gossamer-rs crate), 
 
 ## Commands
 

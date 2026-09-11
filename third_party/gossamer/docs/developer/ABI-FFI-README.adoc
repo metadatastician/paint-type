@@ -45,7 +45,7 @@ Gossamer follows the **Hyperpolymath RSR Standard** for ABI and FFI design:
                   ▼
 ┌─────────────────────────────────────────────┐
 │  Any Language via C ABI                     │
-│  - Ephapax, Rust, ReScript, Julia, etc.    │
+│  - Ephapax, Rust, , Julia, etc.    │
 └─────────────────────────────────────────────┘
 ```
 
@@ -85,11 +85,11 @@ gossamer/
 ├── examples/
 │   ├── hello/main.eph           # Minimal webview example
 │   ├── ipc/main.eph             # Typed IPC with command handlers
-│   └── SafeDOMExample.res       # ReScript SafeDOM integration
+│   └── SafeDOMExample.res       #  SafeDOM integration
 │
 └── bindings/                     # Language-specific wrappers (optional)
     ├── rust/
-    ├── rescript/
+    ├── /
     └── julia/
 ```
 

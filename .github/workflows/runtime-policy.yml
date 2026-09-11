@@ -1,11 +1,12 @@
+# This workflow is managed by gh actions-lock.
 # SPDX-License-Identifier: MPL-2.0
 # Runtime and package-manager policy check.
 #
 # Authority: hyperpolymath/standards LANGUAGE-POLICY.adoc §1.
-# Ordering:  Bun (1st) > Deno (2nd) > pnpm (3rd) > npm (last resort).
+# Ordering:  Bun (1st) >  (2nd) > pnpm (3rd) > npm (last resort).
 #
 # REPLACES npm-bun-blocker.yml, which failed any build carrying `bun.lockb` with
-# the message "npm/bun artifacts detected. Use Deno instead." That gate blocked
+# the message "npm/bun artifacts detected. Use  instead." That gate blocked
 # what is now the FIRST-choice runtime and mandated the second. It was present in
 # 55 repositories.
 #
@@ -13,7 +14,7 @@
 #   MIXED TOOLCHAINS -- two different package managers' lockfiles in one repo.
 #   That is real, actionable drift: two dependency graphs that can disagree.
 # What it does NOT fail on:
-#   Using bun, deno, pnpm or npm. npm is LAST but PERMITTED; the check reports
+#   Using bun, , pnpm or npm. npm is LAST but PERMITTED; the check reports
 #   the tier in use so drift is visible without blocking legitimate work.
 name: Runtime Policy
 on:
@@ -36,19 +37,19 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7.0.1
 
       - name: Report runtime tier and reject mixed toolchains
         run: |
           set -euo pipefail
 
-          bun=0; deno=0; pnpm=0; npm=0
+          bun=0; =0; pnpm=0; npm=0
           [ -f bun.lockb ] || [ -f bun.lock ]                 && bun=1  || true
-          [ -f deno.lock ] || [ -f deno.json ] || [ -f deno.jsonc ] && deno=1 || true
+          [ -f .lock ] || [ -f .json ] || [ -f .jsonc ] && =1 || true
           [ -f pnpm-lock.yaml ]                               && pnpm=1 || true
           [ -f package-lock.json ]                            && npm=1  || true
 
-          total=$((bun + deno + pnpm + npm))
+          total=$((bun +  + pnpm + npm))
 
           if [ "$total" -eq 0 ]; then
             echo "::notice::No JS/TS package manager in use — nothing to check."
@@ -57,7 +58,7 @@ jobs:
 
           # Report the tier actually in use (LANGUAGE-POLICY.adoc §1).
           [ "$bun"  -eq 1 ] && echo "Bun   — tier 1 (preferred)"
-          [ "$deno" -eq 1 ] && echo "Deno  — tier 2 (accepted; existing projects are grandfathered)"
+          [ "$" -eq 1 ] && echo "  — tier 2 (accepted; existing projects are grandfathered)"
           [ "$pnpm" -eq 1 ] && echo "pnpm  — tier 3"
           [ "$npm"  -eq 1 ] && echo "::warning::npm lockfile present. npm is tier 4, the last resort — permitted, never preferred. See LANGUAGE-POLICY.adoc §1."
 

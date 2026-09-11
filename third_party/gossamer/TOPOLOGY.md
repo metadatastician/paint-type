@@ -48,7 +48,7 @@ gossamer/
 ## Data Flow
 
 ```
-[Web Frontend (HTML/JS/ReScript)]
+[Web Frontend (HTML/JS/)]
         │  IPC messages (Groove protocol)
         ▼
 [src/core/Bridge.eph] ──► [IPCIntegrity.idr proof] ──► compile-time type check

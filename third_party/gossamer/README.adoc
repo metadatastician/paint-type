@@ -84,7 +84,7 @@ project structure.
 === Other Files
 
 * `gossamer-abi-tests.ipkg` — gossamer-abi-tests configuration or data
-* `deno.lock` — deno configuration or data
+* `.lock` —  configuration or data
 * `gossamer-abi.ipkg` — gossamer-abi configuration or data
 * `0-AI-MANIFEST.a2ml` — A2ML machine-readable metadata
 * `contractile.just` — contractile configuration or data

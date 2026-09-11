@@ -2,7 +2,6 @@
 # RSR-compliant .gitattributes
 
 * text=auto eol=lf
-
 # Source
 *.rs    text eol=lf diff=rust
 *.ex    text eol=lf diff=elixir
@@ -22,28 +21,23 @@
 *.a2ml  text eol=lf linguist-language=TOML
 *.ncl   text eol=lf
 *.k9    text eol=lf linguist-language=Nickel
-
 # Docs
 *.md    text eol=lf diff=markdown
 *.adoc  text eol=lf
 *.txt   text eol=lf
-
 # Data
 *.json  text eol=lf
 *.yaml  text eol=lf
 *.yml   text eol=lf
 *.toml  text eol=lf
-
 # Config
 .gitignore     text eol=lf
 .gitattributes text eol=lf
 Justfile       text eol=lf
 Makefile       text eol=lf
 Containerfile  text eol=lf
-
 # Scripts
 *.sh   text eol=lf
-
 # Binary
 *.png   binary
 *.jpg   binary
@@ -52,10 +46,14 @@ Containerfile  text eol=lf
 *.woff2 binary
 *.zip   binary
 *.gz    binary
-
 # Lock files
 Cargo.lock  text eol=lf -diff
-
 # Linguist overrides
 third_party/ linguist-vendored
 third_party/** linguist-vendored=third_party
+# SPDX-License-Identifier: MPL-2.0
+*.nix   text eol=lf
+.editorconfig  text eol=lf
+.tool-versions text eol=lf
+justfile       text eol=lf
+flake.lock  text eol=lf -diff

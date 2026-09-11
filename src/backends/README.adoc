@@ -43,7 +43,7 @@ Each subdirectory is a backend family. Adding a new vendor or hardware target me
 | link:net/[`net/`]
 | QUIC, WebTransport, TCP, UDP, WebRTC (Burble), mDNS (Groove)
 | link:peripheral/[`peripheral/`]
-| display (Wayland / X11 / DRM-KMS / CoreGraphics / DXGI / Android Surface / Metal Layer / WebGPU Canvas), printer (CUPS / IPP / PCL / PostScript), plotter (HPGL / ESC-POS), input (libinput / evdev / tablet pen / HID / MIDI / OSC)
+| display (Wayland / X11 / DRM-KMS / CoreGraphics / DXGI / Android Surface / Metal Layer / WebGPU Canvas), printer (CUPS / IPP / PCL / Posript), plotter (HPGL / ESC-POS), input (libinput / evdev / tablet pen / HID / MIDI / OSC)
 |===
 
 == Rules

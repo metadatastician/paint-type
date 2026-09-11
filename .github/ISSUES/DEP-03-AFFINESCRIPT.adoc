@@ -73,7 +73,7 @@ components.
 | Test suite | 257 tests (green per justfile) |
 | Version | Alpha (0.1.1) |
 | Compilable | ❌ No |
-| Backends | Deno, Tea, DOM (planned) |
+| Backends | , Tea, DOM (planned) |
 |=== 
 
 === Dependencies

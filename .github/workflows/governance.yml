@@ -1,3 +1,4 @@
+# This workflow is managed by gh actions-lock.
 # SPDX-License-Identifier: PMPL-1.0-or-later
 name: Governance
 
@@ -19,6 +20,6 @@ permissions:
 jobs:
   governance:
     name: Governance Check
-    uses: hyperpolymath/standards/.github/workflows/governance-reusable.yml@7fdc2705df74b4e352d2a1cde3e87a5923fdf329
+    uses: hyperpolymath/standards/.github/workflows/governance-reusable.yml@8f31a5a4ba591d544b65f91f6d78b136e07756f0
     # Mark as non-critical to prevent workflow failure due to estate-wide issues
     # NOTE: continue-on-error removed - not allowed on jobs that use "uses:"

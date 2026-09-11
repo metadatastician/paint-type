@@ -21,7 +21,7 @@ The architecture is:
   dependent type proofs
 - *Zig FFI*: The actual C-ABI implementation (libgossamer.so/a)
 - *Ephapax*: Application code using linear/affine types
-- *Bindings*: Rust and ReScript wrappers for the FFI
+- *Bindings*: Rust and  wrappers for the FFI
 
 == Prerequisites
 

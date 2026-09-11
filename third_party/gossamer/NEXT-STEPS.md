@@ -36,7 +36,7 @@ All 18 IPC commands wired through gossamer_channel_bind in main.eph:
   add_device, add_guard, add_dog, add_drone, set_mission, set_physical,
   validate_level, serialize_level, deserialize_level)
 Sidebar buttons in App.res call gossamerInvoke() for each command.
-EditorLevelCmd.res provides typed ReScript wrappers for all 12.
+EditorLevelCmd.res provides typed  wrappers for all 12.
 
 ### P1 — Ephapax SSG [PARTIAL — 2026-03-29]
 
@@ -74,7 +74,7 @@ Version bumped to 0.3.0.
 ### P5 — IDApTIK full migration [DONE — 2026-04-12]
 
 - [x] Wire all 12 UMS FFI functions through IPC (done in P0, 2026-03-29)
-- [x] Migrate UMS from Tauri to Gossamer for desktop (2026-04-12): idaptik-ums/deno.json
+- [x] Migrate UMS from Tauri to Gossamer for desktop (2026-04-12): idaptik-ums/.json
   tasks updated (gossamer:dev / gossamer:build); Justfile ums-gossamer recipe added;
   TOPOLOGY and llm-warmup-dev.md updated; stale ums-tauri / ums-tauri-test removed
 - [x] Mobile platform support: iOS screen size fixed, Android JNI constructor fixed (2026-04-03)

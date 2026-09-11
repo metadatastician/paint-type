@@ -29,7 +29,7 @@ project structure.
 
 === Configuration
 
-* `web-project-deno.json` — JSON configuration
+* `web-project-.json` — JSON configuration
 
 === Other Files
 

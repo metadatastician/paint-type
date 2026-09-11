@@ -45,9 +45,9 @@ The workflows in this directory:
 === Language and Tool Policy
 
 * `runtime-policy.yml`:: Blocks any usage of npm or bun package managers. Enforces
-  Deno as the approved JavaScript runtime.
+   as the approved JavaScript runtime.
 
-  ReScript or other approved alternatives.
+   or other approved alternatives.
 
 === Quality and Maintenance
 

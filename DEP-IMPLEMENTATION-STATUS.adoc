@@ -244,7 +244,7 @@ This document tracks the implementation status of all 15 DEPs (Dependency Epics)
 | Test suite | 257 tests (green per justfile) |
 | Version | Alpha (0.1.1) |
 | Compilable | ❌ No |
-| Backends | Deno, Tea, DOM (planned) |
+| Backends | , Tea, DOM (planned) |
 |=== 
 
 ==== Impact
@@ -416,7 +416,7 @@ Gossamer uses Ephapax for:
 [cols="3,1"]
 |=== 
 | Property | Value |
-| Reusable workflows | 6+ (governance, codeql, hypatia, changelog, deno, elixir) |
+| Reusable workflows | 6+ (governance, codeql, hypatia, changelog, , elixir) |
 | Generation scripts | 3+ (registry, topology, scorecards) |
 | Contractile recipes | ✅ Active |
 | Machine-readable | ✅ Generated |
@@ -431,7 +431,7 @@ Gossamer uses Ephapax for:
 | codeql-reusable.yml | ✅ Active | CodeQL analysis |
 | hypatia-scan-reusable.yml | ✅ Active | Hypatia scanning |
 | changelog-reusable.yml | ✅ Active | Changelog generation |
-| deno-ci-reusable.yml | ✅ Active | Deno CI |
+| -ci-reusable.yml | ✅ Active |  CI |
 | elixir-ci-reusable.yml | ✅ Active | Elixir CI |
 |=== 
 

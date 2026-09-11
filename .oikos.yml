@@ -32,7 +32,6 @@ analysis:
     - idris
     - zig
     - haskell
-    - typescript
     - python
 
 # Reporting

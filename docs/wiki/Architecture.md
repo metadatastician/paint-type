@@ -42,7 +42,7 @@ paint.type is a **multi-tier, multi-language** image editor designed with **prov
 **Purpose:** User interface chrome hosted in Gossamer webview.
 
 **Technology Stack:**
-- **Primary:** HTML5 + CSS + JavaScript (TypeScript planned)
+- **Primary:** HTML5 + CSS + JavaScript ( planned)
 - **Host:** Served by Gossamer webview
 - **Safety Property:** Sandboxed execution, CSP-locked
 

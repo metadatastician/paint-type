@@ -1,3 +1,4 @@
+# This workflow is managed by gh actions-lock.
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
@@ -31,7 +32,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+        uses: actions/checkout@v7.0.1
 
       - name: Check for A2ML files
         id: detect
@@ -47,7 +48,7 @@ jobs:
         # Pinned to a2ml-validate-action main @55e8c28 (2026-07): the previous
         # pin (cb3c1e2) predated the estate false-positive carve-outs and
         # reported 63 spurious identity errors on canonical-template files.
-        uses: hyperpolymath/a2ml-ecosystem/validate-action@aa4b836bd969df2bc58128cb8e3d20bbc88d5e79 # main
+        uses: hyperpolymath/a2ml-ecosystem/validate-action@main
         with:
           path: '.'
           strict: 'false'
@@ -90,15 +91,15 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+        uses: actions/checkout@v7.0.1
 
       - name: Check for K9 files
         id: detect
         run: |
           COUNT=$(find . \( -name '*.k9' -o -name '*.k9.ncl' \) -not -path './.git/*' | wc -l)
           CONFIG_COUNT=$(find . \( -name '*.toml' -o -name '*.yaml' -o -name '*.yml' -o -name '*.json' \) \
-            -not -path './.git/*' -not -path './node_modules/*' -not -path './.deno/*' \
-            -not -name 'package-lock.json' -not -name 'Cargo.lock' -not -name 'deno.lock' | wc -l)
+            -not -path './.git/*' -not -path './node_modules/*' -not -path '././*' \
+            -not -name 'package-lock.json' -not -name 'Cargo.lock' -not -name '.lock' | wc -l)
           echo "k9_count=$COUNT" >> "$GITHUB_OUTPUT"
           echo "config_count=$CONFIG_COUNT" >> "$GITHUB_OUTPUT"
           if [ "$COUNT" -eq 0 ] && [ "$CONFIG_COUNT" -gt 0 ]; then
@@ -107,7 +108,7 @@ jobs:
 
       - name: Validate K9 contracts
         if: steps.detect.outputs.k9_count > 0
-        uses: hyperpolymath/k9-ecosystem/validate-action@89f3c2702f4f650a92aa7411502f38da06abd562 # main
+        uses: hyperpolymath/k9-ecosystem/validate-action@main
         with:
           path: '.'
           strict: 'false'
@@ -139,7 +140,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+        uses: actions/checkout@v7.0.1
 
       - name: Scan for invisible characters
         id: lint
@@ -151,7 +152,7 @@ jobs:
           PATTERNS='\xc2\xa0|\xe2\x80\x8b|\xe2\x80\x8c|\xe2\x80\x8d|\xef\xbb\xbf|\xc2\xad|\xe2\x80\x8e|\xe2\x80\x8f|\xe2\x80\xaa|\xe2\x80\xab|\xe2\x80\xac|\xe2\x80\xad|\xe2\x80\xae|\x00'
           find "$GITHUB_WORKSPACE" \
             -not -path '*/.git/*' -not -path '*/node_modules/*' \
-            -not -path '*/.deno/*' -not -path '*/target/*' \
+            -not -path '*/./*' -not -path '*/target/*' \
             -not -path '*/_build/*' -not -path '*/deps/*' \
             -not -path '*/external_corpora/*' -not -path '*/.lake/*' \
             -type f \( -name '*.rs' -o -name '*.ex' -o -name '*.exs' -o -name '*.res' \
@@ -203,7 +204,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+        uses: actions/checkout@v7.0.1
 
       - name: Check for Groove manifest
         id: groove
@@ -261,7 +262,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+        uses: actions/checkout@v7.0.1
 
       - name: Check and validate eclexiaiser manifest
         id: eclex
@@ -327,7 +328,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+        uses: actions/checkout@v7.0.1
 
       - name: Generate dogfooding scorecard
         run: |

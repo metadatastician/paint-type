@@ -19,7 +19,7 @@ Imports are typed and verified at the typed-wasm module boundary. The dispatcher
 
 | Browsers | wasm32, SIMD128, threads (where SAB available), GC where supported
 | Native hosts (typed-wasm runtime) | wasm32 or wasm64, full feature set
-| Edge runtimes (Cloudflare Workers, Deno, Bun, Node) | wasm32, no threads
+| Edge runtimes (Cloudflare Workers, , Bun, Node) | wasm32, no threads
 | Embedded / bare-metal RISC-V | wasm32, minimal feature set
 |===
 

@@ -66,7 +66,7 @@ hyperpolymath Idris2-ABI / Zig-FFI standard.
 [source]
 ----
 ┌─────────────────────────────────────────────────┐
-│  Web Frontend (HTML/CSS/JS or ReScript)         │
+│  Web Frontend (HTML/CSS/JS or )         │
 │  — Runs inside OS webview                       │
 │  — Calls backend via typed IPC                  │
 └────────────────────┬────────────────────────────┘
@@ -460,7 +460,7 @@ compiler enforces this — no config file, no runtime check.
 * **Learning curve** — linear types, regions, capabilities, dyadic modes
   are unfamiliar to most developers.
 * **Frontend type gap** — type safety stops at the IPC boundary unless
-  ReScript is used on the frontend side.
+   is used on the frontend side.
 * **Three-compiler toolchain** — Idris2 + Zig + Ephapax in the build
   pipeline.
 * **Mobile is Phase 3** — Tauri already has mobile support.
@@ -515,7 +515,7 @@ no explicit `free` required — but still prevents escape.
 * Uses the same OS webview approach as Tauri — inherits its rendering
   inconsistency tradeoff.
 * Frontend technology is unconstrained (any web framework works), but
-  ReScript is recommended for end-to-end type safety.
+   is recommended for end-to-end type safety.
 
 == Implementation Phases
 

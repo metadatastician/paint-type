@@ -441,7 +441,7 @@ This document provides a comprehensive matrix of automation coverage across all 
 | codeql-reusable.yml | ✅ Active | CodeQL analysis |
 | hypatia-scan-reusable.yml | ✅ Active | Hypatia scanning |
 | changelog-reusable.yml | ✅ Active | Changelog generation |
-| deno-ci-reusable.yml | ✅ Active | Deno CI |
+| -ci-reusable.yml | ✅ Active |  CI |
 | elixir-ci-reusable.yml | ✅ Active | Elixir CI |
 |=== 
 

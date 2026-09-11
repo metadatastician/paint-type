@@ -75,7 +75,7 @@
   "$defs": {
     "BuildConfig": {
       "type": "object",
-      "description": "Build and development server configuration. Designed for Deno-first workflows.",
+      "description": "Build and development server configuration. Designed for -first workflows.",
       "additionalProperties": false,
       "properties": {
         "frontendDist": {
@@ -108,11 +108,11 @@
               "type": "null"
             }
           ],
-          "description": "Shell command executed before starting the dev server. Typically starts bundler watchers. Supports Deno task references.",
+          "description": "Shell command executed before starting the dev server. Typically starts bundler watchers. Supports  task references.",
           "default": null,
           "examples": [
-            "deno task dev",
-            "deno task bundle && deno task bundle:watch & deno task css:watch & deno task serve:dev"
+            " task dev",
+            " task bundle &&  task bundle:watch &  task css:watch &  task serve:dev"
           ]
         },
         "beforeBuildCommand": {
@@ -127,18 +127,18 @@
           "description": "Shell command executed before production build. Typically runs full bundle + minification.",
           "default": null,
           "examples": [
-            "deno task build",
-            "deno task bundle && deno task css:build"
+            " task build",
+            " task bundle &&  task css:build"
           ]
         },
         "runner": {
           "type": "string",
-          "description": "Task runner used for beforeDevCommand and beforeBuildCommand. Must be 'deno' (primary) or 'bun' (fallback). npm is not supported.",
+          "description": "Task runner used for beforeDevCommand and beforeBuildCommand. Must be '' (primary) or 'bun' (fallback). npm is not supported.",
           "enum": [
-            "deno",
+            "",
             "bun"
           ],
-          "default": "deno"
+          "default": ""
         }
       }
     },

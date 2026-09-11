@@ -122,7 +122,7 @@ A backend may declare itself unavailable on a target. **No top-level decision is
 | `WaylandBackend`, `XBackend`, `DrmKmsBackend`, `CoreGraphicsBackend`, `DxgiBackend`, `AndroidSurfaceBackend`, `MetalLayerBackend`, `WebGpuCanvasBackend`
 
 | Peripherals — printer / plotter
-| `CupsBackend`, `IppEverywhereBackend`, `HpglBackend`, `EscPosBackend`, `PclBackend`, `PostScriptBackend`, `WindowsPrintBackend`
+| `CupsBackend`, `IppEverywhereBackend`, `HpglBackend`, `EscPosBackend`, `PclBackend`, `PosriptBackend`, `WindowsPrintBackend`
 
 | Peripherals — input
 | `LibinputBackend`, `WlEvdevBackend`, `TabletPenBackend` (Wacom et al.), `HidBackend`, `MidiBackend`, `OscBackend`

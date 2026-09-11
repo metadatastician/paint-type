@@ -19,7 +19,7 @@ project structure.
 |===
 | Directory | Purpose
 | `rust/` | |
-| `rescript/` | |
+| `/` | |
 |===
 
 

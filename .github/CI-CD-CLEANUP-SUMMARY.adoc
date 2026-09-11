@@ -41,7 +41,7 @@ redundancies and align with project standards.
 
 === CodeQL Removal
 
-**Issue:** codeql.yml was configured to scan for `javascript-typescript` only, but:
+**Issue:** codeql.yml was configured to scan for `javascript-` only, but:
 * paint-type has only 1 JavaScript file (`src/ui/app.js`)
 * paint-type has 21 Rust files that were not being scanned
 * User preference is to not use CodeQL when there's minimal JS

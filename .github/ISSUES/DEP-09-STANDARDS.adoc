@@ -48,7 +48,7 @@ From line 88-90:
 [cols="3,1"]
 |=== 
 | Property | Value |
-| Reusable workflows | 6+ (governance, codeql, hypatia, changelog, deno, elixir) |
+| Reusable workflows | 6+ (governance, codeql, hypatia, changelog, , elixir) |
 | Generation scripts | 3+ (registry, topology, scorecards) |
 | Contractile recipes | ✅ Active |
 | Machine-readable | ✅ Generated |
@@ -63,7 +63,7 @@ From line 88-90:
 | codeql-reusable.yml | ✅ Active | CodeQL analysis |
 | hypatia-scan-reusable.yml | ✅ Active | Hypatia scanning |
 | changelog-reusable.yml | ✅ Active | Changelog generation |
-| deno-ci-reusable.yml | ✅ Active | Deno CI |
+| -ci-reusable.yml | ✅ Active |  CI |
 | elixir-ci-reusable.yml | ✅ Active | Elixir CI |
 |=== 
 

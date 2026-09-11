@@ -48,7 +48,7 @@ just run app.eph
 your-app/
   src/
     main.eph           # Entry point (Ephapax)
-    App.res             # Frontend (ReScript, optional)
+    App.res             # Frontend (, optional)
   src/interface/
     abi/Types.idr       # ABI proofs (Idris2)
     ffi/src/main.zig    # Platform bindings (Zig)
@@ -56,7 +56,7 @@ your-app/
 
 ## IPC Communication
 
-Gossamer provides typed IPC between the frontend (JavaScript/ReScript) and
+Gossamer provides typed IPC between the frontend (JavaScript/) and
 backend (Ephapax/Zig). Register commands with `gossamer_channel_bind`:
 
 ```

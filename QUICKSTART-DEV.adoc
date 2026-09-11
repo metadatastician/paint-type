@@ -138,7 +138,7 @@ Critical invariants:
 * Tile memory is linearly typed — no aliased mutable tile references
 * `believe_me` count must remain zero in all Idris2 files
 * SPDX-License-Identifier header required on every new file
-* No new TypeScript, Python, or Go files
+* No new , Python, or Go files
 
 == LLM/AI Agent Development
 

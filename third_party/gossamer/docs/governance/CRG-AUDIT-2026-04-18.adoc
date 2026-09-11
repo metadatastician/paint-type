@@ -18,7 +18,7 @@ inventory (`~/Desktop/CRG-STATE-INVENTORY.md`).
 - Audit template: `rsr-template-repo/docs/governance/CRG-AUDIT-TEMPLATE.adoc`
 - Self-declared grade (prior art):
   * `.machine_readable/6a2/STATE.a2ml` `[crg] grade = "C"`, achieved 2026-04-04.
-  * Notes field: "106 Deno tests + 27 native Zig tests. Binary IPC support added. Approaching B (needs multi-platform CI)."
+  * Notes field: "106  tests + 27 native Zig tests. Binary IPC support added. Approaching B (needs multi-platform CI)."
 - Audit date: 2026-04-18
 - Auditor: Jonathan D.A. Jewell
 
@@ -90,9 +90,9 @@ Publication requires B+. Long alpha is discipline, not shame.
 | PRESENT; *zero* `Dockerfile*` at any depth
 | Root `Containerfile` + `container/` configs
 
-| `deno.json` (no `package.json`/`webpack`)
+| `.json` (no `package.json`/`webpack`)
 | PRESENT; *zero* `package.json` in-tree
-| Deno policy cleanly met
+|  policy cleanly met
 
 | Contractile trident
 | PRESENT (`INTENT.contractile`, `TRUST.contractile`, `MUST.contractile`, `ADJUST.contractile`) + `contractiles/` subtree
@@ -139,7 +139,7 @@ audited to date (boj-server + academic-workflow-suite comparison).
 
 *Live counts (verified today)* diverge from STATE.a2ml:
 
-- Deno tests: *180* `Deno.test()` calls across 8 files under `tests/`
+-  tests: *180* `.test()` calls across 8 files under `tests/`
   (unit: capability 17, dialog 17, guard_mode 38, ipc 17, result_code 36;
   property: contracts 15; e2e: webview_lifecycle 15; aspect: security 25).
 - Zig tests: *276* `test "…"` blocks across `src/`.
@@ -147,8 +147,8 @@ audited to date (boj-server + academic-workflow-suite comparison).
   `display_test.zig`, `integration_test.zig`, plus its own README.
 - Benchmarks: `benchmarks/startup-bench.sh`.
 
-STATE.a2ml `[crg] notes` claims "106 Deno tests + 27 native Zig tests" —
-*stale by ~74 Deno + ~249 Zig tests*. The real posture is much stronger than
+STATE.a2ml `[crg] notes` claims "106  tests + 27 native Zig tests" —
+*stale by ~74  + ~249 Zig tests*. The real posture is much stronger than
 the declared one. STATE.a2ml test-count lines should be refreshed.
 
 CI coverage: `.github/workflows/e2e.yml` triggers on push to main/master/develop
@@ -241,18 +241,18 @@ recorded external targets.
 
 | E
 | ✓
-| 450+ tests (180 Deno + 276 Zig) across unit/property/e2e/aspect/benchmark
+| 450+ tests (180  + 276 Zig) across unit/property/e2e/aspect/benchmark
 | —
 
 | D
 | *✓ strong pass*
-| 22 RSR workflows; Containerfile + Deno policies cleanly met (0 violations); 13 Idris2 ABI modules with constructive proofs; 0 dangerous-pattern uses; scope documented across 6 completed phases + 1 at 70%
+| 22 RSR workflows; Containerfile +  policies cleanly met (0 violations); 13 Idris2 ABI modules with constructive proofs; 0 dangerous-pattern uses; scope documented across 6 completed phases + 1 at 70%
 | `guix.scm` missing; `docs/READINESS.md` absent — minor gaps relative to the rest of the D picture.
 
 | C
 | *✗ close but blocked*
 | CI green (e2e.yml + 21 others); top-level `docs/` annotation structure complete (architecture, decisions with ADRs, practice, theory, whitepapers, wikis, governance); Idris2 modules carry per-module annotation.
-| `[dogfooding-status]` section absent from STATE.a2ml. `DOGFOOD-LOG.adoc` absent. Per-directory README coverage 5/14 (~36%) — `android`, `api`, `benchmarks`, `bindings`, `cli`, `configs`, `contractiles`, `ffi`, `tests` lack orientation READMEs. STATE.a2ml test counts stale by ~74 Deno + ~249 Zig.
+| `[dogfooding-status]` section absent from STATE.a2ml. `DOGFOOD-LOG.adoc` absent. Per-directory README coverage 5/14 (~36%) — `android`, `api`, `benchmarks`, `bindings`, `cli`, `configs`, `contractiles`, `ffi`, `tests` lack orientation READMEs. STATE.a2ml test counts stale by ~74  + ~249 Zig.
 
 | B
 | ✗
@@ -281,8 +281,8 @@ reality — the C bar is what's proximate.
 The D grade is earned on four positive signals:
 
 1. 22 RSR workflows + *zero* structural-policy violations (Containerfile
-   correct, Deno-only, no package.json, no Dockerfile at any depth).
-2. 450+ tests: 180 Deno across unit/property/e2e/aspect + 276 Zig in-source.
+   correct, -only, no package.json, no Dockerfile at any depth).
+2. 450+ tests: 180  across unit/property/e2e/aspect + 276 Zig in-source.
 3. 13 Idris2 ABI modules, each docstring-claiming "Zero believe_me. All
    proofs are constructive." — grep confirms zero actual uses of
    `believe_me`, `assert_total`, `sorry`, `unsafeCoerce`, `Obj.magic`.
@@ -302,7 +302,7 @@ What blocks *immediate* promotion to C:
    `android/`, `api/`, `benchmarks/`, `bindings/`, `cli/`, `configs/`,
    `contractiles/`, `ffi/`, `tests/`. Short README is sufficient — purpose
    + what lives here + entry points.
-4. Refresh STATE.a2ml test counts (currently claim 106 Deno + 27 Zig;
+4. Refresh STATE.a2ml test counts (currently claim 106  + 27 Zig;
    actuals are 180 + 276). The stale numbers make the self-declared
    grade look weaker than the code supports.
 5. Add `guix.scm` (a common hyperpolymath pattern; `flake.nix` already

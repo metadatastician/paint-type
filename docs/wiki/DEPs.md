@@ -295,7 +295,7 @@ Uses Ephapax for:
 
 #### Repository State
 
-- Reusable workflows: 6+ (governance, codeql, hypatia, changelog, deno, elixir)
+- Reusable workflows: 6+ (governance, codeql, hypatia, changelog, , elixir)
 - Generation scripts: 3+ (registry, topology, scorecards)
 - Contractile recipes: ✅ Active
 - Machine-readable: ✅ Generated
