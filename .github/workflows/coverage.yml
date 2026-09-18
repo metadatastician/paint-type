@@ -51,7 +51,7 @@ jobs:
         with:
           version: 0.15.1
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@v2.87.8
+        uses: taiki-e/install-action@v2.87.13
         with:
           tool: cargo-llvm-cov
       - name: Install kcov (best-effort, Zig coverage)
@@ -163,7 +163,7 @@ jobs:
       # missing token, so we guard explicitly and never fail.
       - name: Publish to Codecov (optional)
         if: ${{ env.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@v7.0.0
+        uses: codecov/codecov-action@v7.1.0
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
