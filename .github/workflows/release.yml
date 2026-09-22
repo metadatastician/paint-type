@@ -2,14 +2,16 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
-# Release workflow — triggered by version tags (v*).
-# Builds artifacts, generates changelog via git-cliff, creates a GitHub Release,
-# and produces SLSA provenance attestations.
+# Release workflow — triggered by version tags (v*), and dispatchable as a dry run.
+# Builds the paint-type host binary with scripts/build-host.sh (the same recipe CI
+# uses), packages it with libgossamer, proves the packaged artifact launches, and
+# on a tag creates a DRAFT GitHub Release plus SLSA provenance over real digests.
 name: Release
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 concurrency:
   group: release-${{ github.ref }}
@@ -19,139 +21,150 @@ permissions:
   actions: read
   contents: read
 jobs:
-  build:
-    name: Build Artifacts
+  release:
+    name: Build and Release
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@v7.0.1
-      - name: Detect project type and build
-        id: build
+        with:
+          submodules: recursive
+
+      # The tag is the claim; VERSION is the record. A tag that disagrees with
+      # VERSION would ship a binary labelled something it is not.
+      - name: Assert the tag matches VERSION
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
-          # Auto-detect build system from project files.
-          # Order matters: more specific markers checked first.
-          if [ -f "mix.exs" ]; then
-            echo "::notice::Detected Elixir/Gleam project (mix.exs)"
-            echo "build_type=mix" >> "$GITHUB_OUTPUT"
-            mix local.hex --force --if-missing
-            mix local.rebar --force --if-missing
-            mix deps.get --only prod
-            MIX_ENV=prod mix release
-          elif [ -f "Cargo.toml" ]; then
-            echo "::notice::Detected Rust project (Cargo.toml)"
-            echo "build_type=cargo" >> "$GITHUB_OUTPUT"
-            cargo build --release
-          elif [ -f "build.zig" ]; then
-            echo "::notice::Detected Zig project (build.zig)"
-            echo "build_type=zig" >> "$GITHUB_OUTPUT"
-            zig build -Doptimize=ReleaseSafe
-          elif [ -f "deno.json" ] || [ -f "deno.jsonc" ]; then
-            echo "::notice::Detected Deno project (deno.json)"
-            echo "build_type=deno" >> "$GITHUB_OUTPUT"
-            deno task build
-          elif [ -f "gossamer.conf.json" ]; then
-            echo "::notice::Detected Gossamer project (gossamer.conf.json)"
-            echo "build_type=gossamer" >> "$GITHUB_OUTPUT"
-            gossamer build
-          elif [ -f "gleam.toml" ]; then
-            echo "::notice::Detected Gleam project (gleam.toml)"
-            echo "build_type=gleam" >> "$GITHUB_OUTPUT"
-            gleam build
-          elif [ -f "rebar.config" ]; then
-            echo "::notice::Detected Erlang/Rebar project (rebar.config)"
-            echo "build_type=rebar" >> "$GITHUB_OUTPUT"
-            rebar3 as prod release
-          elif [ -f "Justfile" ] || [ -f "justfile" ]; then
-            echo "::notice::Detected Justfile — running 'just build'"
-            echo "build_type=just" >> "$GITHUB_OUTPUT"
-            just build
-          else
-            echo "::error::No recognised build system found."
-            echo "Expected one of: mix.exs, Cargo.toml, build.zig, deno.json, gossamer.conf.json, gleam.toml, rebar.config, Justfile"
+          set -euo pipefail
+          file_version="$(tr -d '[:space:]' < VERSION)"
+          if [ "v${file_version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} disagrees with VERSION (v${file_version})"
             exit 1
           fi
-        # TODO: Upload build artifacts if needed
-        # - uses: actions/upload-artifact@v4
-        #   with:
-        #     name: release-artifacts
-        #     path: target/release/
-  changelog:
-    name: Generate Changelog
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    outputs:
-      changelog: ${{ steps.cliff.outputs.content }}
-      version: ${{ steps.version.outputs.version }}
-    steps:
-      - uses: actions/checkout@v7.0.1
-        with:
-          fetch-depth: 0
-      - name: Extract version from tag
-        id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-      - name: Install git-cliff
+          echo "tag ${GITHUB_REF_NAME} matches VERSION"
+
+      - name: Install build and runtime dependencies
         run: |
-          curl -sSfL https://github.com/orhun/git-cliff/releases/latest/download/git-cliff-$(uname -m)-unknown-linux-gnu.tar.gz \
-            | tar -xz --strip-components=1 -C /usr/local/bin/ git-cliff-*/git-cliff
-      - name: Generate changelog for this release
-        id: cliff
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev xvfb
+
+      # Zig by sha256-pinned tarball rather than an action: a `run:` step is
+      # invisible to actions.lock, so this adds no lockfile entry. The digest is
+      # ziglang.org's own published shasum for 0.15.1.
+      - name: Install Zig 0.15.1 (sha256-pinned)
         run: |
-          # Generate changelog for the current tag only
-          CHANGELOG=$(git cliff --latest --strip header)
-          # Write to output using delimiter to handle multiline
-          {
-            echo "content<<CLIFF_EOF"
-            echo "$CHANGELOG"
-            echo "CLIFF_EOF"
-          } >> "$GITHUB_OUTPUT"
-      - name: Update full CHANGELOG.md
+          set -euo pipefail
+          curl -sSfL -o zig.tar.xz https://ziglang.org/download/0.15.1/zig-x86_64-linux-0.15.1.tar.xz
+          echo "c61c5da6edeea14ca51ecd5e4520c6f4189ef5250383db33d01848293bfafe05  zig.tar.xz" | sha256sum -c -
+          tar -xJf zig.tar.xz
+          echo "${PWD}/zig-x86_64-linux-0.15.1" >> "$GITHUB_PATH"
+
+      - name: Install Rust (stable, minimal)
         run: |
-          git cliff --output CHANGELOG.md
-      - name: Upload updated CHANGELOG.md
+          set -euo pipefail
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+
+      # One recipe. host.yml runs this same script, so the release build cannot
+      # drift from the build CI proves on every pull request.
+      - name: Build the product
+        run: bash scripts/build-host.sh
+
+      - name: Package bin/ + lib/
+        id: package
+        run: |
+          set -euo pipefail
+          version="$(tr -d '[:space:]' < VERSION)"
+          pkg="paint-type-${version}-x86_64-linux"
+          libdir="third_party/gossamer/src/interface/ffi/zig-out/lib"
+
+          mkdir -p "dist/${pkg}/bin" "dist/${pkg}/lib"
+          cp src/host/target/release/paint-type "dist/${pkg}/bin/"
+          # -a preserves the libgossamer.so -> .so.0 -> .so.0.3.0 symlink chain;
+          # the binary's DT_NEEDED names libgossamer.so.0, not libgossamer.so.
+          cp -a "${libdir}"/libgossamer.so* "dist/${pkg}/lib/"
+          cp LICENSE README.adoc "dist/${pkg}/"
+
+          tar --sort=name --owner=0 --group=0 --numeric-owner \
+              -czf "dist/${pkg}.tar.gz" -C dist "${pkg}"
+          echo "pkg=${pkg}" >> "$GITHUB_OUTPUT"
+          ls -l "dist/${pkg}.tar.gz"
+
+      # The rpath is what makes bin/ + lib/ self-contained. Assert it by literal
+      # text: an unexpanded $ORIGIN leaves a RUNPATH of /../lib that a bare
+      # `grep RUNPATH` would still match.
+      - name: Prove the packaged artifact is self-contained
+        run: |
+          set -euo pipefail
+          pkg="${{ steps.package.outputs.pkg }}"
+          bin="dist/${pkg}/bin/paint-type"
+
+          # shellcheck disable=SC2016  # $ORIGIN is a literal rpath token, not a shell variable
+          readelf -d "$bin" | grep -qF '$ORIGIN/../lib'
+          echo "rpath present"
+
+          # With LD_LIBRARY_PATH unset, the loader must find libgossamer through
+          # the rpath alone — inside dist/lib, not anywhere on the system.
+          # ld.so concatenates the RUNPATH literally, so the resolved path is
+          # printed UNNORMALISED as ".../bin/../lib/..." — assert THAT text.
+          # Matching "dist/<pkg>/lib" instead silently never matches.
+          env -u LD_LIBRARY_PATH ldd "$bin" | grep gossamer
+          env -u LD_LIBRARY_PATH ldd "$bin" \
+            | grep -qF "dist/${pkg}/bin/../lib/libgossamer.so"
+          if env -u LD_LIBRARY_PATH ldd "$bin" | grep -q 'not found'; then
+            echo "::error::a dependency did not resolve in the packaged layout"
+            env -u LD_LIBRARY_PATH ldd "$bin"
+            exit 1
+          fi
+          echo "libgossamer resolves into the package"
+
+          # A launch that survives 15s obtained a display, a GTK context and a
+          # webview. The app prints nothing on success and dies in milliseconds
+          # on failure, so 124 is the discriminator.
+          set +e
+          env -u LD_LIBRARY_PATH xvfb-run -a timeout 15 "$bin"
+          rc=$?
+          set -e
+          if [ "$rc" -ne 124 ]; then
+            echo "::error::packaged binary exited $rc, expected 124 (still running)"
+            exit 1
+          fi
+          echo "packaged binary launched and stayed up"
+
+      # A checksum users can verify by hand. SLSA provenance is deliberately
+      # NOT generated here: naming the generator_generic_slsa3 reusable refuses
+      # this whole workflow at load (startup_failure, jobs=0) under the estate
+      # actions allow-list, even behind `if: false` — measured, see the issue
+      # linked in the PR. A checksum is the honest substitute for tag one.
+      - name: Write SHA256SUMS
+        run: |
+          set -euo pipefail
+          pkg="${{ steps.package.outputs.pkg }}"
+          cd dist
+          sha256sum "${pkg}.tar.gz" > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Upload the package as a run artifact
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: changelog
-          path: CHANGELOG.md
-          retention-days: 5
-  release:
-    name: Create GitHub Release
-    needs: [build, changelog]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v7.0.1
-      # TODO: Download build artifacts if uploading to the release
-      # - uses: actions/download-artifact@v4
-      #   with:
-      #     name: release-artifacts
-      #     path: artifacts/
-      - name: Create GitHub Release
+          name: ${{ steps.package.outputs.pkg }}
+          path: dist/${{ steps.package.outputs.pkg }}.tar.gz
+          retention-days: 14
+
+      # Draft only. Publishing is irreversible — notifications fire and the URL
+      # gets cited — so a human downloads the draft, runs it, and publishes.
+      - name: Create DRAFT GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v3.0.3
         with:
-          body: ${{ needs.changelog.outputs.changelog }}
-          draft: false
+          draft: true
           prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}
-          generate_release_notes: false
-          # TODO: Add artifact files to the release
-          # files: |
-          #   artifacts/*
+          generate_release_notes: true
+          files: |
+            dist/${{ steps.package.outputs.pkg }}.tar.gz
+            dist/SHA256SUMS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  provenance:
-    name: SLSA Provenance
-    needs: [build]
-    permissions:
-      actions: read
-      id-token: write
-      contents: write
-    # SLSA generator must run in a separate, isolated workflow
-    # See: https://slsa.dev/spec/v1.0/requirements#build-l3
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a # v2.1.0
-    with:
-      base64-subjects: ""
-      # TODO: Replace with actual artifact hashes
-      # Generate with: sha256sum artifact | base64 -w0
-      # base64-subjects: "${{ needs.build.outputs.hashes }}"
+
