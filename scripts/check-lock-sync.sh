@@ -235,6 +235,7 @@ END {
     for (k in lock) {
       split(k, kp, SUBSEP)
       if (kp[1] != key) continue
+      if (kp[2] ~ /^\.\// || kp[2] ~ /^\$\//) continue
       if (!((wf SUBSEP kp[2]) in uses)) orphan = orphan " " (kp[2] in disp ? disp[kp[2]] : kp[2])
     }
     if (orphan != "") {
