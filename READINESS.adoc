@@ -4,7 +4,7 @@
 # paint-type Component Readiness Assessment
 
 **Standard:** [Component Readiness Grades (CRG) v2.2](https://github.com/hyperpolymath/standards/tree/main/component-readiness-grades)
-**Current Grade:** C (promoted 2026-07-25 — v0.3.0 Desktop Shell closed)
+**Current Grade:** D (reconciled 2026-09-22 — lowered to match the CRG-D badge in README.adoc; pending a fresh assessment)
 **Assessed:** 2026-07-25
 **Assessor:** Joshua Jewell
 
