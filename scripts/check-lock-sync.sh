@@ -89,6 +89,7 @@ function norm(r,   at, path, ref, n, parts) {
 # SUCCESS while codeql.yml at the SAME commit was startup_failure. A same-commit
 # control, so the case difference is provably not what kills a run.
 # The REF is NOT folded: git tags and branch names are case-sensitive.
+# Inputs without an `@` delimiter are lowercased in full.
 function ck(r,   at, s) {
   at = 0
   for (s = length(r); s > 0; s--) { if (substr(r, s, 1) == "@") { at = s; break } }
