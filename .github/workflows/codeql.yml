@@ -1,13 +1,16 @@
 # This workflow is managed by gh actions-lock.
 # SPDX-License-Identifier: MPL-2.0
 name: CodeQL Security Analysis
+# Trigger is workflow_dispatch ONLY, deliberately.
+# Org-level code-scanning config 256896 sets allow_advanced: false, so SARIF from
+# this advanced workflow is REFUSED ("analyses from advanced configurations cannot
+# be processed when the default setup is enabled"). Default-setup CodeQL runs
+# separately, is green, and satisfies the code_scanning ruleset rule.
+# The file is retained because .github/workflows/actions.lock keys an entry to it;
+# deleting it would orphan that entry. Restore push/pull_request only if the org
+# re-enables advanced setup.
 on:
-  push:
-    branches: [main, master]
-  pull_request:
-    branches: [main, master]
-  schedule:
-    - cron: '0 6 1 * *'   # monthly 1st 06:00 UTC (Actions burn cut, standards#288)
+  workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

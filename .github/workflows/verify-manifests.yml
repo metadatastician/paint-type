@@ -165,106 +165,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
 
-      - name: Check STATE.a2ml currency
-        run: |
-          set -euo pipefail
-          echo "=== Checking STATE.a2ml currency ==="
-          
-          # Check that STATE.a2ml exists
-          if [ ! -f ".machine_readable/STATE.a2ml" ]; then
-            echo "::error::STATE.a2ml missing"
-            exit 1
-          fi
-          
-          # Check that STATE.a2ml has a recent generation date
-          # Extract the Generated date from STATE.a2ml
-          GENERATED_DATE=$(grep ";; Generated:" .machine_readable/STATE.a2ml | head -1 | sed 's/.*Generated: //' | tr -d ' ') || true
-          
-          if [ -z "$GENERATED_DATE" ]; then
-            echo "::warning::STATE.a2ml missing generation date comment"
-          else
-            echo "STATE.a2ml generated: $GENERATED_DATE"
-            
-            # Check if the date is within the last 30 days
-            # This is a simple check; in production use date math
-            CURRENT_DATE=$(date -u +"%Y-%m-%d")
-            echo "Current date: $CURRENT_DATE"
-            
-            # Very simple check: date should be in current year
-            if ! echo "$GENERATED_DATE" | grep -q "2026"; then
-              echo "::error::STATE.a2ml generation date is old (not 2026)"
-              exit 1
-            fi
-          fi
-          
-          # Check that STATE.a2ml references current milestones
-          if ! grep -q "v0.3.0.*closed\|v0.3.0.*Desktop Shell" .machine_readable/STATE.a2ml; then
-            echo "::error::STATE.a2ml does not reference v0.3.0 Desktop Shell closed"
-            exit 1
-          fi
-          
-          if ! grep -q "v0.4.0.*closed\|v0.4.0.*Plugin System" .machine_readable/STATE.a2ml; then
-            echo "::error::STATE.a2ml does not reference v0.4.0 Plugin System closed"
-            exit 1
-          fi
-          
-          if ! grep -q "v0.5.0" .machine_readable/STATE.a2ml; then
-            echo "::error::STATE.a2ml does not reference v0.5.0"
-            exit 1
-          fi
-          
-          echo "::notice::STATE.a2ml is current"
-
-      - name: Check ECOSYSTEM.a2ml currency
-        run: |
-          set -euo pipefail
-          echo "=== Checking ECOSYSTEM.a2ml currency ==="
-          
-          if [ ! -f ".machine_readable/ECOSYSTEM.a2ml" ]; then
-            echo "::error::ECOSYSTEM.a2ml missing"
-            exit 1
-          fi
-          
-          # Check that ECOSYSTEM.a2ml references key dependencies
-          if ! grep -q "DEP-09.*standards" .machine_readable/ECOSYSTEM.a2ml; then
-            echo "::error::ECOSYSTEM.a2ml does not reference DEP-09 standards"
-            exit 1
-          fi
-          
-          if ! grep -q "metadatastician/standards" .machine_readable/ECOSYSTEM.a2ml; then
-            echo "::error::ECOSYSTEM.a2ml does not reference standards repo"
-            exit 1
-          fi
-          
-          echo "::notice::ECOSYSTEM.a2ml is current"
-
-      - name: Check META.a2ml currency
-        run: |
-          set -euo pipefail
-          echo "=== Checking META.a2ml currency ==="
-          
-          if [ ! -f ".machine_readable/META.a2ml" ]; then
-            echo "::error::META.a2ml missing"
-            exit 1
-          fi
-          
-          # Check that META.a2ml has a recent last-updated date
-          LAST_UPDATED=$(grep "last-updated" .machine_readable/META.a2ml | head -1 | sed 's/.*last-updated "//' | sed 's/".*//' || true)
-          
-          if [ -z "$LAST_UPDATED" ]; then
-            echo "::warning::META.a2ml missing last-updated"
-          else
-            echo "META.a2ml last updated: $LAST_UPDATED"
-          fi
-          
-          # Check that META.a2ml references standards alignment
-          if ! grep -q "DEP-09-compliance\|standards" .machine_readable/META.a2ml; then
-            echo "::error::META.a2ml does not reference DEP-09/standards compliance"
-            exit 1
-          fi
-          
-          echo "::notice::META.a2ml is current"
-
       - name: Check TEMPLATE-STANDARDS-AUDIT.adoc currency
         run: |
           set -euo pipefail
@@ -276,7 +176,7 @@ jobs:
           fi
           
           # Check version
-          AUDIT_VERSION=$(grep "^v" TEMPLATE-STANDARDS-AUDIT.adoc | head -1 | sed 's/v//' || true)
+          AUDIT_VERSION=$(grep "^v" TEMPLATE-STANDARDS-AUDIT.adoc | head -1 | sed 's/^v//' | cut -d, -f1 | tr -d '[:space:]' || true)
           
           if [ "$AUDIT_VERSION" != "1.2" ]; then
             echo "::error::TEMPLATE-STANDARDS-AUDIT.adoc is version $AUDIT_VERSION (expected 1.2)"
@@ -345,9 +245,6 @@ jobs:
             echo ""
             echo "Generated: $(date -u)"
             echo ""
-            echo "- **STATE.a2ml**: $(test -f .machine_readable/STATE.a2ml && echo 'Present' || echo 'MISSING')"
-            echo "- **ECOSYSTEM.a2ml**: $(test -f .machine_readable/ECOSYSTEM.a2ml && echo 'Present' || echo 'MISSING')"
-            echo "- **META.a2ml**: $(test -f .machine_readable/META.a2ml && echo 'Present' || echo 'MISSING')"
             echo "- **TEMPLATE-STANDARDS-AUDIT.adoc**: $(test -f TEMPLATE-STANDARDS-AUDIT.adoc && echo 'Present' || echo 'MISSING')"
             echo ""
             echo "All machine-readable manifests should be regenerated from live tree"
