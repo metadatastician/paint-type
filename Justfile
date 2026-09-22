@@ -20,7 +20,7 @@ import? "contractile.just"
 
 # Project metadata — customize these
 project := "paint-type"
-OWNER := "JoshuaJewell"
+OWNER := "metadatastician"
 REPO := "paint-type"
 version := trim(shell("cat \"$1\"/VERSION 2>/dev/null || echo 0.0.0-unknown", justfile_directory()))
 tier := "1"
@@ -885,8 +885,8 @@ container-init:
     read -rp "Primary port [8080]: " _PORT
     PORT="${_PORT:-8080}"
 
-    read -rp "Container registry [ghcr.io/${OWNER:-JoshuaJewell}]: " _REGISTRY
-    REGISTRY="${_REGISTRY:-ghcr.io/${OWNER:-JoshuaJewell}}"
+    read -rp "Container registry [ghcr.io/${OWNER:-metadatastician}]: " _REGISTRY
+    REGISTRY="${_REGISTRY:-ghcr.io/${OWNER:-metadatastician}}"
 
     echo ""
     echo "  Service: $SERVICE_NAME"
@@ -1218,7 +1218,7 @@ test-matrix suite="unit" verbosity="normal" parallel="true":
     @echo "Test matrix: suite={{suite}} verbosity={{verbosity}} parallel={{parallel}}"
 
 # Container matrix: [build|run|push|shell|scan] x [registry] x [tag]
-container-matrix action="build" registry="ghcr.io/JoshuaJewell" tag="latest":
+container-matrix action="build" registry="ghcr.io/metadatastician" tag="latest":
     @echo "Container matrix: action={{action}} registry={{registry}} tag={{tag}}"
 
 # CI matrix: [lint|test|build|security|all] x [quick|full]
