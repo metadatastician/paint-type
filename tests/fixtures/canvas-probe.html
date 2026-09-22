@@ -1,0 +1,88 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>paint.type canvas probe</title>
+<!--
+SPDX-License-Identifier: AGPL-3.0-or-later
+
+Tier C proof fixture. Loaded via PT_UI_FILE, it drives the real
+UI -> bridge -> host -> raster path and writes three PNGs:
+
+  <out>/pt-blank.png   a document that has never been painted
+  <out>/pt-canvas.png  the same document after a brush stroke
+  <out>/pt-done.png    written LAST, purely as a completion marker
+
+⚠ This file is a TEMPLATE, not a runnable page. `__PT_OUT_DIR__` below is a
+placeholder that tests/e2e/scenario_canvas_draws.sh substitutes for that run's
+own directory as it copies this file; the copy is what PT_UI_FILE loads. Opening
+this file directly writes to a literal `__PT_OUT_DIR__/` and is not supported.
+
+The output directory is per-run so that two concurrent runs cannot read or
+delete each other's artifacts. Hard-coded /tmp paths made that possible, and a
+run that consumed another run's PNG would report a result it never earned.
+The host loads this page with `load_html` (an HTML STRING, not a file URL), so
+the page has no usable `location` to derive its own directory from -- hence
+substitution rather than self-discovery.
+
+The first two PNGs come from one run, so they share encoder, dimensions and
+build. pt-done.png exists only so CI can tell "the probe ran to the end"
+apart from "the probe stalled after writing one file" -- without it, a
+chain that hung midway would look identical to one that finished.
+The gate asserts blank and canvas both exist (bridge and encoder work) AND
+that they DIFFER (something was actually painted). Asserting only that
+pt-canvas.png is "PNG image data" is vacuous: SavePng emits a valid PNG
+whether or not a single pixel changed.
+
+app.js:11 is explicit that the page MUST wait for the Gossamer bridge
+before issuing new_doc; calling out early silently creates no document
+and nothing paints. Hence waitForBridge below.
+-->
+<body style="background:#111;color:#eee;font:14px system-ui">
+<p id="s">probe starting</p>
+<script>
+(function () {
+  "use strict";
+  var s = document.getElementById("s");
+  function say(t) { s.textContent = t; }
+
+  // Substituted by scenario_canvas_draws.sh. The script asserts no occurrence
+  // of the placeholder survives into the copy it actually loads, so a silent
+  // substitution failure cannot reach the browser as a literal path.
+  var OUT = "__PT_OUT_DIR__";
+  function out(name) { return OUT + "/" + name; }
+
+  function waitForBridge(timeoutMs) {
+    return new Promise(function (resolve, reject) {
+      var waited = 0, step = 25;
+      (function poll() {
+        if (typeof window.__gossamer_invoke === "function") return resolve();
+        if (waited >= timeoutMs) return reject(new Error("bridge never appeared"));
+        waited += step;
+        setTimeout(poll, step);
+      })();
+    });
+  }
+
+  function send(payload) { return window.__gossamer_invoke("dispatch", payload); }
+
+  waitForBridge(10000)
+    .then(function () {
+      say("bridge up");
+      return send({ cmd: "new_doc", w: 64, h: 64 });
+    })
+    // Baseline FIRST: an untouched document. This is the negative control
+    // and it also proves the bridge and encoder independently of painting.
+    .then(function () { return send({ cmd: "save_png", path: out("pt-blank.png") }); })
+    .then(function () { return send({ cmd: "set_colour", r: 1.0, g: 0.0, b: 0.0, a: 1.0 }); })
+    .then(function () { return send({ cmd: "set_brush", diameter: 16, hardness: 0.9 }); })
+    .then(function () { return send({ cmd: "pointer_down", x: 12, y: 12 }); })
+    .then(function () { return send({ cmd: "pointer_move", x: 32, y: 32 }); })
+    .then(function () { return send({ cmd: "pointer_move", x: 52, y: 52 }); })
+    .then(function () { return send({ cmd: "pointer_up" }); })
+    .then(function () { return send({ cmd: "save_png", path: out("pt-canvas.png") }); })
+    // Written last and never compared. Its mere existence proves the whole
+    // promise chain completed rather than stalling partway through.
+    .then(function () { return send({ cmd: "save_png", path: out("pt-done.png") }); })
+    .then(function () { say("probe complete"); })
+    .catch(function (e) { say("probe FAILED: " + (e && e.message ? e.message : e)); });
+})();
+</script>
