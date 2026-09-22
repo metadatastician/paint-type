@@ -158,3 +158,9 @@ src/bridges/*.wasm
 # Build output at any depth (the root-anchored rules above miss nested crates
 # and sub-projects, e.g. src/*/target/, src/interface/ffi/zig-out/).
 zig-out/
+
+# Vendored upstream CI. Untracked: the governance parse gate globs
+# **/.github/workflows/*.yml over TRACKED files, and gossamer ships a
+# workflow whose column-0 heredoc escapes its block scalar. paint-type
+# does not own or run this CI. A re-vendor must re-apply this removal.
+third_party/gossamer/.github/workflows/
