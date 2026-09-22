@@ -58,6 +58,8 @@ fn onSmokeTimeout(_: ?*anyopaque) callconv(.c) c_int {
     return 0; // G_SOURCE_REMOVE - don't repeat
 }
 
+/// Creates and runs the desktop shell, returning 1 if setup fails and 0 after
+/// the Gossamer event loop exits.
 pub fn main() u8 {
     // Create a Gossamer webview window with full configuration.
     // Parameters: title, width, height, min_width, min_height, max_width, max_height,
