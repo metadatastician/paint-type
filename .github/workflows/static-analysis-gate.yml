@@ -139,28 +139,34 @@ jobs:
           fetch-depth: 0
       - name: Setup Elixir for Hypatia scanner
         id: beam
-        continue-on-error: true
         uses: erlef/setup-beam@v1.24.1
         with:
           elixir-version: '1.19.4'
           otp-version: '28.3'
       - name: Clone and build Hypatia
         id: build
-        continue-on-error: true
         run: |
-          git clone https://github.com/hyperpolymath/hypatia.git "$HOME/hypatia" 2>/dev/null || true
-          if [ -f "$HOME/hypatia/mix.exs" ]; then
-            cd "$HOME/hypatia"
-            # Build escript if neither hypatia nor hypatia-v2 exists
-            if [ ! -f hypatia ] && [ ! -f hypatia-v2 ]; then
-              mix deps.get
-              mix escript.build
-            fi
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice::Hypatia scanner not available — skipping scan"
-            echo "ready=false" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          # PINNED. An unpinned clone of hypatia's default branch let this gate's
+          # verdict change with no commit to paint-type.
+          HYPATIA_SHA=8e8943f329934877bcdba31d54397aa2496273d2
+          git clone -q --filter=blob:none \
+            https://github.com/hyperpolymath/hypatia.git "$HOME/hypatia"
+          git -C "$HOME/hypatia" checkout -q "$HYPATIA_SHA"
+          # FAIL CLOSED. This step was previously `continue-on-error: true` with a
+          # `|| true` on the clone. A network hiccup, a rate limit or a repo rename
+          # therefore left mix.exs absent -> ready=false -> the scan step skipped ->
+          # a stub `[]` written -> "Fail on critical" skipped -> the job reported
+          # SUCCESS having scanned nothing. A gate that cannot run must go red.
+          test -f "$HOME/hypatia/mix.exs" \
+            || { echo "::error::hypatia checkout has no mix.exs at $HYPATIA_SHA"; exit 1; }
+          cd "$HOME/hypatia"
+          # Build escript if neither hypatia nor hypatia-v2 exists
+          if [ ! -f hypatia ] && [ ! -f hypatia-v2 ]; then
+            mix deps.get
+            mix escript.build
           fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
       - name: Run Hypatia scan
         id: scan
         if: steps.build.outputs.ready == 'true'
@@ -204,14 +210,18 @@ jobs:
       - name: Emit check annotations
         if: steps.build.outputs.ready == 'true'
         run: |
-          jq -r '.[] | select(.file != null) |
-            if .severity == "critical" then
-              "::error file=\(.file),line=\(.line // 1)::[hypatia] \(.message)"
-            elif .severity == "high" then
-              "::error file=\(.file),line=\(.line // 1)::[hypatia] \(.message)"
-            else
-              "::warning file=\(.file),line=\(.line // 1)::[hypatia] \(.message)"
-            end
+          jq -r --arg ws "$GITHUB_WORKSPACE/" '
+            .[] | select(.file != null) |
+            # `.reason`, NOT `.message`: no such key exists in the findings
+            # schema, so every annotation used to render as "[hypatia] null".
+            # `.file` is an absolute runner path; an annotation only anchors to
+            # a file when the path is relative to the workspace.
+            ((.file | ltrimstr($ws)) as $f |
+             if .severity == "critical" or .severity == "high" then
+               "::error file=\($f),line=\(.line // 1)::[hypatia] \(.reason)"
+             else
+               "::warning file=\($f),line=\(.line // 1)::[hypatia] \(.reason)"
+             end)
           ' hypatia-findings.json || true
       - name: Write step summary
         if: steps.build.outputs.ready == 'true'
@@ -227,13 +237,6 @@ jobs:
           | Low      | ${{ steps.scan.outputs.low }} |
           | **Total**| ${{ steps.scan.outputs.total }} |
           EOF
-      - name: Create stub findings (when Hypatia unavailable)
-        if: steps.build.outputs.ready != 'true'
-        run: |
-          echo "[]" > hypatia-findings.json
-          echo "## Hypatia Scan" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Skipped: Hypatia scanner not available in this environment." >> "$GITHUB_STEP_SUMMARY"
       - name: Upload hypatia findings
         uses: actions/upload-artifact@v7.0.1
         with:
