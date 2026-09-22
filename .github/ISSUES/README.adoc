@@ -1,0 +1,18 @@
+= Dependency Epic Records
+
+== Purpose
+
+This directory holds the detailed records for paint-type's upstream dependency
+epics. `DEPENDENCY-SCHEDULER.adoc` is the repository-level status index; these
+files provide dependency-specific scope, acceptance criteria, and evidence.
+
+== Contents
+
+Files named `DEP-<number>-<dependency>.adoc` correspond to the stable dependency
+identifiers in the scheduler.
+
+== Related Files
+
+* link:0.2-AI-MANIFEST.a2ml[AI manifest]
+* link:../../DEPENDENCY-SCHEDULER.adoc[Dependency scheduler]
+* link:../../DEP-IMPLEMENTATION-STATUS.adoc[Implementation status]

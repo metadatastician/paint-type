@@ -52,12 +52,14 @@ fn smokeRequested() bool {
 /// One-shot GTK timeout callback for smoke mode.
 /// Uses the GTK g_timeout_add mechanism directly since we're linking
 /// against GTK through libgossamer anyway.
-fn onSmokeTimeout(_: ?*anyopaque) callconv(.C) c_int {
+fn onSmokeTimeout(_: ?*anyopaque) callconv(.c) c_int {
     // Quit the GTK main loop directly
     gtk.gtk_main_quit();
     return 0; // G_SOURCE_REMOVE - don't repeat
 }
 
+/// Creates and runs the desktop shell, returning 1 if setup fails and 0 after
+/// the Gossamer event loop exits.
 pub fn main() u8 {
     // Create a Gossamer webview window with full configuration.
     // Parameters: title, width, height, min_width, min_height, max_width, max_height,
@@ -66,20 +68,20 @@ pub fn main() u8 {
         "paint.type",
         1024,
         768,
-        0,  // min_width (unset)
-        0,  // min_height (unset)
-        0,  // max_width (unset)
-        0,  // max_height (unset)
-        1,  // resizable (true)
-        1,  // decorations (true - has window chrome)
-        0,  // fullscreen (false)
-        1,  // visible (true - show immediately)
+        0, // min_width (unset)
+        0, // min_height (unset)
+        0, // max_width (unset)
+        0, // max_height (unset)
+        1, // resizable (true)
+        1, // decorations (true - has window chrome)
+        0, // fullscreen (false)
+        1, // visible (true - show immediately)
     );
 
     if (handle_ptr == 0) {
         const err = gossamer.gossamer_last_error();
         if (err != null) {
-            std.debug.print("PT_SHELL: gossamer_create_ex failed: {s}\n", .{err});
+            std.debug.print("PT_SHELL: gossamer_create_ex failed: {s}\n", .{std.mem.span(err)});
         } else {
             std.debug.print("PT_SHELL: gossamer_create_ex returned null handle\n", .{});
         }
@@ -90,7 +92,11 @@ pub fn main() u8 {
     const load_result = gossamer.gossamer_load_html(handle_ptr, INDEX_HTML);
     if (load_result != 0) {
         const err = gossamer.gossamer_last_error();
-        std.debug.print("PT_SHELL: gossamer_load_html failed: {s}\n", .{err != null orelse "unknown error"});
+        if (err != null) {
+            std.debug.print("PT_SHELL: gossamer_load_html failed: {s}\n", .{std.mem.span(err)});
+        } else {
+            std.debug.print("PT_SHELL: gossamer_load_html failed: unknown error\n", .{});
+        }
         gossamer.gossamer_destroy(handle_ptr);
         return 1;
     }

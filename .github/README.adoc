@@ -1,0 +1,20 @@
+= .github
+:description: GitHub automation and community configuration for paint.type.
+
+== Purpose
+
+This directory contains the repository's GitHub Actions workflows, issue and
+discussion templates, security policy, and contribution automation.
+
+== Structure
+
+* `workflows/` — continuous integration, security, and release automation
+* `ISSUES/` — dependency-epic issue records
+* `ISSUE_TEMPLATE/` — structured issue templates
+* `DISCUSSION_TEMPLATE/` — structured discussion templates
+* `scripts/` — helpers used by GitHub automation
+
+== Related Files
+
+* link:0.1-AI-MANIFEST.a2ml[AI manifest]
+* link:../README.adoc[Project README]
