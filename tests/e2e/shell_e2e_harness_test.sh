@@ -70,6 +70,19 @@ assert_file_contains() {
   fi
 }
 
+assert_file_not_contains() {
+  local name="$1"
+  local file="$2"
+  local needle="$3"
+
+  if grep -Fq "$needle" "$file"; then
+    fail "$name (unexpected content in $file: $needle)"
+    sed -n '1,120p' "$file" >&2
+  else
+    pass "$name"
+  fi
+}
+
 write_executable() {
   local path="$1"
   local content="$2"
@@ -201,6 +214,8 @@ test_shell_build_failure_is_reported() {
   assert_status "shell build failure makes the harness fail" 1
   assert_contains "shell build failure is named" "$LAST_OUTPUT" \
     "FAIL: shell build failed"
+  assert_file_not_contains "shell build failure prevents launch" "$CALL_LOG" \
+    "timeout|"
 }
 
 test_gossamer_build_failure_is_reported() {
@@ -213,6 +228,10 @@ test_gossamer_build_failure_is_reported() {
   assert_status "Gossamer build failure makes the harness fail" 1
   assert_contains "Gossamer build failure is named" "$LAST_OUTPUT" \
     "FAIL: shell build failed"
+  assert_file_not_contains "Gossamer failure prevents the shell build" "$CALL_LOG" \
+    "zig|$FIXTURE/src/shell|"
+  assert_file_not_contains "Gossamer failure prevents launch" "$CALL_LOG" \
+    "timeout|"
 }
 
 test_zig_source_regressions() {
@@ -227,6 +246,13 @@ test_zig_source_regressions() {
     pass "create errors become sentinel slices before formatting"
   else
     fail "create errors become sentinel slices before formatting"
+  fi
+
+  if grep -Fq 'gossamer_create_ex returned null handle' "$SHELL_SOURCE" \
+     && ! grep -Fq 'err != null orelse' "$SHELL_SOURCE"; then
+    pass "null create errors use an explicit fallback message"
+  else
+    fail "null create errors use an explicit fallback message"
   fi
 
   if grep -Fq 'gossamer_load_html failed: {s}\n", .{std.mem.span(err)}' "$SHELL_SOURCE"; then
