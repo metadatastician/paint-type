@@ -109,8 +109,17 @@ jobs:
 
           # With LD_LIBRARY_PATH unset, the loader must find libgossamer through
           # the rpath alone — inside dist/lib, not anywhere on the system.
+          # ld.so concatenates the RUNPATH literally, so the resolved path is
+          # printed UNNORMALISED as ".../bin/../lib/..." — assert THAT text.
+          # Matching "dist/<pkg>/lib" instead silently never matches.
           env -u LD_LIBRARY_PATH ldd "$bin" | grep gossamer
-          env -u LD_LIBRARY_PATH ldd "$bin" | grep -q "dist/${pkg}/lib"
+          env -u LD_LIBRARY_PATH ldd "$bin" \
+            | grep -qF "dist/${pkg}/bin/../lib/libgossamer.so"
+          if env -u LD_LIBRARY_PATH ldd "$bin" | grep -q 'not found'; then
+            echo "::error::a dependency did not resolve in the packaged layout"
+            env -u LD_LIBRARY_PATH ldd "$bin"
+            exit 1
+          fi
           echo "libgossamer resolves into the package"
 
           # A launch that survives 15s obtained a display, a GTK context and a
