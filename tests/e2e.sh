@@ -61,6 +61,11 @@ skip_test() {
     SKIP=$((SKIP + 1))
 }
 
+fail_test() {
+    red "  FAIL: $1"
+    FAIL=$((FAIL + 1))
+}
+
 echo "═══════════════════════════════════════════════════════════════"
 echo "  paint-type — End-to-End Tests"
 echo "═══════════════════════════════════════════════════════════════"
@@ -96,6 +101,8 @@ echo ""
 bold "Section 1: Desktop shell — launch, empty canvas, quit clean"
 
 SHELL_DIR="$PROJECT_DIR/src/shell"
+GOSSAMER_DIR="$PROJECT_DIR/third_party/gossamer/src/interface/ffi"
+GOSSAMER_LIB_DIR="$GOSSAMER_DIR/zig-out/lib"
 
 if ! command -v zig >/dev/null 2>&1; then
     skip_test "desktop shell launch" "zig not found"
@@ -104,12 +111,19 @@ elif ! pkg-config --exists webkit2gtk-4.1 2>/dev/null; then
 elif ! command -v xvfb-run >/dev/null 2>&1; then
     skip_test "desktop shell launch" "xvfb-run not found (no headless display)"
 else
-    if ( cd "$SHELL_DIR" && zig build ) >/tmp/pt-shell-build.log 2>&1; then
+    if (
+        cd "$GOSSAMER_DIR"
+        zig build -Doptimize=ReleaseSafe
+        export LIBRARY_PATH="$GOSSAMER_LIB_DIR${LIBRARY_PATH:+:$LIBRARY_PATH}"
+        cd "$SHELL_DIR"
+        zig build
+    ) >/tmp/pt-shell-build.log 2>&1; then
         green "  PASS: shell builds (GTK3 + WebKitGTK)"
         PASS=$((PASS + 1))
         SHELL_BIN="$SHELL_DIR/zig-out/bin/paint-type-shell"
         SHELL_OUT=$(timeout 40 xvfb-run -a -s "-screen 0 1280x1024x24" \
             env PT_SHELL_SMOKE=1 \
+                LD_LIBRARY_PATH="$GOSSAMER_LIB_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
                 WEBKIT_DISABLE_COMPOSITING_MODE=1 \
                 WEBKIT_DISABLE_DMABUF_RENDERER=1 \
                 LIBGL_ALWAYS_SOFTWARE=1 \
@@ -118,7 +132,7 @@ else
         check "shell opens window + empty canvas" "PT_SHELL: canvas-ready" "$SHELL_OUT"
         check "shell quits cleanly" "PT_SHELL: quit-clean" "$SHELL_OUT"
     else
-        fail "shell build failed (see /tmp/pt-shell-build.log)"
+        fail_test "shell build failed (see /tmp/pt-shell-build.log)"
         tail -5 /tmp/pt-shell-build.log || true
     fi
 fi

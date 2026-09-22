@@ -1,0 +1,23 @@
+# AI Manifest - Level 3: src/plugins/src
+
+## Purpose
+
+This directory implements the paint-type plugin system, including manifest
+validation, capability-restricted WASM execution, effect and tool APIs, and the
+plugin registry.
+
+## Canonical Files
+
+- `lib.rs` -- crate root and public exports
+- `manifest.rs` -- plugin identity, version, type, and capability schema
+- `sandbox.rs` -- capability-restricted WASM sandbox
+- `effect.rs` -- stateless effect plugin API
+- `tool.rs` -- stateful interactive tool plugin API
+- `registry.rs` -- plugin lifecycle and lookup
+- `error.rs` -- plugin error types
+
+## Invariants
+
+1. The crate forbids unsafe Rust.
+2. Plugins receive only explicitly granted capabilities.
+3. Plugin identity and manifest validation remain centralized in `manifest.rs`.

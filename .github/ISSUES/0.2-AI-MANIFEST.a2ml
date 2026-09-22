@@ -1,0 +1,21 @@
+# AI Manifest - Level 2: .github/ISSUES
+
+## Purpose
+
+This directory contains the detailed dependency-epic records referenced by the
+paint-type dependency scheduler.
+
+## Canonical Files
+
+- `DEP-01-EPHAPAX.adoc` -- Ephapax dependency record
+- `DEP-02-TYPED-WASM.adoc` -- typed-wasm dependency record
+- `DEP-03-AFFINESCRIPT.adoc` -- AffineScript dependency record
+- `DEP-04-GOSSAMER.adoc` -- Gossamer dependency record
+- `DEP-09-STANDARDS.adoc` -- standards dependency record
+- `DEP-10-PROVEN.adoc` -- proven dependency record
+
+## Invariants
+
+1. Each record must agree with `DEPENDENCY-SCHEDULER.adoc`.
+2. Blocked dependencies must identify their external blocker.
+3. Completed work must retain its verification evidence.
