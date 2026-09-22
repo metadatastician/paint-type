@@ -77,14 +77,28 @@ jobs:
       # untouched baseline of identical dimensions, then runs a negative control
       # proving the assertion could have failed.
       - name: Prove the canvas draws (Tier C)
+        # Pin the scenario's artefact directory so the probe step below can
+        # find it. Left unset, the script picks its own `mktemp -d` and
+        # removes it on exit, which is right for a developer box and wrong
+        # here: the diagnostics would be deleted before they could be read.
+        env:
+          PT_RUN_DIR: ${{ runner.temp }}/pt-canvas-proof
         run: bash tests/e2e/scenario_canvas_draws.sh
 
       # Diagnostics only, and only when something above failed. `if: failure()`
       # is what keeps this from masking a red run with a green step.
       - name: Probe logs on failure
         if: failure()
+        env:
+          PT_RUN_DIR: ${{ runner.temp }}/pt-canvas-proof
         run: |
-          for f in /tmp/pt-probe.log /tmp/pt-control.log /tmp/pt-shell-build.log; do
-              if [ -f "$f" ]; then printf -- '--- %s ---\n' "$f"; cat "$f"; fi
+          # The Tier C run directory, then the paths the OTHER scenarios and
+          # the shell build still write to. A missing file is reported rather
+          # than skipped: "no log" and "an empty log" are different failures.
+          for f in "$PT_RUN_DIR/pt-probe.log" "$PT_RUN_DIR/pt-control.log" \
+                   /tmp/pt-probe.log /tmp/pt-control.log /tmp/pt-shell-build.log; do
+              if [ -f "$f" ]; then printf -- '--- %s ---\n' "$f"; cat "$f"
+              else printf -- '--- %s: absent ---\n' "$f"; fi
           done
+          ls -l "$PT_RUN_DIR" 2>/dev/null || echo "no $PT_RUN_DIR"
           ls -l /tmp/pt-*.png 2>/dev/null || echo "no /tmp/pt-*.png written"

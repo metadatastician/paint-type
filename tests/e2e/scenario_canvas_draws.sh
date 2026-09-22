@@ -21,21 +21,63 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BIN="$ROOT/src/host/target/release/paint-type"
 LIBDIR="$ROOT/third_party/gossamer/src/interface/ffi/zig-out/lib"
-PROBE="$ROOT/tests/fixtures/canvas-probe.html"
-LOG="${PT_PROBE_LOG:-/tmp/pt-probe.log}"
+PROBE_TEMPLATE="$ROOT/tests/fixtures/canvas-probe.html"
 
-BLANK=/tmp/pt-blank.png
-CANVAS=/tmp/pt-canvas.png
-DONE=/tmp/pt-done.png
+# Every artefact this run produces lives in ONE directory that belongs to this
+# run alone. Shared /tmp paths let two concurrent runs read or delete each
+# other's PNGs, and a run that consumed another run's canvas would report a
+# result it never earned -- a false green that no assertion below could catch.
+#
+# PT_RUN_DIR lets a harness pin the location so it can collect artefacts after
+# a failure (host.yml does this). We clean up ONLY a directory we created
+# ourselves: deleting a caller's directory would destroy the diagnostics the
+# caller asked for.
+if [ -n "${PT_RUN_DIR:-}" ]; then
+    RUNDIR="$PT_RUN_DIR"
+    mkdir -p "$RUNDIR"
+    owns_rundir=0
+else
+    RUNDIR="$(mktemp -d "${TMPDIR:-/tmp}/pt-canvas-proof.XXXXXX")"
+    owns_rundir=1
+fi
+# ⚠ An EXIT trap whose LAST command returns nonzero OVERWRITES the script’s exit
+# status on an otherwise-successful run. With PT_RUN_DIR set (always, in CI)
+# owns_rundir is 0, so a bare `[ … ] && rm -rf` short-circuits to 1 and turns a
+# PASSING canvas proof red. The explicit `if`/`return 0` keeps a real failure.
+cleanup() { if [ "$owns_rundir" -eq 1 ]; then rm -rf "$RUNDIR"; fi; return 0; }
+trap cleanup EXIT
+
+LOG="$RUNDIR/pt-probe.log"
+CONTROL_LOG="$RUNDIR/pt-control.log"
+PROBE="$RUNDIR/canvas-probe.html"
+BLANK="$RUNDIR/pt-blank.png"
+CANVAS="$RUNDIR/pt-canvas.png"
+DONE="$RUNDIR/pt-done.png"
 
 die() { printf 'FAIL: %s\n' "$*" >&2; exit 1; }
 
-[ -x "$BIN" ]   || die "no binary at $BIN -- run scripts/build-host.sh first"
-[ -f "$PROBE" ] || die "probe fixture missing at $PROBE"
+[ -x "$BIN" ]            || die "no binary at $BIN -- run scripts/build-host.sh first"
+[ -f "$PROBE_TEMPLATE" ] || die "probe fixture missing at $PROBE_TEMPLATE"
 
-# Mandatory. Without this a re-run passes on last run's files even if this
-# build never wrote a byte -- the classic stale-artifact false green.
-rm -f "$BLANK" "$CANVAS" "$DONE" "$LOG"
+printf '==> run directory: %s\n' "$RUNDIR"
+
+# The host loads the page with `load_html` -- an HTML STRING, not a file URL --
+# so the page has no `location` to derive its own output directory from. Hence
+# substitution. `|` as the sed delimiter because RUNDIR contains slashes.
+sed "s|__PT_OUT_DIR__|$RUNDIR|g" "$PROBE_TEMPLATE" > "$PROBE"
+
+# Control on the substitution itself. A sed that silently did nothing would
+# send the browser a literal `__PT_OUT_DIR__/pt-done.png`, the marker would
+# never appear at the path this script polls, and the failure would read as
+# "the product does not draw" -- the wrong diagnosis entirely.
+if command grep -Fq '__PT_OUT_DIR__' "$PROBE"; then
+    die "output-directory substitution failed; $PROBE still holds the placeholder"
+fi
+
+# Mandatory even in a fresh directory: PT_RUN_DIR may point at a reused one.
+# Without this a re-run passes on last run's files even if this build never
+# wrote a byte -- the classic stale-artifact false green.
+rm -f "$BLANK" "$CANVAS" "$DONE" "$LOG" "$CONTROL_LOG"
 
 XVFB_SCREEN="-screen 0 1280x1024x24"
 
@@ -124,10 +166,13 @@ printf '==> negative control: same launch, no LD_LIBRARY_PATH\n'
 set +e
 env -u LD_LIBRARY_PATH \
     timeout 15 "${display_cmd[@]}" env "${webkit_env[@]}" "$BIN" \
-    >/tmp/pt-control.log 2>&1
+    >"$CONTROL_LOG" 2>&1
 control_rc=$?
 set -e
 
+# Three assertions, because "not 124" is not the same as "died for the reason
+# this control exists to demonstrate".
+#
 # 124 is timeout's "still running", i.e. it launched successfully. If the binary
 # survives without the library path, then either libgossamer is being resolved
 # some other way or the rpath resolves in-tree -- and in both cases the positive
@@ -135,7 +180,22 @@ set -e
 if [ "$control_rc" -eq 124 ]; then
     die "control survived without LD_LIBRARY_PATH (rc=124); the positive result is vacuous"
 fi
-printf 'PASS: control died as expected (rc=%s)\n' "$control_rc"
+# rc=0 means it exited cleanly and early without the library. That is not a
+# failure to launch, so it equally destroys the claim -- and a bare "not 124"
+# test would have called it a PASS.
+if [ "$control_rc" -eq 0 ]; then
+    die "control exited 0 without LD_LIBRARY_PATH; it did not fail to launch"
+fi
+# And it must have died of THIS cause. Any other crash -- a missing GTK library,
+# a segfault, a bad argument -- also yields a nonzero rc while proving nothing
+# about libgossamer, which would make this control vacuous in the one direction
+# an exit code cannot distinguish.
+if ! command grep -Fq 'libgossamer' "$CONTROL_LOG"; then
+    printf -- '--- %s ---\n' "$CONTROL_LOG"
+    cat "$CONTROL_LOG" 2>/dev/null || true
+    die "control failed (rc=$control_rc) but not over libgossamer; cause unproven"
+fi
+printf 'PASS: control died for want of libgossamer (rc=%s)\n' "$control_rc"
 
 # ---------------------------------------------------------------------------
 # Isolation. Run alongside scenario_host_headless.sh, which drives the same
