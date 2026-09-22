@@ -28,15 +28,8 @@
 # guard/consumer trap: the gate asked "is every uses: locked?" and GitHub asks
 # "is every locked ref RESOLVABLE?".
 #
-# The asymmetry that makes clause 3 mandatory, and counter-intuitive:
-#   * a job-level ref ABSENT from the lockfile entirely is HARMLESS;
-#   * a ref PRESENT in the lockfile but unresolvable is FATAL.
-# So adding entries without closing them is strictly worse than adding nothing.
-# Clause 1 demands entries be added; only clause 3 makes that demand safe. Shipping
-# clause 1 without clause 3 actively steers a developer into the fatal state:
-# Dependabot bumps a job-level ref -> clause 1 reds -> `gh actions-lock` is blind to
-# job-level refs and will not backfill -> the developer hand-adds the workflows:
-# entry to get green -> no dependencies: record -> CI dies silently, gate green.
+# Both step-level action refs and job-level reusable-workflow refs must have
+# lockfile entries. Clause 3 ensures any locked external ref is resolvable.
 #
 # Exit 0 only when all three clauses hold. Any violation exits 1. There is no
 # warn-only mode: a desync means GitHub refuses to start the run, so it must fail
@@ -154,7 +147,6 @@ FNR == 1 { wf = FILENAME }
     raw = m[1]
     gsub(/^["']|["']$/, "", raw)
     gsub(/[[:space:]]+$/, "", raw)
-    if (raw ~ /^\$\//) { dollar[wf] = dollar[wf] " " raw; next }   # known corruption
     n = norm(raw)
     if (n != "") {
       uses[wf, ck(n)] = 1
@@ -177,33 +169,8 @@ END {
     sub(/.*\//, "", key)
     key = ".github/workflows/" key          # the lockfile always uses this canonical path
 
-    if (dollar[wf] != "") {
-      printf "FAIL %s\n     invalid local-action rewrite (uses: $/...):%s\n", key, dollar[wf]
-      bad = 1
-    }
-
     # --- clause 1: every STEP-LEVEL uses: must be locked under THIS path ---
     #
-    # Only step-level action refs are required. A job-level reusable-workflow ref
-    # that is ABSENT from the lockfile is harmless - this file's own header has
-    # said so since it was written ("a job-level ref ABSENT from the lockfile
-    # entirely is HARMLESS; a ref PRESENT in the lockfile but unresolvable is
-    # FATAL"), but clause 1 used to fail on it anyway. That was an internal
-    # contradiction, and it is measured, not argued:
-    #
-    #   * metadatastician/universal-modding-studio and idaptik-ums: scorecard.yml
-    #     is a pure reusable caller with NO lockfile entry at all -> runs, jobs>0.
-    #   * hyperpolymath/standards mirror.yml: empty lock entry, job-level ref
-    #     unlocked -> 7 jobs created.
-    #   * hyperpolymath/my-lang: four workflows share ONE identical stale entry;
-    #     two succeed and two startup-fail, so the entry is not the discriminator.
-    #     What separates them is clause 3 - whether the callee's own refs resolve
-    #     to dependencies: records in THIS lockfile.
-    #
-    # Failing on an absent job-level ref also steers the developer into the fatal
-    # state: gh actions-lock will not backfill job-level refs, so the only way to
-    # go green was to hand-add a workflows: entry with no dependencies: record -
-    # which is precisely the dangling edge clause 3 exists to catch.
     nu = split(steplist[wf], u, " ")
     delete uniq; missing = ""
     for (j = 1; j <= nu; j++) {
@@ -219,8 +186,8 @@ END {
       bad = 1
     }
 
-    # Job-level reusable refs: reported, never fatal. If one IS locked, clause 3
-    # still requires its callee graph to be closed.
+    # Job-level reusable refs must also be locked. Clause 3 still requires a
+    # locked external ref's callee graph to be closed.
     njm = split(joblist[wf], v, " ")
     delete juniq; jmissing = ""
     for (j = 1; j <= njm; j++) {
@@ -228,7 +195,10 @@ END {
       juniq[v[j]] = 1
       if (!((key SUBSEP ck(v[j])) in lock)) jmissing = jmissing " " v[j]
     }
-    if (jmissing != "") jnote = jnote sprintf("\n  %s:%s", key, jmissing)
+    if (jmissing != "") {
+      printf "FAIL %s\n     job-level reusable refs missing from the lockfile:%s\n", key, jmissing
+      bad = 1
+    }
 
     # --- clause 2: every lock entry must be referenced by this workflow ---
     orphan = ""
@@ -332,8 +302,6 @@ END {
   printf "  * every workflow file has a lockfile key (zero-uses: workflows included)\n"
   if (nunref > 0)
     printf "  note: %d dependencies: record(s) are unreferenced - harmless, but prunable.\n", nunref
-  if (jnote != "")
-    printf "  note: job-level reusable refs not locked (harmless; see clause 1):%s\n", jnote
 }
 AWK
 
