@@ -26,8 +26,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    outputs:
-      hashes: ${{ steps.hashes.outputs.hashes }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -135,18 +133,18 @@ jobs:
           fi
           echo "packaged binary launched and stayed up"
 
-      - name: Compute artifact digests for provenance
-        id: hashes
+      # A checksum users can verify by hand. SLSA provenance is deliberately
+      # NOT generated here: naming the generator_generic_slsa3 reusable refuses
+      # this whole workflow at load (startup_failure, jobs=0) under the estate
+      # actions allow-list, even behind `if: false` — measured, see the issue
+      # linked in the PR. A checksum is the honest substitute for tag one.
+      - name: Write SHA256SUMS
         run: |
           set -euo pipefail
           pkg="${{ steps.package.outputs.pkg }}"
           cd dist
-          # sha256sum format, base64 encoded — exactly what the SLSA generator
-          # expects. Never an empty string: attesting to zero subjects writes a
-          # meaningless entry to the transparency log, and that cannot be undone.
-          hashes="$(sha256sum "${pkg}.tar.gz" | base64 -w0)"
-          echo "hashes=${hashes}" >> "$GITHUB_OUTPUT"
-          sha256sum "${pkg}.tar.gz"
+          sha256sum "${pkg}.tar.gz" > SHA256SUMS
+          cat SHA256SUMS
 
       - name: Upload the package as a run artifact
         uses: actions/upload-artifact@v7.0.1
@@ -166,24 +164,7 @@ jobs:
           generate_release_notes: true
           files: |
             dist/${{ steps.package.outputs.pkg }}.tar.gz
+            dist/SHA256SUMS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  provenance:
-    name: SLSA Provenance
-    # Tag-only: a dispatch dry run must not write to the public transparency
-    # log, because a Rekor entry cannot be withdrawn.
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: [release]
-    permissions:
-      actions: read
-      id-token: write
-      contents: write
-    # SLSA generator must run in a separate, isolated workflow
-    # See: https://slsa.dev/spec/v1.0/requirements#build-l3
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a # v2.1.0
-    with:
-      base64-subjects: ${{ needs.release.outputs.hashes }}
-      # Artifact-only for tag one: the provenance is downloadable from the run,
-      # not attached to the draft release.
-      upload-assets: false
