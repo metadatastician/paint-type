@@ -112,10 +112,10 @@ elif ! command -v xvfb-run >/dev/null 2>&1; then
     skip_test "desktop shell launch" "xvfb-run not found (no headless display)"
 else
     if (
-        cd "$GOSSAMER_DIR"
-        zig build -Doptimize=ReleaseSafe
-        export LIBRARY_PATH="$GOSSAMER_LIB_DIR${LIBRARY_PATH:+:$LIBRARY_PATH}"
-        cd "$SHELL_DIR"
+        cd "$GOSSAMER_DIR" &&
+        zig build -Doptimize=ReleaseSafe &&
+        export LIBRARY_PATH="$GOSSAMER_LIB_DIR${LIBRARY_PATH:+:$LIBRARY_PATH}" &&
+        cd "$SHELL_DIR" &&
         zig build
     ) >/tmp/pt-shell-build.log 2>&1; then
         green "  PASS: shell builds (GTK3 + WebKitGTK)"
