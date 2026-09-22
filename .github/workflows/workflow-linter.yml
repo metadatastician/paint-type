@@ -35,15 +35,19 @@ jobs:
         run: |
           echo "=== Checking SPDX License Headers ==="
           failed=0
+          # Scan the leading comment block, not just line 1: `gh actions-lock`
+          # prepends its own "managed by" banner on every fix run, which pushes
+          # a line-1 SPDX header down to line 2 and would fail this gate for a
+          # header that is present and correct.
           for file in .github/workflows/*.yml .github/workflows/*.yaml; do
             [ -f "$file" ] || continue
-            if ! head -1 "$file" | grep -q "^# SPDX-License-Identifier:"; then
+            if ! head -5 "$file" | grep -q "^# SPDX-License-Identifier:"; then
               echo "ERROR: $file missing SPDX header"
               failed=1
             fi
           done
           if [ $failed -eq 1 ]; then
-            echo "Add '# SPDX-License-Identifier: AGPL-3.0-or-later' as first line"
+            echo "Add '# SPDX-License-Identifier: AGPL-3.0-or-later' in the first 5 lines"
             exit 1
           fi
           echo "All workflows have SPDX headers"
