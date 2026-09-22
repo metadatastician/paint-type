@@ -70,24 +70,12 @@ jobs:
           fi
           echo "All workflows have permissions declared"
 
-      - name: Check SHA-Pinned Actions
-        run: |
-          echo "=== Checking Action Pinning ==="
-          # Find any uses: lines that don't have @SHA format
-          # Pattern: uses: owner/repo@<40-char-hex>
-          unpinned=$(grep -rnE "^[[:space:]]+uses:" .github/workflows/ | \
-            grep -v "@[a-f0-9]\{40\}" | \
-            grep -v "uses: \./\|uses: docker://\|uses: actions/github-script" || true)
-
-          if [ -n "$unpinned" ]; then
-            echo "ERROR: Found unpinned actions:"
-            echo "$unpinned"
-            echo ""
-            echo "Replace version tags with SHA pins, e.g.:"
-            echo "  uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6.0.1"
-            exit 1
-          fi
-          echo "All actions are SHA-pinned"
+      # NOTE: an inline "Check SHA-Pinned Actions" step stood here and was retired.
+      # Action pinning is owned by .github/workflows/actions.lock, and verified by
+      # the "Actions lockfile verify" job in the governance bundle. The lock pins by
+      # binding a symbolic ref to a commit, so a 40-hex-only predicate contradicted
+      # it by construction: 88 of 93 action references violated that predicate on
+      # main while the lockfile gate was green. Do not reinstate it here.
 
       - name: Check for Duplicate Workflows
         run: |
