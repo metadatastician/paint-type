@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "paint.type — a cross-platform open-source image editor"
+type: software
+version: "0.2.0-rc.1"
+date-released: "2026-09-23"
+url: "https://github.com/metadatastician/paint-type"
+repository-code: "https://github.com/metadatastician/paint-type"
+license: AGPL-3.0-or-later
+authors:
+  - family-names: "Jewell"
+    given-names: "Joshua"
+    alias: "JoshuaJewell"
+    email: "paint-type@pm.me"
+abstract: >-
+  paint.type is a cross-platform open-source image editor in the spirit of
+  Paint.NET: capable enough for real work, simple enough to reach for without
+  thinking. The image core (Ephapax) is Rust with linear types for tile safety
+  over RGBA16F 64x64 tiles; the ABI is specified in Idris2 with dependent types
+  proving pointer non-nullability, layout correctness and FFI safety; the FFI
+  bridge is Zig with a C ABI; and the browser bridge layer is AffineScript
+  compiled to typed-wasm. Tile merging for real-time collaboration is
+  CRDT-compatible.
+keywords:
+  - "image-editor"
+  - "cross-platform"
+  - "formal-verification"
+  - "idris2"
+  - "zig"
+  - "rust"
+  - "crdt"
+  - "rsr"
+  - "paint-net"
+license-files:
+  - LICENSE
+  - LICENSES/AGPL-3.0-or-later.txt
+  - LICENSES/CC-BY-SA-4.0.txt

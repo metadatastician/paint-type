@@ -1,0 +1,18 @@
+# Code-hygiene gate allowlist (consumed by cicd-suite actions/code-hygiene-check).
+# Patterns are git pathspec excludes, applied to both the debt-marker scan and
+# the proof-circumvention scan.
+#
+# rsr-template-repo ships two entries here (build/container/entrypoint.sh and
+# tests/e2e.sh) on the grounds that their TODOs are instantiation seams. In
+# paint-type both are REAL, POPULATED files:
+#
+#   container/entrypoint.sh
+#   tests/e2e.sh
+#
+# so neither is excluded: their TODOs are paint-type's own debt and belong in
+# the gate's signal, not outside it. Per the template's own instruction — "If
+# an instantiated repo later owns genuine debt in these paths, resolve or
+# issue-link it there — do not widen this list."
+#
+# This file is therefore intentionally empty. Add an entry only with a linked
+# issue explaining why the marker in that path is not debt.
