@@ -14,7 +14,7 @@ This manifest describes the purpose and structure of the `session/` directory.
 ## Canonical Files
 
 - `local-hooks.sh` -- Shell script
-- `custom-checks.k9` -- K9 coordination file
+- `custom-checks.self-validating` -- K9 coordination file
 - `README.md` -- Project documentation
 - `dispatch.sh` -- Shell script
 

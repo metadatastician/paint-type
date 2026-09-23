@@ -26,7 +26,7 @@ project structure.
 
 === Other Files
 
-* `custom-checks.k9` — K9 coordination file
+* `custom-checks.self-validating` — K9 coordination file
 
 
 == Purpose of Each Component

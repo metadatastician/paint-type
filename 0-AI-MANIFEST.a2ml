@@ -27,9 +27,9 @@ and boj-server gateway integration blocked on upstream. Last updated: 2026-07-25
 - Local integration authority (this repo):
   - `Justfile` session recipes
   - `session/dispatch.sh`
-  - `session/custom-checks.k9`
+  - `session/custom-checks.self-validating`
   - `session/local-hooks.sh`
-  - `coordination.k9`
+  - `coordination.k9.ncl`
 
 ## What Has Already Been Done (Do Not Redo)
 
