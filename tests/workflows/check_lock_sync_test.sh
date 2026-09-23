@@ -223,6 +223,30 @@ test_missing_transitive_dependency() {
     "named by: dependencies:acme/shared@release"
 }
 
+test_missing_deep_transitive_dependency() {
+  setup_valid_fixture "missing-deep-transitive-dependency"
+  sed -i "s|'acme/transitive@sha': {}|'acme/transitive@sha':\n        uses:\n            - 'acme/leaf@v1'|" \
+    "$CASE_DIR/actions.lock"
+  expect_fail "rejects a dangling dependency at the second transitive level" \
+    "named by: dependencies:acme/transitive@sha"
+}
+
+test_nested_dependency_owner_case_is_insensitive() {
+  setup_valid_fixture "nested-owner-case"
+  sed -i "s|'acme/transitive@sha': {}|'ACME/TRANSITIVE@sha': {}|" \
+    "$CASE_DIR/actions.lock"
+  expect_pass "compares nested dependency owner/repository names case-insensitively" \
+    "0 dangling edges"
+}
+
+test_duplicate_normalized_refs_are_accepted() {
+  setup_valid_fixture "duplicate-normalized-refs"
+  sed -i '/Acme\/Build\/action@v1/a\      - uses: acme/build/another-entrypoint@v1' \
+    "$CASE_DIR/main.yml"
+  expect_pass "deduplicates action subpaths that share one dependency pin" \
+    "every uses: is locked"
+}
+
 test_owner_repo_case_is_insensitive() {
   setup_valid_fixture "owner-case"
   sed -i "s|'acme/build@v1': {}|'ACME/BUILD@v1': {}|" "$CASE_DIR/actions.lock"
@@ -303,6 +327,9 @@ test_deleted_workflow_entry
 test_unlisted_zero_uses_workflow
 test_missing_direct_dependency
 test_missing_transitive_dependency
+test_missing_deep_transitive_dependency
+test_nested_dependency_owner_case_is_insensitive
+test_duplicate_normalized_refs_are_accepted
 test_owner_repo_case_is_insensitive
 test_ref_case_is_sensitive
 test_local_actions_are_ignored

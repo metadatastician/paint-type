@@ -20,9 +20,9 @@ import? "contractile.just"
 
 # Project metadata — customize these
 project := "paint-type"
-OWNER := "JoshuaJewell"
+OWNER := "metadatastician"
 REPO := "paint-type"
-version := "0.2.0-dev"
+version := trim(shell("cat \"$1\"/VERSION 2>/dev/null || echo 0.0.0-unknown", justfile_directory()))
 tier := "1"
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -885,8 +885,8 @@ container-init:
     read -rp "Primary port [8080]: " _PORT
     PORT="${_PORT:-8080}"
 
-    read -rp "Container registry [ghcr.io/${OWNER:-JoshuaJewell}]: " _REGISTRY
-    REGISTRY="${_REGISTRY:-ghcr.io/${OWNER:-JoshuaJewell}}"
+    read -rp "Container registry [ghcr.io/${OWNER:-metadatastician}]: " _REGISTRY
+    REGISTRY="${_REGISTRY:-ghcr.io/${OWNER:-metadatastician}}"
 
     echo ""
     echo "  Service: $SERVICE_NAME"
@@ -1218,7 +1218,7 @@ test-matrix suite="unit" verbosity="normal" parallel="true":
     @echo "Test matrix: suite={{suite}} verbosity={{verbosity}} parallel={{parallel}}"
 
 # Container matrix: [build|run|push|shell|scan] x [registry] x [tag]
-container-matrix action="build" registry="ghcr.io/JoshuaJewell" tag="latest":
+container-matrix action="build" registry="ghcr.io/metadatastician" tag="latest":
     @echo "Container matrix: action={{action}} registry={{registry}} tag={{tag}}"
 
 # CI matrix: [lint|test|build|security|all] x [quick|full]
@@ -1257,19 +1257,25 @@ changelog-preview:
     @command -v git-cliff >/dev/null || { echo "git-cliff not found — install: cargo install git-cliff"; exit 1; }
     git cliff --config .machine_readable/configs/git-cliff/cliff.toml --unreleased --strip header
 
-# Tag a new release (usage: just release-tag 1.2.3)
-release-tag version:
+# Tag a release from VERSION, the single source of record (usage: just release-tag)
+release-tag:
     #!/usr/bin/env bash
+    set -euo pipefail
     TAG="v{{version}}"
-    if git rev-parse "$TAG" >/dev/null 2>&1; then
-        echo "Tag $TAG already exists"
+    if [ "{{version}}" = "0.0.0-unknown" ]; then
+        echo "VERSION is missing or unreadable — refusing to create $TAG" >&2
         exit 1
     fi
-    just changelog
-    git add CHANGELOG.md
-    git commit -m "chore(release): prepare $TAG"
-    git tag -a "$TAG" -m "Release $TAG"
-    echo "Created tag $TAG — push with: git push origin main --tags"
+    if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+        echo "Tag $TAG already exists" >&2
+        exit 1
+    fi
+    if ! git diff --quiet || ! git diff --cached --quiet; then
+        echo "Working tree is dirty — commit or stash before tagging" >&2
+        exit 1
+    fi
+    git tag -s "$TAG" -m "Release $TAG"
+    echo "Created signed tag $TAG — push it with: git push origin $TAG"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # UTILITIES

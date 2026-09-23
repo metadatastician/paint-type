@@ -24,3 +24,37 @@
 # vendored copy.
 cicd_rules/banned_language_file:third_party/gossamer/android/src/main/java/io/gossamer/GossamerActivity.java
 cicd_rules/banned_language_file:third_party/gossamer/android/src/main/java/io/gossamer/GossamerBridge.java
+
+# ─── TWO CONSUMERS, TWO MATCHERS — read this before adding a line ──────
+#
+# The header above describes the governance bundle's matcher only. This
+# file is read by two independent consumers and they do NOT agree:
+#
+#   1. the estate governance bundle (governance-reusable.yml:473,630)
+#        grep -qxF "${rule}:${f}"   -> whole-line EQUALITY, exact path
+#   2. Hypatia's own scanner (Hypatia.ScannerSuppression, scanner_suppression.ex)
+#        String.contains?(rel, fragment) -> the repo-relative path CONTAINS
+#        the fragment, so a directory prefix ending in "/" is valid here
+#        and inert for consumer 1.
+#
+# Consequence: the two entries above are exact paths for consumer 1 and are
+# inert for consumer 2 — Hypatia refuses to suppress `banned_language_file`
+# at all, by design. The entry below is the mirror image: a directory
+# fragment for consumer 2, inert for consumer 1.
+#
+# ⚠ The fragment is UNANCHORED. `x/third_party/gossamer/` would also match.
+# Acceptable here because no such path exists in this repo; it would not be
+# acceptable for a fragment that could collide.
+
+# ─── Gossamer's vendored Idris2 proof code (third_party/) ──────────────
+#
+# Hypatia's two `critical` findings on this repo are both
+# code_safety/believe_me in VENDORED Gossamer proof sources:
+#   third_party/gossamer/.../abi/PanelIsolation.idr
+#   third_party/gossamer/.../Gossamer/ABI/PanelIsolation.idr
+# `believe_me` is an Idris2 escape hatch in upstream code paint-type does
+# not own and must not rewrite. Scoped to the rule, NOT to the directory:
+# measured on the real 179-finding artifact, this line suppresses exactly
+# 2 findings and leaves 177 — including 39 other findings inside
+# third_party/gossamer/ under other rules, which still report.
+code_safety/believe_me:third_party/gossamer/

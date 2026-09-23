@@ -125,16 +125,22 @@ Most workflows are triggered by:
 
 Check individual workflow files for specific trigger configurations.
 
-== SHA Pinning
+== Action pinning
 
-All GitHub Actions used in these workflows should be SHA-pinned to specific commits
-to prevent supply-chain attacks from compromised or updated actions.
+Every action this repository uses is pinned through link:actions.lock[`actions.lock`],
+not by writing a commit SHA into each `uses:` line. The lockfile has two halves:
+`workflows:` allow-lists the symbolic refs each workflow may reference, and
+`dependencies:` records the commit each of those refs resolved to. The `uses:` lines
+themselves therefore carry tags, and the lockfile supplies the commit.
 
-Example:
-[source,yaml]
-----
-- uses: actions/checkout@8e5e7e5ab8b370d3a0e0e70878d379440678a716 # v3.3.0
-----
+Regenerate it with `gh actions-lock`, never by hand. The enforcing gate is
+`Governance Check / Actions lockfile verify`.
+
+WARNING: do not write an example `uses:` line carrying a 40-character SHA into any
+file in this directory. The `check-action-pins-resolve.sh` gate greps the whole
+directory for `uses: owner/repo@<40 hex>` with no filename filter, so an illustrative
+SHA in prose is read as a real pin. This section used to carry one, naming a commit
+that does not exist upstream, and it failed that gate.
 
 == Related Files
 
