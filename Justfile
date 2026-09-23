@@ -942,8 +942,13 @@ container-build *args:
     #!/usr/bin/env bash
     if [ -f "Containerfile" ]; then
         # Fail loudly rather than bake unsubstituted tokens into an image.
-        if grep -nE '\{\{[A-Za-z_]+\}\}' Containerfile \
-             | grep -v 'index .RepoDigests'; then
+        #
+        # Only non-comment lines are scanned. This file's own header
+        # *documents* the placeholder problem and has to name the tokens to
+        # do so, so a guard that read comments would trip on the prose that
+        # explains it. The exclusion is for lines starting with '#'.
+        if grep -vE '^[[:space:]]*#' Containerfile \
+             | grep -nE '\{\{[A-Za-z_]+\}\}'; then
             echo "ERROR: root Containerfile still contains unsubstituted template tokens."
             exit 1
         fi
