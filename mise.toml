@@ -1,57 +1,58 @@
+# mise toolchain for paint-type.
+#
+# REWRITTEN 2026-09-23. The previous contents were a generic polyglot template,
+# not this project's configuration, and were wrong in three independent ways:
+#
+# 1. EVERY tool was pinned to "latest". A version file that says "latest" pins
+#    nothing: two checkouts a week apart get different compilers. This repo
+#    declares the `reproducible-build` capability in
+#    .machine_readable/rsr-profile.a2ml, which the old file contradicted.
+#
+# 2. It installed toolchains the estate language policy BANS. Against
+#    standards/0-canon/rsr/LANGUAGE-POLICY.adoc v1.6.0 (2026-09-22):
+#      node, npm, yarn, pnpm, denojs  -> Node.js, npm/yarn and Deno all banned
+#      python, pip, pytest, black, isort, ruff -> "All Python banned"
+#      go, go-task, gofmt            -> Go banned
+#      java                          -> Java/Kotlin banned
+#    Deno specifically moved from tier 1 to BANNED on 2026-09-22. It was still
+#    listed here.
+#
+# 3. It omitted idris2 entirely — the sole permitted formal-verification
+#    language, invoked 11 times in the Justfile, and pinned to 0.8.0 by
+#    .github/workflows/idris-ci.yml. It also listed vitest, jest, prettier,
+#    stylua, cmake, ninja and make, none of which the Justfile invokes.
+#
+# The list below is derived from what the Justfile actually invokes (counted,
+# not guessed): zig 27, cargo 22, idris2 11, podman 9, git-cliff 9, tw 8, ncl 2.
+# Versions match .tool-versions, which is the human-readable statement of the
+# same pins. Keep the two in step.
+
 [tools]
-# Language runtimes
-node = "latest"
-python = "latest"
-rust = "latest"
-go = "latest"
-zig = "latest"
-java = "latest"
+# Compilers and the formal-verification layer
+zig = "0.15.1"        # src/interface/ffi/build.zig requires >= 0.15
+rust = "1.85.1"       # src/paint_core; verified 2026-09-23
+idris2 = "0.8.0"      # idris-ci.yml:37 and AFFIRMATION.adoc both pin 0.8.0
+
+# Task runner and configuration
+just = "1.40.0"
+nickel = "1.10.0"     # 16 .ncl files in tree, incl. coordination.k9.ncl
+
+# Containers — Podman first, never Docker
+podman = "latest"     # no pinned release; pin once a known-good digest is chosen
+
+# Release tooling
+git-cliff = "latest"  # generates CHANGELOG.adoc; pin once output is diffed
+
+# JS runtime, tier 1 per LANGUAGE-POLICY v1.6.0 (Deno is banned, not this)
 bun = "latest"
-denojs = "latest"
-
-# Package managers
-npm = "latest"
-yarn = "latest"
-pnpm = "latest"
-pip = "latest"
-cargo = "latest"
-go-task = "latest"
-
-# Formatting & Linting
-gofmt = "latest"
-black = "latest"
-isort = "latest"
-ruff = "latest"
-prettier = "latest"
-shfmt = "latest"
-stylua = "latest"
-
-# Build tools
-cmake = "latest"
-make = "latest"
-ninja = "latest"
-
-# Shell tools
-git = "latest"
-gnu-sed = "latest"
-gnu-tar = "latest"
-gnu-grep = "latest"
-
-# Testing
-vitest = "latest"
-pytest = "latest"
-jest = "latest"
 
 [env]
-# Common environment variables
-NODE_ENV = "development"
-PYTHONDONTWRITEBYTECODE = "1"
-PYTHONUNBUFFERED = "1"
+# PT_LIB_DIR is the documented escape hatch for the Zig FFI artifact:
+# src/paint_core/build.rs shells out to `zig build` and links -lpt, and fails
+# at link time with "cannot find -lpt" if the library is absent. Point this at
+# a prebuilt libpt.a to skip the Zig step (e.g. in a cache-warm CI job).
+# PT_LIB_DIR = "{{ mise.config_root }}/src/interface/ffi/zig-out/lib"
 
-# Task runner alias
 [alias]
-task = "go-task"
-build = "cargo build --release || npm run build || go build"
-test = "cargo test || npm test || go test ./..."
-lint = "ruff check . || prettier --check . || black --check ."
-fmt = "ruff format . || prettier --write . || black ."
+build = "cargo build --release"
+test = "cargo test --manifest-path src/paint_core/Cargo.toml"
