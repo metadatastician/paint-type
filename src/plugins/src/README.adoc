@@ -1,0 +1,22 @@
+= Plugin System Source
+
+== Purpose
+
+This directory contains the Rust implementation of paint-type's plugin system.
+It defines signed plugin manifests, capability checks, the WASM sandbox, effect
+and tool extension APIs, and plugin registration and lifecycle management.
+
+== Components
+
+* `lib.rs` — crate root and public API
+* `manifest.rs` — plugin metadata and requested capabilities
+* `sandbox.rs` — isolated WASM execution state
+* `effect.rs` — stateless image effects
+* `tool.rs` — stateful interactive tools
+* `registry.rs` — loaded-plugin registry
+* `error.rs` — shared error types
+
+== Related Files
+
+* link:../0.2-AI-MANIFEST.a2ml[Parent AI manifest]
+* link:../README.adoc[Plugin system overview]

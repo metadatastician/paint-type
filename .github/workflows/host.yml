@@ -7,8 +7,18 @@ on:
       - 'src/host/**'
       - 'src/host_core/**'
       - 'src/paint_core/**'
+      # ptype_format and plugins are transitive deps of host_core (its Cargo.toml
+      # names all three) and were absent from this filter, so a change to either
+      # could land without ever building the binary that links it.
+      - 'src/ptype_format/**'
+      - 'src/plugins/**'
+      - 'src/interface/ffi/**'
       - 'src/ui/**'
       - 'third_party/gossamer/**'
+      # The build recipe and the proof are as load-bearing as the code.
+      - 'scripts/build-host.sh'
+      - 'tests/e2e/**'
+      - 'tests/fixtures/**'
       - '.github/workflows/host.yml'
   pull_request:
 
@@ -20,8 +30,15 @@ permissions:
   actions: read
   contents: read
 jobs:
+  # ⚠ Do not rename this job. Its check-run name is what a future
+  # required_status_checks rule names, and a required context is demanded
+  # repo-wide the instant it is added while being supplied by each PR's own
+  # tree -- so a rename orphans every open PR that predates it.
   build-and-test:
     runs-on: ubuntu-latest
+    # The draw proof starts a GUI process under a virtual display. Its own
+    # timeouts bound the normal case; this bounds the abnormal one.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -36,9 +53,52 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable # stable
         with:
           toolchain: stable
-      - name: Build libpt
-        run: cd src/interface/ffi && zig build
-      - name: host_core tests
+
+      # Was: `cd src/interface/ffi && zig build`, which built one of the two Zig
+      # libraries and never built the product at all. The recipe now lives in a
+      # single script so this workflow, the Justfile and release.yml cannot
+      # drift apart -- they had already drifted into four different versions.
+      - name: Build the product
+        run: bash scripts/build-host.sh
+
+      - name: host_core unit tests
         run: cargo test --manifest-path src/host_core/Cargo.toml
-      - name: Headless e2e
+
+      # Positive control for the step below. Despite its filename this drives
+      # host_core only -- no gossamer, no GTK, no display, no binary. Keeping it
+      # alongside the draw proof isolates the defect: if this writes its PNG and
+      # the draw proof does not, the fault is in the webview or the bridge and
+      # provably not in the raster core.
+      - name: Raster-core positive control (no webview)
         run: bash tests/e2e/scenario_host_headless.sh
+
+      # Tier C. The first step in this repository's history that runs the
+      # `paint-type` binary. Asserts the painted canvas differs from an
+      # untouched baseline of identical dimensions, then runs a negative control
+      # proving the assertion could have failed.
+      - name: Prove the canvas draws (Tier C)
+        # Pin the scenario's artefact directory so the probe step below can
+        # find it. Left unset, the script picks its own `mktemp -d` and
+        # removes it on exit, which is right for a developer box and wrong
+        # here: the diagnostics would be deleted before they could be read.
+        env:
+          PT_RUN_DIR: ${{ runner.temp }}/pt-canvas-proof
+        run: bash tests/e2e/scenario_canvas_draws.sh
+
+      # Diagnostics only, and only when something above failed. `if: failure()`
+      # is what keeps this from masking a red run with a green step.
+      - name: Probe logs on failure
+        if: failure()
+        env:
+          PT_RUN_DIR: ${{ runner.temp }}/pt-canvas-proof
+        run: |
+          # The Tier C run directory, then the paths the OTHER scenarios and
+          # the shell build still write to. A missing file is reported rather
+          # than skipped: "no log" and "an empty log" are different failures.
+          for f in "$PT_RUN_DIR/pt-probe.log" "$PT_RUN_DIR/pt-control.log" \
+                   /tmp/pt-probe.log /tmp/pt-control.log /tmp/pt-shell-build.log; do
+              if [ -f "$f" ]; then printf -- '--- %s ---\n' "$f"; cat "$f"
+              else printf -- '--- %s: absent ---\n' "$f"; fi
+          done
+          ls -l "$PT_RUN_DIR" 2>/dev/null || echo "no $PT_RUN_DIR"
+          ls -l /tmp/pt-*.png 2>/dev/null || echo "no /tmp/pt-*.png written"
