@@ -1,0 +1,42 @@
+;; SPDX-License-Identifier: AGPL-3.0-or-later
+(repo-deed
+  :schema-version  "1.0.0"
+  :canonical-name  "paint-type"
+  :beholding-chora #u5"estate/chora"
+
+  :repo-uuid       #u5"github.com/metadatastician/paint-type"
+
+  (identity :primary-forge github
+            :owner          "metadatastician"
+            :prefixed-name  "ap-paint-type")
+
+  (clade    :primary       ap
+            :primary-name  "Applications"
+            :secondary     ()
+            :assigned      "2026-07-17"
+            :rationale     "Applications (`ap`): \"end-user applications, web apps, desktop apps, services\". The core value proposition is a cross-platform image editor people run — \"the open, cross-platform image editor Paint.NET users are actually asking for\". Per the spec the primary clade reflects the value proposition, not implementation details, so the Rust/Zig/Idris2 inside does not make it `fv` or `nl`.")
+
+  (forges   :github    "metadatastician/paint-type"
+            :gitlab    ""
+            :bitbucket "")
+
+  (lineage  :type              standalone
+            :parent            "palimpsest ecosystem"
+            :born              "2026-05-11"
+            :previous-names    ()
+            :instantiated-from "")
+
+  (status   :phase         active
+            :since         "2026-05-11"
+            :present       #t
+            :aliases       ()
+            :merged-into   ""
+            :superseded-by ""
+            :successors    ()
+            :ended         ""
+            (history
+              (entry :phase active
+                     :since "2026-05-11"
+                     :note  "Born standalone in the palimpsest ecosystem; clade re-assigned pt -> ap on 2026-07-17 (see [clade] rationale).")
+            ))
+)
