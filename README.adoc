@@ -52,7 +52,7 @@ This is not a GIMP. It is not a Krita. It is not a Photoshop. It is the tool Pai
 
 == Status
 
-Pre-alpha. v0.1.0 Foundation (tile primitive, Idris2 ABI, Zig FFI, Rust Ephapax skeleton, CI/CD) closed. v0.2.0 Core Image Operations is closing: compositing primitives (11 ops — Porter-Duff `over` + masked blend + flatten + lerp/multiply/screen/in/out/atop/xor), persistent UndoGraph, basic Layer model, brush engine (BrushTip + Brush::stamp + Stroke), and pt_layer_* cross-language FFI all landed; ABI category fully proven (ABI-1..5 done) + TP-1/TP-3; cargo test 98/98 + 1 doctest, zig 29/29, 7/7 aspect tests, E2E + fuzz + coverage CI all green. The AffineScript → typed-wasm bridge is now fully verified by typed-wasm (`paint-type#39` closed).
+Pre-alpha. v0.1.0 Foundation (tile primitive, Idris2 ABI, Zig FFI, Rust Ephapax skeleton, CI/CD) closed. v0.2.0 Core Image Operations is closing: compositing primitives (11 ops — Porter-Duff `over` + masked blend + flatten + lerp/multiply/screen/in/out/atop/xor), persistent UndoGraph, basic Layer model, brush engine (BrushTip + Brush::stamp + Stroke), and pt_layer_* cross-language FFI all landed; ABI category fully proven (ABI-1..5 done) + TP-1/TP-3; cargo test 104/104 + 1 doctest, zig 23/23, 7/7 aspect tests, E2E + fuzz + coverage CI all green. The AffineScript → typed-wasm bridge is now fully verified by typed-wasm (`paint-type#39` closed).
 
 The first runnable application is v0.3.0 (Gossamer shell), still ahead.
 

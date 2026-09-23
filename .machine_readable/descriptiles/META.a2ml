@@ -2,6 +2,18 @@
 ;; Architecture decisions and development practices
 ;; Generated: 2026-07-26
 ;; Source of truth: ROADMAP.adoc, OPERATIONAL-STATUS.adoc, docs/architecture/
+;; CORRECTED 2026-09-23 — two fields in this file contradicted the repo's own
+;; authoritative sources. Machine-readable metadata that bots trust must not
+;; disagree with the human-readable record, or it is worse than absent.
+;;
+;;   license   was "MPL-2.0".  The root LICENSE declares AGPL-3.0-or-later, and
+;;               0-AI-MANIFEST.a2ml and CLADE.a2ml both state AGPL-3.0-or-later.
+;;               MPL-2.0 is the rsr-template-repo default never updated at mint.
+;;   crg-grade was "B".        READINESS.adoc line 7 states "Current Grade: D
+;;               (reconciled 2026-09-22 — lowered to match the CRG-D badge)".
+;;               These files were generated 2026-07-26, before that ruling.
+;;
+;; Both are restated here so a future regeneration does not reintroduce them.
 (meta
   (version "1.1.0")
   (project "paint.type")
@@ -41,10 +53,10 @@
     (currency "All .a2ml files generated from live tree, not hand-authored. Regeneration recipe: just standards-audit"))
   (compliance
     (spdx "SPDX headers in all source files. Validation: static-analysis-gate.yml")
-    (license "MPL-2.0 primary, CC-BY-SA-4.0 for docs. License scanning: hypatia-scan.yml")
+    (license "AGPL-3.0-or-later for code, CC-BY-SA-4.0 for docs. License scanning: hypatia-scan.yml")
     (security "SECURITY.md, .github/SECURITY.md. Secret scanning: secret-scanner.yml")
     (contractiles "must, trust, adjust, dust, intend. Source: hyperpolymath/standards canonical templates")
-    (crg "Component Readiness Grade: B (Pre-alpha, milestones closing). Target: A for v1.0.0"))
+    (crg "Component Readiness Grade: D (reconciled 2026-09-22 per READINESS.adoc; pre-alpha). Target: A for v1.0.0"))
   (standards-alignment
     (DEP-09-compliance "CI reusables pinned to standards HEAD (2b6d30bba13d1ed7034fb03ec61b7011e4040896). Governance and scorecard workflows updated")
     (contractile-trident "Consumes canonical trident from hyperpolymath/standards. Local copies kept in sync via manual update (TODO: automate via script)")

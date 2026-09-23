@@ -152,11 +152,11 @@ ABI category fully proven (ABI-1..5 done) + TP-1/TP-3. Remaining v0.2.0 work: Af
 
 ---
 
-=== "cargo test 98/98 + 1 doctest, zig 29/29, 7/7 aspect tests, E2E + fuzz + coverage CI all green"
+=== "cargo test 104/104 + 1 doctest, zig 23/23, 7/7 aspect tests, E2E + fuzz + coverage CI all green"
 
 [quote, README.adoc]
 ____
-cargo test 98/98 + 1 doctest, zig 29/29, 7/7 aspect tests, E2E + fuzz + coverage CI all green
+cargo test 104/104 + 1 doctest, zig 23/23, 7/7 aspect tests, E2E + fuzz + coverage CI all green
 ____
 
 How this is implemented::
@@ -311,7 +311,7 @@ Test coverage: README claims tests are green, but coverage levels are not tracke
 
 | link:src/interface/ffi/src/main.zig[src/interface/ffi/src/main.zig] | Pure-Zig C-ABI implementation (23 exports: pt_tile_*, pt_layer_*)
 
-| link:src/interface/ffi/test/integration_test.zig[src/interface/ffi/test/integration_test.zig] | Integration tests (29/29 passing) for FFI surface
+| link:src/interface/ffi/test/integration_test.zig[src/interface/ffi/test/integration_test.zig] | Integration tests (23/23 passing) for FFI surface
 
 | link:tests/aspect_tests.sh[tests/aspect_tests.sh] | 7 aspect tests all PASS (SPDX, dangerous-pattern, ABI/FFI contract, Rust panic-safety, RGBA16F constants, Idris2 ABI check, file-I/O)
 
