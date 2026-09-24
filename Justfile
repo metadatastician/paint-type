@@ -1324,7 +1324,15 @@ maint-assault:
 
 # Run panic-attack pre-commit scan (foundational floor-raise requirement)
 assail:
-    @command -v panic-attack >/dev/null 2>&1 && panic-attack assail . || echo "WARN: panic-attack not found — install from https://github.com/hyperpolymath/panic-attack"
+    #!/usr/bin/env bash
+    set -uo pipefail
+    if ! command -v panic-attack >/dev/null 2>&1; then
+        echo "ERROR: panic-attack is not installed, so nothing was scanned."
+        echo "       Install it from https://github.com/hyperpolymath/panic-attack"
+        echo "       To commit without the scan, use 'git commit --no-verify'."
+        exit 1
+    fi
+    panic-attack assail .
 
 
 # Self-diagnostic — checks dependencies, permissions, paths
