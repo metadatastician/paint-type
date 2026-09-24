@@ -59,7 +59,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = static_module,
     });
-    // Bundle compiler-rt into the archive.
+    // Bundle compiler-rt into the archive, except on Windows.
     //
     // Without this, libpt.a is handed to an external linker (Cargo, via
     // paint_core/build.rs) with `__zig_probe_stack` left undefined, and the
@@ -78,10 +78,24 @@ pub fn build(b: *std.Build) void {
     // also silences the error by never emitting the reference. That would drop
     // a security hardening feature to work around a packaging gap.
     //
-    // Measured, not assumed: with `bundle_compiler_rt = true`, `nm libpt.a`
-    // reports 0 undefined and 1 defined `__zig_probe_stack`; without it,
-    // 1 undefined and 0 defined.
-    static.bundle_compiler_rt = true;
+    // Measured on Linux, not assumed: with `bundle_compiler_rt = true`,
+    // `nm libpt.a` reports 0 undefined and 1 defined `__zig_probe_stack`;
+    // without it, 1 undefined and 0 defined.
+    //
+    // WINDOWS IS EXCLUDED, and this exclusion is not speculative. Bundling
+    // unconditionally broke the windows-latest CI job with:
+    //
+    //     pt.lib(compiler_rt.obj) : fatal error LNK1143:
+    //       invalid or corrupt file: no symbol for COMDAT section 0x5
+    //     error: linking with `link.exe` failed: exit code: 1143
+    //
+    // MSVC's linker cannot consume the COFF object Zig emits for compiler-rt.
+    // The original defect does not apply there either: `__zig_probe_stack` is
+    // Zig's own stack-probe implementation for targets whose toolchain does
+    // not supply one, and on Windows the MSVC runtime provides stack probing,
+    // so nothing is left undefined. Bundle where the gap is real, not
+    // everywhere.
+    static.bundle_compiler_rt = target.result.os.tag != .windows;
     b.installArtifact(static);
 
     //--------------------------------------------------------------------------
