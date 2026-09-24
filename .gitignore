@@ -158,6 +158,16 @@ src/bridges/*.wasm
 # Build output at any depth (the root-anchored rules above miss nested crates
 # and sub-projects, e.g. src/*/target/, src/interface/ffi/zig-out/).
 zig-out/
+# Zig build cache (unanchored to match nested monorepo paths)
+zig-cache/
+# OCaml/ReScript compiler artifacts
+*.cmt
+*.cmti
+*.cmi
+# asdf version manager
+.tool-versions
+# Backup/scratch files (never commit)
+*.backup
 
 # Vendored upstream CI. Untracked: the governance parse gate globs
 # **/.github/workflows/*.yml over TRACKED files, and gossamer ships a

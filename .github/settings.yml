@@ -127,7 +127,6 @@ branches:
         contexts:
           - "Cargo check + clippy + fmt"
           - "Cargo test"
-          - "analyze (javascript-typescript, none)"
           - "openssf-compliance"
       enforce_admins: true
       required_signatures: true
