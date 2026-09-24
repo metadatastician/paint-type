@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (c) 2024-2026 Joshua Jewell (JoshuaJewell) <paint-type@pm.me>
+# Authoritative source: docs/practice/AI-CONVENTIONS.adoc
+# Standards: hyperpolymath/standards canon v2.1.1 · LANGUAGE-POLICY v1.6.0
+# STARTUP: Read the repo deed (paint-type_chora.deed at the repo root) first,
+# then .machine_readable/descriptiles/STATE.a2ml.
+
+# LICENSE — THIS REPO DIFFERS FROM THE ESTATE TEMPLATE. READ THIS.
+# paint-type's code is AGPL-3.0-or-later, NOT the estate default MPL-2.0.
+# The root LICENSE declares SPDX-License-Identifier: AGPL-3.0-or-later and
+# CLADE.a2ml states "COPYRIGHT AND LICENCE ARE UNCHANGED ... paint-type is
+# (c) 2024-2026 Joshua Jewell <paint-type@pm.me>, AGPL-3.0-or-later."
+#
+# rsr-template-repo/.clinerules says "All original code: MPL-2.0. Never
+# AGPL-3.0." That rule is NOT carried into this file, because it is false for
+# this repo. Do not "correct" the SPDX headers to MPL-2.0.
+#
+# Documentation is CC-BY-SA-4.0. SPDX header required on every source file.
+# No automated licence edits, ever — manual and owner-only.
+
+# STATE FILES (.machine_readable/descriptiles/ ONLY)
+# Never create STATE/META/ECOSYSTEM/AGENTIC/NEUROSYM/PLAYBOOK files in the repo
+# root or any other directory. .machine_readable/descriptiles/ is authoritative.
+#
+# KNOWN DEFECT, do not make it worse: META.a2ml, ECOSYSTEM.a2ml and STATE.a2ml
+# are currently hand-written s-expressions that parse as NEITHER a2ml/TOML NOR
+# deed. deed_lint rejects them ("invalid doc-head 'meta'"). Until they are
+# rewritten, do not add more files in that shape — write real a2ml/TOML.
+# 269 of this repo's 340 .a2ml files are plain Markdown prose with no
+# recognised identity; do not add to that count.
+
+# BANNED PATTERNS
+# Idris2: believe_me, assert_total, assert_smaller, unsafePerformIO
+# Haskell: unsafeCoerce, unsafePerformIO, undefined, error
+# OCaml: Obj.magic, Obj.repr, Obj.obj
+# Coq: Admitted
+# Lean: sorry
+# Rust: transmute (unless FFI with a // SAFETY: comment)
+
+# FORMAL VERIFICATION — Idris2 ONLY
+# standards/0-canon/rsr/LANGUAGE-POLICY.adoc v1.6.0: "Idris2 — Formal
+# verification (sole option). Idris2 is the only formal-verification language.
+# ATS2 is rejected." There is a narrow Coq-only carve-out and NONE for Agda,
+# Lean4 or TLA+.
+#
+# verification/proofs/ currently carries agda/, lean4/ and tlaplus/ in
+# violation of that policy. Do not add to them; write new proofs in
+# verification/proofs/idris2/.
+
+# LANGUAGES — allowed
+# AffineScript, Rust/SPARK, Zig, Idris2, Bun, Gleam, Elixir, OCaml, Ada
+# (legacy), Haskell, Julia, A2ML, Guile Scheme (build tooling only), Nickel,
+# Bash/POSIX shell.
+
+# LANGUAGES — banned
+# TypeScript, ReScript, Node.js, npm/yarn, Deno, Go, Python, Java/Kotlin,
+# Swift, Flutter/Dart, React Native, V-lang, ATS2.
+#
+# NOTE: Deno moved from tier 1 to BANNED on 2026-09-22 (policy v1.6.0) and Bun
+# is now tier 1. rsr-template-repo/.clinerules still says the opposite — that
+# file is stale. This file follows the current ruling.
+
+# CONTAINERS
+# Runtime: Podman first. File: Containerfile (never Dockerfile).
+# Base: cgr.dev/chainguard/wolfi-base or cgr.dev/chainguard/static.
+# Non-root only. Health endpoints /health and /ready stay public.
+
+# ABI/FFI
+# ABI: Idris2 with dependent types (src/interface/Abi/).
+# FFI: Zig with C ABI (src/interface/ffi/).
+# The Rust core links against libpt.a, built by `zig build` in
+# src/interface/ffi/ — `cargo test` fails without it.
+
+# BUILD: Use just (Justfile) for all tasks.
+# STYLE: Descriptive names. Document all files. SPDX headers everywhere.
+# HONESTY: Never claim a test count you have not run. Report faithfully.

@@ -59,6 +59,29 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = static_module,
     });
+    // Bundle compiler-rt into the archive.
+    //
+    // Without this, libpt.a is handed to an external linker (Cargo, via
+    // paint_core/build.rs) with `__zig_probe_stack` left undefined, and the
+    // link dies with:
+    //
+    //     /usr/bin/ld: .../libpt.a(...libpt_zcu.o): in function
+    //     `debug.Dwarf.ElfModule.load': .../std/debug/Dwarf.zig:2183:
+    //     undefined reference to `__zig_probe_stack'
+    //
+    // Zig links compiler-rt implicitly when it links an executable or shared
+    // library itself, but a `.a` is an archive, not a link -- nothing resolves
+    // those symbols, and rustc's `cc` invocation knows nothing about them.
+    // Bundling puts the runtime inside the archive so it is self-contained.
+    //
+    // This is deliberately not solved with `.stack_protector = false`, which
+    // also silences the error by never emitting the reference. That would drop
+    // a security hardening feature to work around a packaging gap.
+    //
+    // Measured, not assumed: with `bundle_compiler_rt = true`, `nm libpt.a`
+    // reports 0 undefined and 1 defined `__zig_probe_stack`; without it,
+    // 1 undefined and 0 defined.
+    static.bundle_compiler_rt = true;
     b.installArtifact(static);
 
     //--------------------------------------------------------------------------

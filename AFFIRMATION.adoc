@@ -195,6 +195,30 @@ colour management. None are built.
 [#reproduce]
 === Reproduce it yourself
 
+[NOTE]
+====
+*CORRECTED 2026-09-23.* The block below previously could not be run. It passed
+three and four filenames to `idris2 --check`, but that flag accepts *at most one
+input file* and exits with:
+
+----
+Error: Expected at most one input file but was given: Abi/Types.idr, ...
+----
+
+So the anchor that exists to let a reader verify every claim in this file failed
+at its first line. It is rewritten as a loop, one module per invocation. This
+correction does not alter what was affirmed on 2026-07-04; it makes the receipt
+checkable, which is the only reason it is here.
+
+The counts below were re-measured on 2026-09-23 with rustc/cargo 1.85.1,
+Zig 0.15.1 and Idris2 0.8.0. Before the fixes recorded in
+`fix(proofs)` the proof suite was *6 of 9*, not "all OK":
+`Types.idr`, `ABI/Layout.idr` and `ABI/Pointers.idr` all failed, the first
+two with errors that meant whole modules had never typechecked at all. They
+are now 9 of 9 with no warnings, and the reason each one failed is recorded
+in the source at the point it was fixed.
+====
+
 [source,bash]
 ----
 # Clean rebuild libpt first — a stale zig-out/.zig-cache can produce
@@ -202,14 +226,20 @@ colour management. None are built.
 rm -rf src/interface/ffi/zig-out src/interface/ffi/.zig-cache src/paint_core/target
 cd src/interface/ffi && zig build lib && cd -
 
-# Idris2 (0.8.0) — all curated modules; expect all OK
-cd src/interface             && idris2 --check Abi/Types.idr Abi/Layout.idr Abi/Foreign.idr
-cd verification/proofs/idris2 && idris2 --check ABI/Platform.idr ABI/Compliance.idr Pixel.idr TilePool.idr
+# Idris2 (0.8.0) — one file per invocation; --check rejects multiple inputs.
+# Expect: all 5 ABI modules OK, and all 9 proof modules OK.
+for f in Abi/Types.idr Abi/Layout.idr Abi/Foreign.idr Abi/Connector.idr Abi/Export.idr; do
+  ( cd src/interface && idris2 --check "$f" ) || echo "FAILED: $f"
+done
+for f in ABI/Platform.idr ABI/Compliance.idr Pixel.idr TilePool.idr \
+         ABI/Connector.idr ABI/Foreign.idr ABI/Layout.idr ABI/Pointers.idr Types.idr; do
+  ( cd verification/proofs/idris2 && idris2 --check "$f" ) || echo "FAILED: $f"
+done
 
-# Zig — expect exit 0
-zig build && zig build test
+# Zig — expect "Build Summary: 7/7 steps succeeded; 23/23 tests passed"
+zig build && zig build test --summary all
 
-# Rust — expect 104/104 passed
+# Rust — expect 101 + 2 + 1 doctest = 104 passed, 0 failed
 cargo test --manifest-path src/paint_core/Cargo.toml
 ----
 

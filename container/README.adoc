@@ -5,6 +5,40 @@
 
 This directory is part of the paint.type project.
 
+== Status: inert scaffolding — nothing here is wired up
+
+*Read this before assuming a deployable service exists. It does not.*
+
+paint-type is a library plus demo programs. The build produces `libpt.a` /
+`libpt.so` (`src/interface/ffi`, `zig build lib`), the `paint_core` rlib,
+and the `composite_demo` / `brush_demo` / `undo_demo` / `pt_bench`
+executables. There is no long-running process, no port, and no service
+binary — so every service-shaped file below is unrendered estate template
+scaffolding that was copied in and never completed.
+
+Concretely, as of 2026-09-23:
+
+* `Containerfile` carries 10 unsubstituted `{{PLACEHOLDER}}` tokens
+  (`PROJECT_NAME`, `OWNER`, `PORT`, `SERVICE_NAME`, `FORGE`, `REPO`,
+  `AUTHOR`, `AUTHOR_EMAIL`, `LICENSE`, `PROJECT_DESCRIPTION`).
+  `just container-init` substitutes only `SERVICE_NAME`, `PORT` and
+  `REGISTRY`, so running it does not make this file buildable.
+* `entrypoint.sh` ends in a `TODO: Replace the command below with your
+  application binary` — there is no such binary in this repository.
+* `deploy.self-validating.ncl` still carries `{{PROJECT_NAME}}`,
+  `{{SERVICE_NAME}}`, `{{VERSION}}`, `{{REGISTRY}}` and `{{PORT}}`.
+
+The working, digest-pinned, placeholder-free container definition lives at
+the repository root: link:../Containerfile[../Containerfile]. It builds and
+verifies the library; it has no `ENTRYPOINT`, deliberately. `just
+container-build` uses that root file first for this reason — it previously
+preferred the file in this directory, which could not build.
+
+This directory is retained because the canon forbids destructive removal,
+not because it works. If a service deployment is ever actually intended,
+finish it here first: substitute the remaining tokens, point `entrypoint.sh`
+at a binary that exists, and re-check `compose.toml` against it.
+
 == Purpose
 
 Container configuration and images.
@@ -27,8 +61,9 @@ project structure.
 
 === Other Files
 
-* `deploy.k9.ncl` — deploy.k9 configuration or data
-* `Containerfile` — Container image definition
+* `deploy.self-validating.ncl` — Nickel deployment component (the listing
+  here previously said `deploy.k9.ncl`, a file that does not exist)
+* `Containerfile` — Container image definition (unrendered; see Status above)
 
 
 == Purpose of Each Component
@@ -42,12 +77,12 @@ Each file in this directory serves a specific purpose.
 
 == AI Manifest Structure
 
-* `0.1-AI-MANIFEST.a2ml` (this file) - Level 1 manifest for `container/`
+* `0.1-AI-MANIFEST.a2ml` — Level 1 manifest for `container/`
 
 
 
 == Related Files
 
 * link:../0-AI-MANIFEST.a2ml[Parent AI Manifest]
-* link:../README.adoc[Parent Directory README]
-* link:../../.machine_readable/[Machine Readable Metadata]
+* link:../README.adoc[Repository README]
+* link:../Containerfile[Root Containerfile — the one that builds]

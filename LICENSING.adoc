@@ -1,0 +1,45 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+= Licensing
+:description: How paint.type is licensed, and why LICENSE holds only the AGPL text
+
+[NOTE]
+====
+This content was previously the *entire* root `LICENSE` file. That is why
+GitHub reported this repository's licence as `NOASSERTION`: GitHub detects a
+project licence by matching the root `LICENSE` against reference licence
+texts, and a 1,376-byte prose notice about dual licensing matches none of
+them.
+
+As of 2026-09-23 the root `LICENSE` holds the verbatim AGPL-3.0 text
+(byte-identical to `LICENSES/AGPL-3.0-or-later.txt`), so detection resolves
+to `AGPL-3.0-or-later`. Everything below — the scope split, the copyright
+lines and the third-party component notice — is unchanged, just relocated
+here where prose belongs.
+====
+
+paint.type's own work is dual-licensed by scope:
+
+  * SOURCE CODE — GNU Affero General Public License v3.0 or later
+    (AGPL-3.0-or-later) — THIS IS THE PRIMARY LICENSE FOR THE PROJECT.
+    Full text: LICENSES/AGPL-3.0-or-later.txt · https://www.gnu.org/licenses/agpl-3.0.html
+
+  * DOCUMENTATION & CONTENT — Creative Commons Attribution-ShareAlike 4.0
+    International (CC-BY-SA-4.0).
+    Full text: LICENSES/CC-BY-SA-4.0.txt · https://creativecommons.org/licenses/by-sa/4.0/
+
+Copyright (c) 2024-2026 Joshua Jewell (JoshuaJewell) <developer@joshuajewell.dev>
+
+The per-file SPDX-License-Identifier header is authoritative for each file.
+Full licence texts live in LICENSES/ per the REUSE Specification
+(https://reuse.software).
+
+------------------------------------------------------------------------------
+COMPONENTS
+
+paint.type is built on components from the hyperpolymath estate — Gossamer,
+Ephapax, AffineScript, typed-wasm, Burble, Groove, and others. They are
+maintained in their own repositories and are provided under MPL-2.0 (with
+CC-BY-SA-4.0 for their documentation; full text LICENSES/MPL-2.0.txt) by
+Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>, contributed to
+help this project.

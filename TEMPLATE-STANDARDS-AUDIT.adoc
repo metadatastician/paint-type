@@ -79,7 +79,7 @@ Audit scope:
 
 | Session-management local binding files
 | target architecture
-| `session/README.md`, `session/custom-checks.k9`, `session/local-hooks.sh`, `coordination.k9`
+| `session/README.md`, `session/custom-checks.self-validating`, `session/local-hooks.sh`, `coordination.k9.ncl`
 | exists
 | Thin integration layer without protocol duplication.
 | Keep.
@@ -138,10 +138,10 @@ Audit scope:
 
 * `Justfile` canonical session aliases
 * `session/dispatch.sh`
-* `session/custom-checks.k9`
+* `session/custom-checks.self-validating`
 * `session/local-hooks.sh`
 * `session/README.md`
-* `coordination.k9`
+* `coordination.k9.ncl`
 * `AUDIT.adoc` (local gate summary)
 
 === Generated Runtime Artifact

@@ -1,0 +1,14 @@
+# Format: Canonical Name <canonical@email.com> Alias Name <alias@email.com>
+#
+# Derived from `git log --format='%an <%ae>' | sort -u`, not copied from the
+# template. Bot identities are listed so shortlog does not double-count them.
+
+# Project author and copyright holder (root LICENSE, CLADE.a2ml)
+Joshua Jewell <enquiries@joshuajewell.dev> Joshua Jewell <paint-type@pm.me>
+
+# hyperpolymath and "Jonathan D.A. Jewell" share GitHub account id 6759885,
+# so they are one identity recorded two ways.
+Jonathan D.A. Jewell <6759885+hyperpolymath@users.noreply.github.com> hyperpolymath <6759885+hyperpolymath@users.noreply.github.com>
+
+# Bots
+dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>

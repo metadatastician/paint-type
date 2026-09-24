@@ -2,15 +2,27 @@
 ;; Ecosystem position and relationships
 ;; Generated: 2026-07-26
 ;; Source of truth: ROADMAP.adoc, OPERATIONAL-STATUS.adoc, DEPENDENCY-SCHEDULER.adoc
+;; CORRECTED 2026-09-23 — two fields in this file contradicted the repo's own
+;; authoritative sources. Machine-readable metadata that bots trust must not
+;; disagree with the human-readable record, or it is worse than absent.
+;;
+;;   license   was "MPL-2.0".  The root LICENSE declares AGPL-3.0-or-later, and
+;;               0-AI-MANIFEST.a2ml and CLADE.a2ml both state AGPL-3.0-or-later.
+;;               MPL-2.0 is the rsr-template-repo default never updated at mint.
+;;   crg-grade was "B".        READINESS.adoc line 7 states "Current Grade: D
+;;               (reconciled 2026-09-22 — lowered to match the CRG-D badge)".
+;;               These files were generated 2026-07-26, before that ruling.
+;;
+;; Both are restated here so a future regeneration does not reintroduce them.
 (ecosystem
   (version "1.1.0")
   (name "paint-type")
   (type "application")
   (purpose "Cross-platform open-source image editor — RGBA16F tile engine, formally-verified ABI bridge, Gossamer shell integration, CRDT collaboration")
   (homepage "https://github.com/metadatastician/paint-type")
-  (license "MPL-2.0")
+  (license "AGPL-3.0-or-later")
   (maturity "pre-alpha")
-  (crg-grade "B")
+  (crg-grade "D")
   (related-projects
     (gossamer
       (description "linearly-typed webview shell — desktop container for paint-type UI")
@@ -85,5 +97,5 @@
   (standards-compliance
     (contractile-trident-source "hyperpolymath/standards/.machine_readable/contractiles/")
     (ci-reusables-source "hyperpolymath/standards/.github/workflows/")
-    (crg-grade "B")
+    (crg-grade "D")
     (machine-readable-currency "STATE.a2ml, ECOSYSTEM.a2ml, META.a2ml generated from live tree")))

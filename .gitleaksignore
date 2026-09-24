@@ -1,0 +1,13 @@
+# Exact gitleaks fingerprints for reviewed historical false positives.
+#
+# Format: <fingerprint>:<file>:<rule>:<line>
+#
+# EMPTY BY DESIGN. rsr-template-repo ships four entries here, but all four
+# point at build/templates/CHORA.deed.in and build/templates/CLADE.a2ml.in —
+# template scaffolds that do not exist in a minted repo. Copying them would
+# create ignore rules for files paint-type does not have, which is worse than
+# an empty file: an ignore list that cannot match anything still silently
+# widens if those paths are ever created.
+#
+# Add an entry here only after a human has reviewed the finding and confirmed
+# it is not a secret. Never add one to make CI green.

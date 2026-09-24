@@ -1,0 +1,18 @@
+# asdf/mise tool versions for paint-type.
+#
+# These are the versions CI actually pins and the code actually requires — not
+# the template's illustrative placeholders (rsr-template-repo/.tool-versions
+# suggests `idris2 0.7.0` and `zig 0.14.0`, both of which are WRONG for this
+# repo). Sources, each checked rather than copied:
+#
+#   idris2 0.8.0   .github/workflows/idris-ci.yml:37  idris2-version: ['0.8.0']
+#                  AFFIRMATION.adoc: "Idris2 (0.8.0) — all curated modules"
+#   zig    0.15.1  src/interface/ffi/build.zig requires >= 0.15
+#                  (verified 2026-09-23: `zig build` and `zig build test` pass)
+#   rust   1.85.1  src/paint_core builds and tests clean on rustc 1.85.1
+#
+# Kept in step with mise.toml, which now carries the same pins.
+rust 1.85.1
+zig 0.15.1
+idris2 0.8.0
+just 1.40.0

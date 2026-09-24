@@ -917,23 +917,48 @@ container-init:
 
     echo "Container templates initialised."
     echo ""
+    echo "Note: this substitutes only SERVICE_NAME, PORT and REGISTRY."
+    echo "container/Containerfile still carries the PROJECT_NAME, OWNER,"
+    echo "FORGE, REPO, AUTHOR, AUTHOR_EMAIL, LICENSE and PROJECT_DESCRIPTION"
+    echo "tokens, and container/deploy.self-validating.ncl still carries"
+    echo "VERSION. Nothing here substitutes those, and nothing in this repo"
+    echo "produces the service binary the entrypoint expects — paint-type is"
+    echo "a library plus demo programs. Treat container/ as inert scaffolding."
+    echo ""
     echo "Next steps:"
-    echo "  1. Edit container/Containerfile — add your build commands"
-    echo "  2. Edit container/entrypoint.sh — set your application binary"
-    echo "  3. Review container/compose.toml — adjust services and volumes"
-    echo "  4. Build: just container-build"
+    echo "  1. Build and verify: just container-build   (uses the root Containerfile)"
+    echo "  2. If you actually intend to deploy a service, finish container/ first:"
+    echo "     substitute the remaining tokens and set container/entrypoint.sh"
 
-# Build container image via cerro-torre pipeline
+# Build container image.
+#
+# This used to prefer container/Containerfile over the root one. That file
+# is unrendered estate template scaffolding carrying 10 {{PLACEHOLDER}}
+# tokens, and `just container-init` substitutes only 3 of them
+# (SERVICE_NAME, PORT, REGISTRY) — so the preferred path built an image
+# from a file that still said {{PROJECT_NAME}}. The root Containerfile is
+# the completed, digest-pinned, placeholder-free one, and is now first.
 container-build *args:
     #!/usr/bin/env bash
-    if [ -f "container/ct-build.sh" ]; then
+    if [ -f "Containerfile" ]; then
+        # Fail loudly rather than bake unsubstituted tokens into an image.
+        #
+        # Only non-comment lines are scanned. This file's own header
+        # *documents* the placeholder problem and has to name the tokens to
+        # do so, so a guard that read comments would trip on the prose that
+        # explains it. The exclusion is for lines starting with '#'.
+        if grep -vE '^[[:space:]]*#' Containerfile \
+             | grep -nE '\{\{[A-Za-z_]+\}\}'; then
+            echo "ERROR: root Containerfile still contains unsubstituted template tokens."
+            exit 1
+        fi
+        podman build -t {{project}}:latest -f Containerfile . {{args}}
+    elif [ -f "container/ct-build.sh" ]; then
         cd container && ./ct-build.sh {{args}}
     elif [ -f "container/Containerfile" ]; then
-        podman build -t {{project}}:latest -f container/Containerfile .
-    elif [ -f "Containerfile" ]; then
-        podman build -t {{project}}:latest -f Containerfile .
+        podman build -t {{project}}:latest -f container/Containerfile . {{args}}
     else
-        echo "No Containerfile found in container/ or project root"
+        echo "No Containerfile found in project root or container/"
         exit 1
     fi
 
@@ -1299,7 +1324,15 @@ maint-assault:
 
 # Run panic-attack pre-commit scan (foundational floor-raise requirement)
 assail:
-    @command -v panic-attack >/dev/null 2>&1 && panic-attack assail . || echo "WARN: panic-attack not found — install from https://github.com/hyperpolymath/panic-attack"
+    #!/usr/bin/env bash
+    set -uo pipefail
+    if ! command -v panic-attack >/dev/null 2>&1; then
+        echo "ERROR: panic-attack is not installed, so nothing was scanned."
+        echo "       Install it from https://github.com/hyperpolymath/panic-attack"
+        echo "       To commit without the scan, use 'git commit --no-verify'."
+        exit 1
+    fi
+    panic-attack assail .
 
 
 # Self-diagnostic — checks dependencies, permissions, paths

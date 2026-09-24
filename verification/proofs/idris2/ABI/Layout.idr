@@ -7,6 +7,12 @@
 
 module ABI.Layout
 
+-- `NonZero` and `modNatNZ` live in Data.Nat. Without this import the module
+-- does not typecheck at all: "While processing type of paddingFor. Undefined
+-- name NonZero." It was the only one of the nine proof modules that never
+-- compiled, so every property in this file was previously unverified.
+import Data.Nat
+
 %default total
 
 ||| Witness that a type has a known size in bytes at compile time.
@@ -42,11 +48,27 @@ record StructField where
   fieldOffset : Nat
   fieldSize : Nat
   fieldAlignment : Nat
+  ||| Witness that `fieldAlignment` is non-zero, so `modNatNZ` is defined
+  ||| for it. Carried in the record because a zero alignment makes
+  ||| "offset is a multiple of alignment" meaningless, and because the
+  ||| predicate below cannot synthesise one: with `fieldAlignment` an
+  ||| opaque projection, Idris2 fails to unify it with the `S ?n` shape
+  ||| `SIsNonZero` demands.
+  |||
+  ||| Erased. `NonZero n` is a one-constructor type, so nothing is retained
+  ||| at runtime and auto-search resolves it for concrete alignments.
+  {0 alignNonZero : NonZero fieldAlignment}
 
 ||| Proof that a field is correctly aligned within a struct.
+|||
+||| Previously hard-coded `SIsNonZero` as the non-zero witness. That made
+||| the whole module fail to typecheck with
+||| "Can't solve constraint between: S ?n and f .fieldAlignment", so none
+||| of the properties in this file had ever been checked. It now uses the
+||| witness the field carries.
 public export
 FieldAligned : StructField -> Type
-FieldAligned f = modNatNZ (fieldOffset f) (fieldAlignment f) SIsNonZero = 0
+FieldAligned f = modNatNZ (fieldOffset f) (fieldAlignment f) f.alignNonZero = 0
 
 ||| Proof that a field does not overflow past a given struct size.
 public export

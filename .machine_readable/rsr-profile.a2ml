@@ -17,7 +17,7 @@
 [rsr-profile]
 version = "1.0.0"
 spec = "rsr-criteria-v2"
-declares-against = "2.0.0-draft"
+declares-against = "2.1.1"
 # Effective capability set for paint-type
 capabilities = [
   "rust",               # src/ephapax/ image engine in Rust with linear types
@@ -37,6 +37,39 @@ capabilities = [
   "governance-tier",    # GOVERNANCE.adoc + MAINTAINERS + CODEOWNERS
   "collaboration",      # Burble WebRTC + Groove discovery for real-time collaboration
 ]
+
+[canon]
+# ---------------------------------------------------------------------------
+# ADDED 2026-09-23. This block did not exist. Without it the repo declared its
+# conformance with two free-text strings ("rsr-criteria-v2" / "2.0.0-draft")
+# and nothing failed when the canon moved — which is exactly the gap canon.lock
+# exists to close, and exactly the failure recorded as F8 in hyperpolymath/
+# standards docs/AUDIT.adoc ("A pin nothing verifies is not a binding").
+#
+# The canon has since moved to 2.1.1 (released 2026-09-19, tag canon-v2.1.1).
+# `declares-against` above is bumped to match.
+#
+# Both sha256 values below were re-derived against the actual files in
+# hyperpolymath/standards at canon v2.1.1 and MATCH. Only criteria and gates are
+# pinned because those are the two the template's reverse-direction lockstep job
+# compares. applicability and lifecycle are:
+#   applicability 0-canon/TEMPLATE-APPLICABILITY-POLICY.adoc
+#                 1c5caa467769a85cd173d9bf680f1836d3fc18859acfeb5dd8cd4163b0572662
+#   lifecycle     0-canon/rsr/SCAFFOLD-LIFECYCLE.adoc
+#                 2f405c9ed18e36c067b402cb303b45505f418cab06d90b9857f180950eee7aea
+#
+# NOTE: paint-type is a MINTED repo, not the spine, so the
+# "spine-adopts-then-canon-releases" ordering rule is not its to satisfy. The
+# proper home for this record is .machine_readable/PROVENANCE.a2ml, written at
+# mint by build/just/repo-init.just — which never ran here. This block stands in
+# for it until PROVENANCE.a2ml is authored or the repo is re-minted.
+# ---------------------------------------------------------------------------
+version         = "2.1.1"
+# MUST equal canon.lock [canon.artifacts].criteria.sha256
+criteria_sha256 = "6a5aa8857bd0d0d58ef48827938ca17c251b6b854dacf59d306388d61694d82a"
+# MUST equal canon.lock [canon.artifacts].gates.sha256
+gates_sha256    = "e70efd2f53c9445e30da4baf770366f04a4a84ffd844a01426e587e565b53e6a"
+lockstep_since  = "2026-09-23"
 
 [notes]
 # paint-type capabilities:

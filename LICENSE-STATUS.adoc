@@ -2,16 +2,26 @@
 = License Status
 :description: Current licensing state of paint.type repository
 
-== Current State (as of 2026-06-08)
+== Current State (re-measured 2026-09-23)
 
-This repository is **fully licensed** under AGPL-3.0-or-later with all SPDX
-identifiers aligned.
+The previous revision of this file (dated 2026-06-08) claimed the repository
+was "fully licensed … with all SPDX identifiers aligned" and carried a
+`Compliance` block of six ✅ marks. Measured against the tree, several of
+those claims were false. They are replaced below with counted figures. The
+counting command is reproduced at the end of this file so the numbers can be
+re-derived rather than trusted.
 
 === Repository License
 
 * **License:** AGPL-3.0-or-later (GNU Affero General Public License v3.0 or later)
 * **SPDX Identifier:** `AGPL-3.0-or-later`
 * **File:** link:LICENSE[LICENSE]
+
+The root `LICENSE` now contains the verbatim AGPL-3.0 text, byte-identical
+to `LICENSES/AGPL-3.0-or-later.txt`. It previously held a 1,376-byte prose
+notice about dual licensing, which matched no reference licence text — so
+GitHub reported this repository as `NOASSERTION`. That notice is preserved
+in link:LICENSING.adoc[LICENSING.adoc].
 
 === Documentation License
 
@@ -21,18 +31,66 @@ identifiers aligned.
 
 === SPDX Header Alignment
 
-[cols="2,1,1", options="header"]
+Measured over first-party files only. `third_party/` is excluded: it carries
+its own upstream headers (341 `MPL-2.0`, 85 `CC-BY-SA-4.0`,
+1 `AGPL-3.0-or-later`) and is not ours to relicense.
+
+[cols="2,2,1", options="header"]
 |===
 | File Type | SPDX Identifier | Count
 
-| Rust source (`.rs`) | AGPL-3.0-or-later | ~40 files
-| Zig source (`.zig`) | AGPL-3.0-or-later | ~10 files
-| Idris source (`.idr`) | AGPL-3.0-or-later | ~5 files
-| Shell scripts (`.sh`) | AGPL-3.0-or-later | ~10 files
-| Config files (`.toml`, `.yml`, `.json`, `Justfile`, `.k9`) | AGPL-3.0-or-later | ~20 files
-| A2ML metadata (`.a2ml`) | AGPL-3.0-or-later | ~350 files
-| Documentation (`.adoc`) | CC-BY-SA-4.0 | ~140 files
+| Rust source (`.rs`) | AGPL-3.0-or-later | 46
+| Rust source (`.rs`) | MPL-2.0 | 2
+| Rust source (`.rs`) | PMPL-1.0-or-later | 1
+| Zig source (`.zig`) | AGPL-3.0-or-later | 29
+| Zig source (`.zig`) | MPL-2.0 | 2
+| Idris source (`.idr`) | AGPL-3.0-or-later | 15
+| Shell scripts (`.sh`) | AGPL-3.0-or-later | 26
+| Shell scripts (`.sh`) | MPL-2.0 | 2
+| Shell scripts (`.sh`) | *no SPDX header* | 6
+| A2ML metadata (`.a2ml`) | AGPL-3.0-or-later | 109
+| A2ML metadata (`.a2ml`) | CC-BY-SA-4.0 | 1
+| A2ML metadata (`.a2ml`) | *no SPDX header* | 114
+| Documentation (`.adoc`) | CC-BY-SA-4.0 | 181
+| Documentation (`.adoc`) | AGPL-3.0-or-later | 34
+| Documentation (`.adoc`) | MPL-2.0 | 3
+| Documentation (`.adoc`) | *no SPDX header* | 24
 |===
+
+The previous table listed these as approximate counts (``~40 files`` and so
+on) and claimed every `.adoc` file was CC-BY-SA-4.0. Neither held: 34
+`.adoc` files are AGPL-3.0-or-later, 3 are MPL-2.0, and 24 carry no SPDX
+header at all. 114 `.a2ml` files likewise have no header.
+
+=== Open defects
+
+These are known and unfixed. They are listed rather than papered over, and
+each is tracked in the remediation plan.
+
+. **144 first-party files carry no `SPDX-License-Identifier` header**
+  (114 `.a2ml`, 24 `.adoc`, 6 `.sh`). A REUSE-conformant repository has one
+  on every file.
+. **34 `.adoc` files are tagged AGPL-3.0-or-later**, contradicting the
+  stated policy that documentation is CC-BY-SA-4.0. Some of these may be
+  deliberate (generated or machine-oriented documents); each needs a
+  decision, not a blanket `sed`.
+. **27 first-party files are tagged `PMPL-1.0-or-later`** — 14
+  `.github/workflows/*.yml`, 7 `.machine_readable/…self-validating.ncl`,
+  `.devcontainer/Containerfile`, `src/bridges/paint-type-layer.twasm`,
+  `src/bridges/paint-type-tile.twasm`, `src/ui/app.js`, `src/ui/style.css`
+  and `tools/abi-codegen/src/main.rs`. `PMPL` is not on the SPDX License
+  List, so this tag does not resolve. The estate's own
+  `.github/workflows/rhodibot.yml` rewrites `PMPL-1.0-or-later` to
+  `AGPL-3.0-or-later` in dotfiles, which states the intended direction — but
+  that workflow only touches dotfiles, so 27 files are outside its reach.
+  (This file itself contains the string in the example command below; the
+  counting recipe excludes it, which is why the figure is 27 and not 28.)
+  Normalising them needs an owner ruling, because it is a licence change and
+  not a typo fix.
+. **`docs/licensing/PMPL-CAMPAIGN.adoc` does not exist.** The previous
+  revision of this file linked to it, and the "PMPL Campaign Documentation"
+  section below pointed at it as the record of the author's licensing
+  philosophy. The link is dangling.
 
 === GitHub-Required Files
 
@@ -45,44 +103,82 @@ The following files remain as `.md` for GitHub community health:
 
 These files maintain their SPDX headers as `AGPL-3.0-or-later`.
 
-=== PMPL Campaign Documentation
+=== PMPL
 
-The author advocates for PMPL-2.0-or-later (Palimpsest License v2) as a
-licensing philosophy. This is documented in:
+The author advocates for the Palimpsest License as a licensing philosophy.
+**PMPL is not the license of this repository.** AGPL-3.0-or-later is. The
+28 `PMPL-1.0-or-later` tags listed above are therefore inconsistent with
+this repository's own stated position, and are an open defect rather than a
+deliberate choice.
 
-* link:docs/licensing/PMPL-CAMPAIGN.adoc[PMPL-CAMPAIGN.adoc]
-
-**Important:** PMPL is **NOT** the license of this repository. AGPL-3.0-or-later
-is the actual license. PMPL documentation is for informational purposes only.
+Note that this section previously pointed at
+`docs/licensing/PMPL-CAMPAIGN.adoc` for the campaign documentation. That
+file is absent.
 
 === Verification
 
-To verify license alignment:
+To re-derive the counts in the table above, excluding `third_party/`:
 
 [source,bash]
 ----
-# Check all source/config files have AGPL-3.0-or-later
-grep -r "SPDX-License-Identifier: AGPL-3.0-or-later" --include="*.rs" --include="*.zig" --include="*.idr" --include="*.sh" --include="*.toml" --include="*.yml" --include="*.yaml" --include="*.json" .
+python3 - <<'PY'
+import re, os, collections
+c = collections.Counter()
+for root, dirs, files in os.walk('.'):
+    parts = root.split(os.sep)
+    if '.git' in parts or 'third_party' in parts:
+        continue
+    for f in files:
+        ext = os.path.splitext(f)[1].lower()
+        if ext not in ('.rs', '.zig', '.idr', '.sh', '.adoc', '.a2ml'):
+            continue
+        try:
+            text = open(os.path.join(root, f), encoding='utf-8',
+                        errors='ignore').read(2000)
+        except Exception:
+            continue
+        m = re.search(r'SPDX-License-Identifier:\s*([A-Za-z0-9.+\-]+)', text)
+        c[(ext, m.group(1) if m else 'NONE')] += 1
+for (ext, lic), n in sorted(c.items()):
+    print(f'{n:5}  {ext:8} {lic}')
+PY
+----
 
-# Check all documentation files have CC-BY-SA-4.0
-grep -r "SPDX-License-Identifier: CC-BY-SA-4.0" --include="*.adoc" .
+A simpler spot-check — note that `grep "SPDX-License-Identifier: PMPL"` also
+matches `PMPL-1.0-or-later`, so anchor it:
 
-# Verify no PMPL in code SPDX headers (should return 0)
-grep -r "SPDX-License-Identifier: PMPL" --include="*.rs" --include="*.zig" --include="*.idr" --include="*.sh" --include="*.toml" . | wc -l
+[source,bash]
+----
+# Files tagged with a PMPL variant (should be 27). This file is excluded:
+# it contains the pattern in the example itself and would self-match.
+grep -rl "SPDX-License-Identifier:[[:space:]]*PMPL" . \
+  | grep -v third_party | grep -v LICENSE-STATUS | wc -l
+
+# Files whose LICENSE tag is exactly the bare string "PMPL" (should be 0)
+grep -rn "SPDX-License-Identifier:[[:space:]]*PMPL\([^A-Za-z0-9._+-]\|$\)" . | grep -v LICENSE-STATUS
+----
+
+The root `LICENSE` should be byte-identical to the SPDX reference text:
+
+[source,bash]
+----
+cmp LICENSE LICENSES/AGPL-3.0-or-later.txt && echo IDENTICAL
 ----
 
 == Compliance
 
-✅ LICENSE file updated with AGPL-3.0-or-later
-✅ All source/config files have AGPL-3.0-or-later SPDX headers
-✅ All documentation files have CC-BY-SA-4.0 SPDX headers
-✅ No PMPL SPDX headers in code files
-✅ GitHub-required files remain as .md
-✅ PMPL campaign documentation created and clearly separated
+* ✅ Root `LICENSE` is the verbatim AGPL-3.0 text and is machine-detectable
+* ✅ Full licence texts present under `LICENSES/` per the REUSE specification
+* ✅ AGPL-3.0-or-later is the repository's licence, unchanged
+* ❌ 144 first-party files have no SPDX header
+* ❌ 27 first-party files carry the non-SPDX `PMPL-1.0-or-later` tag
+* ❌ 34 `.adoc` files are AGPL-3.0-or-later against a stated CC-BY-SA-4.0 policy
+* ❌ `docs/licensing/PMPL-CAMPAIGN.adoc` is referenced but absent
 
 == See Also
 
-* link:LICENSE[LICENSE] — Full license text
-* link:docs/licensing/[docs/licensing/] — Licensing documentation
+* link:LICENSE[LICENSE] — verbatim AGPL-3.0-or-later text
+* link:LICENSING.adoc[LICENSING.adoc] — scope split, copyright, third-party components
 * link:https://www.gnu.org/licenses/agpl-3.0.html[AGPL-3.0 License]
 * link:https://creativecommons.org/licenses/by-sa/4.0/[CC-BY-SA-4.0 License]
+* link:https://reuse.software[REUSE Specification]

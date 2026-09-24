@@ -9,7 +9,7 @@ Authoritative protocols live in:
 This repo keeps only thin bindings:
 
 - `dispatch.sh` maps canonical commands to central protocol paths.
-- `custom-checks.k9` defines repo-local policy checks.
+- `custom-checks.self-validating` defines repo-local policy checks.
 - `local-hooks.sh` provides optional repo-specific hook behavior.
 
 ## Canonical Commands

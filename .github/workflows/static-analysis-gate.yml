@@ -28,53 +28,111 @@ jobs:
         uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
-      - name: Install panic-attack (if available)
+      - name: Build panic-attack from pinned source
         id: install
         run: |
-          # Try to fetch the latest release binary from the org
-          PA_URL="https://github.com/hyperpolymath/panic-attack/releases/latest/download/panic-attack-linux-x86_64"
-          if curl -fsSL --head "$PA_URL" >/dev/null 2>&1; then
-            curl -fsSL -o /usr/local/bin/panic-attack "$PA_URL"
-            chmod +x /usr/local/bin/panic-attack
-            echo "installed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice::panic-attack binary not available — skipping assail"
-            echo "installed=false" >> "$GITHUB_OUTPUT"
-          fi
+          set -euo pipefail
+          # PINNED by commit SHA, following the hypatia-scan job below.
+          #
+          # This step used to curl an executable from
+          #   .../releases/latest/download/panic-attack-linux-x86_64
+          # which is both a moving target (#101) and, as of 2026-09-24, a
+          # 404: panic-attack's only release (v1.0.1) carries zero assets,
+          # and /releases/latest resolves to it. The `curl --head` test
+          # therefore always failed, `installed` was always false, every
+          # scanning step below was skipped, and the job reported SUCCESS
+          # having scanned nothing (#100).
+          #
+          # Building from source at a pinned commit is strictly stronger than
+          # a checksum-pinned binary download: nothing prebuilt is trusted,
+          # and the toolchain is the runner's own.
+          #
+          # 27b3d93b11fbfc03cee695e791904d741ce2b24b is main HEAD as of
+          # 2026-09-24 and reports version 2.5.5. The CLI contract below was
+          # verified against a build of exactly this commit.
+          PA_SHA=27b3d93b11fbfc03cee695e791904d741ce2b24b
+          git clone -q --filter=blob:none \
+            https://github.com/hyperpolymath/panic-attack.git "$HOME/panic-attack"
+          git -C "$HOME/panic-attack" checkout -q "$PA_SHA"
+          # FAIL CLOSED, as the hypatia job does. A gate that cannot run must
+          # go red; it must not skip itself green.
+          test -f "$HOME/panic-attack/Cargo.toml" \
+            || { echo "::error::panic-attack checkout has no Cargo.toml at $PA_SHA"; exit 1; }
+          cargo install --path "$HOME/panic-attack" --bin panic-attack --locked --quiet \
+            || { echo "::error::panic-attack failed to build at $PA_SHA"; exit 1; }
+          command -v panic-attack >/dev/null \
+            || { echo "::error::panic-attack built but is not on PATH"; exit 1; }
+          panic-attack --version
+          echo "installed=true" >> "$GITHUB_OUTPUT"
       - name: Run panic-attack assail
         id: assail
         if: steps.install.outputs.installed == 'true'
         run: |
+          # The report is an OBJECT (AssailReport, schema_version "2.5"), not a
+          # top-level array of findings. Findings live in `.weak_points[]`, with
+          # `severity` CAPITALISED ("Critical"/"High"/"Medium"/"Low") and the
+          # text in `.description`, not `.message`.
+          #
+          # The previous version of this step got all three wrong AND passed a
+          # flag that does not exist. Verified against a real build at
+          # 27b3d93:
+          #
+          #   panic-attack assail --format json .
+          #     -> exit 2, "error: unexpected argument '--format' found"
+          #
+          #   jq '. | length' report.json
+          #     -> 10, the count of top-level KEYS, not of findings
+          #
+          #   jq '[.[] | select(.severity == "critical")] | length'
+          #     -> jq: error: Cannot index string with string "severity"
+          #        (swallowed by `|| echo 0`, so CRITICAL was always 0)
+          #
+          # `--headless` is the documented CI-safe mode; `--output` writes the
+          # report to a file so stdout stays clean. Exit status is propagated:
+          # it was previously captured into PA_EXIT, echoed to an output, and
+          # then never checked.
           set +e
-          panic-attack assail --format json . > panic-attack-findings.json
+          panic-attack assail --headless --output panic-attack-report.json .
           PA_EXIT=$?
           set -e
-
-          # Same defect class as the Hypatia job below: `2>&1` folded the
-          # scanner's stderr into the JSON payload, so every jq parse failed,
-          # every count silently became 0 via `|| echo 0`, and "Fail on critical
-          # findings" could never fire on any input. Keep stderr on the log.
-          if [ ! -s panic-attack-findings.json ]; then
-            echo "[]" > panic-attack-findings.json
+          if [ "$PA_EXIT" -ne 0 ]; then
+            echo "::error::panic-attack assail failed with exit ${PA_EXIT}"
+            exit "$PA_EXIT"
+          fi
+          # Assert the shape rather than defaulting to a clean result.
+          if [ ! -s panic-attack-report.json ] \
+             || ! jq -e 'type == "object" and (.weak_points | type == "array")' \
+                  panic-attack-report.json >/dev/null 2>&1; then
+            echo "::error::panic-attack did not produce a valid AssailReport"
+            exit 1
+          fi
+          SCHEMA=$(jq -r '.schema_version // "unknown"' panic-attack-report.json)
+          if [ "$SCHEMA" != "2.5" ]; then
+            echo "::warning::AssailReport schema_version is ${SCHEMA}, expected 2.5 — the jq paths below may be stale"
           fi
 
-          # Deliberately a WARNING, not a failure. panic-attack is a downloaded
-          # release binary whose exit-code and output contract are not verified
-          # here, and it has no confirmed --exit-zero equivalent, so we surface a
-          # malformed payload in the log rather than block on an unverified tool.
-          # Promote to `exit 1` (as the Hypatia job does) once that contract is
-          # confirmed -- see the follow-up issue linked from this PR.
-          if ! jq -e 'type == "array"' panic-attack-findings.json >/dev/null 2>&1; then
-            echo "::warning::panic-attack output is not a JSON array (exit ${PA_EXIT}); counts below are unreliable"
-          fi
+          # Suppressed findings are retained for audit but excluded from CI
+          # counts by the tool's own contract (WeakPoint.suppressed).
+          FILTER='.weak_points[] | select(.suppressed != true)'
+          TOTAL=$(jq    "[$FILTER] | length" panic-attack-report.json)
+          CRITICAL=$(jq "[$FILTER | select(.severity == \"Critical\")] | length" panic-attack-report.json)
+          HIGH=$(jq     "[$FILTER | select(.severity == \"High\")] | length"     panic-attack-report.json)
+          MEDIUM=$(jq   "[$FILTER | select(.severity == \"Medium\")] | length"   panic-attack-report.json)
+          LOW=$(jq      "[$FILTER | select(.severity == \"Low\")] | length"      panic-attack-report.json)
 
-          # Parse finding counts
-          TOTAL=$(jq '. | length' panic-attack-findings.json 2>/dev/null || echo 0)
-          CRITICAL=$(jq '[.[] | select(.severity == "critical")] | length' panic-attack-findings.json 2>/dev/null || echo 0)
-          HIGH=$(jq '[.[] | select(.severity == "high")] | length' panic-attack-findings.json 2>/dev/null || echo 0)
-          MEDIUM=$(jq '[.[] | select(.severity == "medium")] | length' panic-attack-findings.json 2>/dev/null || echo 0)
-          LOW=$(jq '[.[] | select(.severity == "low")] | length' panic-attack-findings.json 2>/dev/null || echo 0)
+          # Normalise into the same findings-array shape hypatia-scan emits, so
+          # deposit-findings can tag and concatenate both unchanged: severity
+          # lowercased, `.message` carrying the description. Both the raw
+          # report and this array are uploaded below.
+          jq '[.weak_points[] | select(.suppressed != true) | {
+                 file:     (.file // null),
+                 line:     (.line // null),
+                 severity: (.severity | ascii_downcase),
+                 message:  .description,
+                 category: .category
+               }]' panic-attack-report.json > panic-attack-findings.json
 
+          echo "schema=$SCHEMA" >> "$GITHUB_OUTPUT"
           echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
           echo "critical=$CRITICAL" >> "$GITHUB_OUTPUT"
           echo "high=$HIGH" >> "$GITHUB_OUTPUT"
@@ -84,21 +142,25 @@ jobs:
       - name: Emit check annotations
         if: steps.install.outputs.installed == 'true'
         run: |
-          # Convert JSON findings into GitHub Actions annotations
-          jq -r '.[] | select(.file != null) |
-            if .severity == "critical" then
-              "::error file=\(.file),line=\(.line // 1)::[panic-attack] \(.message)"
-            elif .severity == "high" then
-              "::error file=\(.file),line=\(.line // 1)::[panic-attack] \(.message)"
-            else
-              "::warning file=\(.file),line=\(.line // 1)::[panic-attack] \(.message)"
-            end
+          # Annotations only anchor to a file when the path is relative to the
+          # workspace, so strip the absolute prefix as the hypatia job does.
+          jq -r --arg ws "$GITHUB_WORKSPACE/" '
+            .[] | select(.file != null) |
+            ((.file | ltrimstr($ws)) as $f |
+             if .severity == "critical" or .severity == "high" then
+               "::error file=\($f),line=\(.line // 1)::[panic-attack] \(.category): \(.message)"
+             else
+               "::warning file=\($f),line=\(.line // 1)::[panic-attack] \(.category): \(.message)"
+             end)
           ' panic-attack-findings.json || true
       - name: Write step summary
         if: steps.install.outputs.installed == 'true'
         run: |
           cat <<EOF >> "$GITHUB_STEP_SUMMARY"
           ## panic-attack assail Results
+
+          Report schema: \`${{ steps.assail.outputs.schema }}\`
+          Suppressed findings are excluded, per the tool's own contract.
 
           | Severity | Count |
           |----------|-------|
@@ -108,18 +170,13 @@ jobs:
           | Low      | ${{ steps.assail.outputs.low }} |
           | **Total**| ${{ steps.assail.outputs.total }} |
           EOF
-      - name: Create stub findings (when panic-attack unavailable)
-        if: steps.install.outputs.installed != 'true'
-        run: |
-          echo "[]" > panic-attack-findings.json
-          echo "## panic-attack assail" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Skipped: panic-attack not available in this environment." >> "$GITHUB_STEP_SUMMARY"
       - name: Upload panic-attack findings
         uses: actions/upload-artifact@v7.0.1
         with:
           name: panic-attack-findings
-          path: panic-attack-findings.json
+          path: |
+            panic-attack-findings.json
+            panic-attack-report.json
           retention-days: 90
       - name: Fail on critical findings
         if: steps.install.outputs.installed == 'true' && steps.assail.outputs.critical > 0
@@ -259,76 +316,76 @@ jobs:
         uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
-      - name: Install panic-attack (if available)
-        id: install
+      - name: Report that this capability does not exist
         run: |
-          PA_URL="https://github.com/hyperpolymath/panic-attack/releases/latest/download/panic-attack-linux-x86_64"
-          if curl -fsSL --head "$PA_URL" >/dev/null 2>&1; then
-            curl -fsSL -o /usr/local/bin/panic-attack "$PA_URL"
-            chmod +x /usr/local/bin/panic-attack
-            echo "installed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice::panic-attack binary not available — skipping Patch Bridge"
-            echo "installed=false" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Run Patch Bridge triage
-        id: triage
-        if: steps.install.outputs.installed == 'true'
-        run: |
-          set +e
-          panic-attack bridge triage --format json . > bridge-report.json 2>&1
-          PB_EXIT=$?
-          set -e
-
-          if [ ! -s bridge-report.json ] || ! jq empty bridge-report.json 2>/dev/null; then
-            echo '{"cves":[],"mitigated":0,"unmitigable":0,"concatenative":0,"informational":0}' > bridge-report.json
-          fi
-
-          UNMITIGABLE=$(jq '.unmitigable // 0' bridge-report.json)
-          MITIGATED=$(jq '.mitigated // 0' bridge-report.json)
-          CONCATENATIVE=$(jq '.concatenative // 0' bridge-report.json)
-          INFORMATIONAL=$(jq '.informational // 0' bridge-report.json)
-
-          echo "unmitigable=$UNMITIGABLE" >> "$GITHUB_OUTPUT"
-          echo "mitigated=$MITIGATED" >> "$GITHUB_OUTPUT"
-          echo "concatenative=$CONCATENATIVE" >> "$GITHUB_OUTPUT"
-          echo "informational=$INFORMATIONAL" >> "$GITHUB_OUTPUT"
-      - name: Write step summary
-        if: steps.install.outputs.installed == 'true'
-        run: |
-          cat <<EOF >> "$GITHUB_STEP_SUMMARY"
-          ## Patch Bridge CVE Triage
-
-          | Classification | Count |
-          |----------------|-------|
-          | Unmitigable    | ${{ steps.triage.outputs.unmitigable }} |
-          | Mitigated      | ${{ steps.triage.outputs.mitigated }} |
-          | Concatenative  | ${{ steps.triage.outputs.concatenative }} |
-          | Informational  | ${{ steps.triage.outputs.informational }} |
-
-          Unmitigable CVEs require dependency replacement or rearchitecture.
-          Mitigated CVEs have active controls with soundness proofs.
-          Concatenative risks are CVE combinations that multiply severity.
-          EOF
-      - name: Create stub report (when unavailable)
-        if: steps.install.outputs.installed != 'true'
-        run: |
-          echo '{"cves":[],"mitigated":0,"unmitigable":0,"concatenative":0,"informational":0}' > bridge-report.json
-          echo "## Patch Bridge CVE Triage" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Skipped: panic-attack not available in this environment." >> "$GITHUB_STEP_SUMMARY"
+          # FAIL CLOSED. There is nothing to fix in place here, because the
+          # thing this job invokes is not a feature of the tool.
+          #
+          # Verified 2026-09-24 against a build of panic-attack at
+          # 27b3d93b11fbfc03cee695e791904d741ce2b24b (main HEAD, v2.5.5):
+          #
+          #   $ panic-attack bridge triage --format json .
+          #   error: unrecognized subcommand 'bridge'
+          #   exit 2
+          #
+          # `panic-attack --help` lists 24 subcommands and `bridge` is not
+          # among them. The nearest relative is `assay` ("survey a target for
+          # proven-library substitution candidates"), which is dependency
+          # substitution, not CVE triage — repointing this job at it would
+          # rename the gap rather than close it.
+          #
+          # Previously this job downloaded a binary from a URL that 404s, so
+          # `installed` was always false, the triage step never ran, a stub
+          # `{"unmitigable":0}` was written, and the job reported SUCCESS
+          # having triaged nothing. Worse, even had the subcommand existed,
+          # the final step only echoed `::warning::` — a step named "Fail on
+          # unmitigable CVEs in critical paths" that contained no `exit 1`
+          # and so could never fail.
+          #
+          # So this check has never executed. It is now red on purpose: a
+          # permanently-green check that never ran is worse than an absent
+          # one, because it is read as coverage.
+          #
+          # To clear this, an owner must pick one:
+          #   1. implement CVE triage in panic-attack and repoint this job;
+          #   2. delete this job and the `patch_bridge` field that
+          #      deposit-findings reads from its artifact;
+          #   3. replace it with the real CVE source (OSV / cargo-audit),
+          #      which is a different tool and a different schema.
+          echo "::error::patch-bridge-triage invokes 'panic-attack bridge triage', a subcommand that does not exist in panic-attack 2.5.5. This check has never executed. See the comment in this step for the three ways to clear it."
+          {
+            echo "## Patch Bridge CVE Triage"
+            echo ""
+            echo "**Not run.** \`panic-attack bridge triage\` is not a real"
+            echo "subcommand — \`panic-attack --help\` lists 24 subcommands and"
+            echo "\`bridge\` is not one of them (verified at 27b3d93, v2.5.5)."
+            echo ""
+            echo "This job previously reported success by downloading a binary"
+            echo "from a URL that 404s, skipping the scan, and writing a stub"
+            echo "report with \`unmitigable: 0\`. No CVE triage has ever run on"
+            echo "this repository."
+          } >> "$GITHUB_STEP_SUMMARY"
+          mkdir -p reports
+          cat > reports/bridge-report.json <<'JSON'
+          {
+            "status": "not_implemented",
+            "reason": "panic-attack has no 'bridge' subcommand as of v2.5.5 (27b3d93)",
+            "cves": [],
+            "mitigated": null,
+            "unmitigable": null,
+            "concatenative": null,
+            "informational": null
+          }
+          JSON
+          exit 1
       - name: Upload bridge report
+        if: always()
         uses: actions/upload-artifact@v7.0.1
         with:
           name: bridge-report
-          path: bridge-report.json
+          path: reports/bridge-report.json
           retention-days: 90
-      - name: Fail on unmitigable CVEs in critical paths
-        if: steps.install.outputs.installed == 'true' && steps.triage.outputs.unmitigable > 0
-        run: |
-          echo "::warning::Patch Bridge found ${{ steps.triage.outputs.unmitigable }} unmitigable CVE(s) — review required"
-          # Warning only, not blocking. Unmitigable means the developer needs
-          # to make an architectural decision, not that the PR is wrong.
+          if-no-files-found: warn
   # ---------------------------------------------------------------------------
   # Job 4: deposit-findings (combines + archives for gitbot-fleet)
   # ---------------------------------------------------------------------------
@@ -370,10 +427,15 @@ jobs:
           jq '[.[] | . + {"scanner": "panic-attack"}]' "$PA_FILE" > "$RUNNER_TEMP/pa-tagged.json"
           jq '[.[] | . + {"scanner": "hypatia"}]'      "$HYP_FILE" > "$RUNNER_TEMP/hyp-tagged.json"
 
-          # Read bridge report (CVE triage, not findings array)
+          # Read bridge report. There is no honest zero to substitute here:
+          # patch-bridge-triage cannot run because `panic-attack bridge triage`
+          # is not a real subcommand, so a missing artifact means "not run",
+          # never "no CVEs". The old fallback wrote unmitigable: 0, which
+          # reads downstream as a clean triage.
           BRIDGE_FILE="findings/bridge-report.json"
           if [ ! -s "$BRIDGE_FILE" ] || ! jq empty "$BRIDGE_FILE" 2>/dev/null; then
-            echo '{"cves":[],"mitigated":0,"unmitigable":0,"concatenative":0,"informational":0}' > "$BRIDGE_FILE"
+            echo '{"status":"not_run","reason":"bridge-report artifact absent; patch-bridge-triage has no working implementation","cves":[],"mitigated":null,"unmitigable":null,"concatenative":null,"informational":null}' > "$BRIDGE_FILE"
+            echo "::warning::bridge-report artifact was absent or invalid; recorded as not_run rather than as a clean triage"
           fi
 
           # Build unified report envelope

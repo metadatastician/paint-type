@@ -7,6 +7,8 @@
 
 module Types
 
+import Data.Nat
+
 %default total
 
 ||| Example: A bounded natural number (0 to max).
@@ -15,17 +17,35 @@ public export
 record Bounded (max : Nat) where
   constructor MkBounded
   value : Nat
-  {auto 0 inBounds : LTE value max}
+  ||| Witness that `value` is within `max`.
+  |||
+  ||| Declared as a plain field, not `{auto 0 ...}`. In Idris2 0.8.0 an
+  ||| erased record field has no accessible projection, so the erased form
+  ||| made `boundedLeMax` below fail with
+  ||| `Bounded.(.inBounds) is not accessible in this context`. Dropping
+  ||| `auto` but keeping `0` fails identically, and in the brace form the
+  ||| witness becomes an implicit constructor argument, so `MkBounded 0`
+  ||| then has type `LTE 0 ?right -> Bounded ?max` rather than
+  ||| `Bounded ?max`. A plain field is the only form that both yields a
+  ||| projection and keeps `MkBounded 0 LTEZero` well-typed.
+  |||
+  ||| The consequence is that the witness is retained at runtime. `LTE` is
+  ||| a Peano-style unary proof, so this is not free for large `max` -- any
+  ||| use of `Bounded` across the FFI should re-check the emitted layout.
+  inBounds : LTE value max
 
 ||| Proof that a Bounded value is always <= max.
+|||
+||| `max` is bound explicitly. Left implicit it is auto-bound as a fresh
+||| metavariable and Idris2 warns that it shadows `Prelude.EqOrd.max`.
 export
-boundedLeMax : (b : Bounded max) -> LTE b.value max
+boundedLeMax : {max : Nat} -> (b : Bounded max) -> LTE b.value max
 boundedLeMax b = b.inBounds
 
 ||| Proof that zero is always a valid Bounded value.
 export
 zeroIsBounded : {max : Nat} -> Bounded (S max)
-zeroIsBounded = MkBounded 0
+zeroIsBounded = MkBounded 0 LTEZero
 
 ||| Example: A non-empty list with a compile-time guarantee.
 public export

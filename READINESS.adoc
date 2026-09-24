@@ -15,13 +15,26 @@
 | Component           | Grade | Release Stage | Evidence Summary                                          |
 |---------------------|-------|---------------|-----------------------------------------------------------|
 | Idris2 ABI (Types, Layout, Foreign) | C | Pre-alpha | Compiles + CI-checked; ABI category fully proven (ABI-1..5 done) |
-| Zig FFI (libpt)     | C     | Pre-alpha     | 29/29 tests pass; 23 exports (pt_tile_* + pt_layer_* + slot helpers) |
-| Ephapax (Rust core) | C     | Pre-alpha     | Tile API + 11 compositing ops + UndoGraph + layer model + brush engine + benches (cargo test 98/98 + 1 doctest) |
+| Zig FFI (libpt)     | C     | Pre-alpha     | 23/23 tests pass; 23 exports (pt_tile_* + pt_layer_* + slot helpers) |
+| Ephapax (Rust core) | C     | Pre-alpha     | Tile API + 11 compositing ops + UndoGraph + layer model + brush engine + benches (cargo test 104/104 + 1 doctest) |
 | AffineScript bridge | C     | Pre-alpha     | Verified `.twasm` schemas in `src/bridges/` (paint-type#39 closed); UI chrome .affine files integrated in shell |
 | Gossamer shell integration | C | Pre-alpha  | Integrated into paint-type shell (commit 04774b3); webview abstraction complete, cross-platform support enabled |
 | Burble / Groove     | D     | Pre-alpha     | Not started; architecture specified                       |
 
-**Overall:** Grade D (closing on C) — 15 PRs of v0.2.0 work landed 2026-06-01: compositing primitives + 7 more operators (lerp/multiply/screen/in/out/atop/xor), non-uniform `Tile::composite_over`, persistent UndoGraph + benches, basic Layer / LayerStack model, brush engine (tip masks + stroke sampling + tile-local stamping), pt_layer_* cross-language FFI, ABI-3/ABI-5/TP-3 proofs, **verified `.twasm` schemas at `src/bridges/`** (PR #40), and the full CI tail — coverage (PR #32 + #34), E2E pipeline (PR #33), fuzz harness (PR #35), Rust CI now green on main (PRs #36/#37/#38). ABI category fully proven; cargo test 98/98 + 1 doctest; zig build test 29/29; aspect tests 7 PASS. Remaining v0.2.0 work: AffineScript bridge generated and verifier-accepted (DONE, paint-type#39). Outstanding for Grade C: Gossamer integration started.
+// TEST COUNTS RE-MEASURED 2026-09-23. This file claimed "cargo test 98/98" and
+// "zig build test 29/29". Both were stale. Actually run on commit 8901d12 with
+// rustc/cargo 1.85.1 and Zig 0.15.1:
+//
+//   cargo test --manifest-path src/paint_core/Cargo.toml
+//     -> 101 passed (lib) + 2 passed + 1 passed (doctest) = 104, 0 failed
+//   (cd src/interface/ffi && zig build test --summary all)
+//     -> "Build Summary: 7/7 steps succeeded; 23/23 tests passed"
+//
+// AFFIRMATION.adoc already said "expect 104/104" for Rust — so this file and the
+// README/EXPLAINME prose had drifted from the affirmation, not the reverse.
+// Re-measure rather than copying these numbers forward.
+
+**Overall:** Grade D (closing on C) — 15 PRs of v0.2.0 work landed 2026-06-01: compositing primitives + 7 more operators (lerp/multiply/screen/in/out/atop/xor), non-uniform `Tile::composite_over`, persistent UndoGraph + benches, basic Layer / LayerStack model, brush engine (tip masks + stroke sampling + tile-local stamping), pt_layer_* cross-language FFI, ABI-3/ABI-5/TP-3 proofs, **verified `.twasm` schemas at `src/bridges/`** (PR #40), and the full CI tail — coverage (PR #32 + #34), E2E pipeline (PR #33), fuzz harness (PR #35), Rust CI now green on main (PRs #36/#37/#38). ABI category fully proven; cargo test 104/104 + 1 doctest; zig build test 23/23; aspect tests 7 PASS. Remaining v0.2.0 work: AffineScript bridge generated and verifier-accepted (DONE, paint-type#39). Outstanding for Grade C: Gossamer integration started.
 
 ---
 
@@ -29,8 +42,8 @@
 
 - Repository follows RSR standards (CI/CD, SPDX, machine-readable metadata, CRG structure)
 - `src/interface/Abi/` — Idris2 types and layout proofs compile and typecheck
-- `src/interface/ffi/` — Zig libpt builds and integration tests pass (29/29)
-- `src/paint_core/` — Rust crate builds with `cargo test` (98/98 + 1 doctest); `cargo clippy --all-targets -- -D warnings` clean
+- `src/interface/ffi/` — Zig libpt builds and integration tests pass (23/23)
+- `src/paint_core/` — Rust crate builds with `cargo test` (104/104 + 1 doctest); `cargo clippy --all-targets -- -D warnings` clean
 - dogfood-gate, hypatia-scan, static-analysis-gate workflows all green
 - **Rust CI green on `main` since 2026-06-01** (`.github/workflows/rust.yml` — PRs #36/#37/#38)
 - idris-ci, coverage, e2e, and fuzz-smoke workflows wired and exercising the v0.2.0 surface
@@ -61,9 +74,9 @@ To reach C:
   ABI/FFI subset relation is now 7 Idris2 imports ⊆ **23** Zig exports
   (pt_tile_* + pt_layer_* + slot helpers).
 - **ABI category fully proven**: ABI-1/2/3/4/5 all done. TP-1/TP-3 done.
-- `cargo test` **98/98** + 1 doctest pass (lib + composite + undo +
+- `cargo test` **104/104** + 1 doctest pass (lib + composite + undo +
   layer + brush modules) after the f16→f32 underflow fix (PR #11).
-- `zig build && zig build test` **29/29** pass — pt_tile_* lifecycle/fill/
+- `zig build && zig build test` **23/23** pass — pt_tile_* lifecycle/fill/
   read/write/bounds/version/null-safety plus 11 pt_layer_* integration
   tests (lifecycle/push/delete/reorder/opacity-clamp/visibility/safety).
 - Undo-graph benchmark baseline: 88 ns/commit, 2 ns/checkout.
