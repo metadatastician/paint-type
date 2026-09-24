@@ -14,6 +14,16 @@ updates:
         patterns:
           - "*"
     open-pull-requests-limit: 2
+    ignore:
+      # HOLD: github/codeql-action at v4.38.0 (SHA-pinned). v4.38.1 fails
+      # GitHub workflow-startup validation estate-wide (codeql.yml /
+      # oikosbot.yml startup_failure, zero jobs, on every repo that took the
+      # bump; rollback precedent: hyperpolymath/nexia-list#100,
+      # hyperpolymath/standards#973/#978). A `versions: ["4.38.1"]` rule did
+      # NOT hold in the estate: dependabot re-raised the bump in SHA form
+      # within hours. Full hold until upstream clears 4.38.1 or a newer
+      # release verifies green; revisit deliberately, not nightly.
+      - dependency-name: "github/codeql-action"
 
   # Rust/Cargo
   - package-ecosystem: "cargo"

@@ -44,11 +44,16 @@ jobs:
         with:
           persist-credentials: false
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4.38.1
+        # HOLD: pinned to the v4.38.0 SHA. v4.38.1 (1c5b675) is rejected by
+        # GitHub's workflow-startup validation estate-wide — every run dies at
+        # startup with zero jobs. Do not bump until upstream clears 4.38.1
+        # (hyperpolymath/nexia-list#100, hyperpolymath/standards#973/#978);
+        # the dependabot hold in .github/dependabot.yml enforces this.
+        uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4.38.1
+        uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
         with:
           category: "/language:${{ matrix.language }}"
