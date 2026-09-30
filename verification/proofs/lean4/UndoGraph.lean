@@ -188,9 +188,9 @@ theorem getAppend_lt {α : Type} (xs ys : List α) {r : Nat}
   | nil => exact absurd h (Nat.not_lt_zero r)
   | cons x xs ih =>
     cases r with
-    | zero => rfl
+    | zero => simp only [List.cons_append, List.getElem?_cons_zero]
     | succ r' =>
-      simp only [List.cons_append]
+      simp only [List.cons_append, List.getElem?_cons_succ]
       exact ih (Nat.lt_of_succ_lt_succ h)
 
 /-- Clause (2): checking out an existing revision is invariant under any
@@ -229,8 +229,9 @@ theorem parentOf_commit_lt (g : Graph α) (p : Nat) (v : α)
 theorem getAppend_eq {α : Type} (xs : List α) (y : α) (ys : List α) :
     (xs ++ y :: ys)[xs.length]? = some y := by
   induction xs with
-  | nil => rfl
-  | cons x xs ih => simp
+  | nil => simp only [List.nil_append, List.length_nil, List.getElem?_cons_zero]
+  | cons x xs ih =>
+    simpa only [List.cons_append, List.length_cons, List.getElem?_cons_succ] using ih
 
 /-- The parent pointer of the *newly committed* node (id `len g`) is `some p`.
 Mirrors `Node::parent` set once at construction. -/
