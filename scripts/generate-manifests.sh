@@ -621,11 +621,11 @@ walk_and_generate() {
     local prune_dirs=(".git" ".machine_readable" "node_modules" "target" "dist" "build" ".zig-cache" ".venv" ".cache" ".local" ".mypy_cache" ".pytest_cache" ".tox" ".nox" ".idea" ".vscode" "__pycache__" ".egg-info" "third_party")
     
     # Build find command to skip pruned directories
-    local find_cmd="find \"$REPO_ROOT\""
+    local find_cmd=(find "$REPO_ROOT")
     for prune_dir in "${prune_dirs[@]}"; do
-        find_cmd+=" -path \"*/${prune_dir}/*\" -prune -o"
+        find_cmd+=(-path "*/${prune_dir}/*" -prune -o)
     done
-    find_cmd+=" -type d -print0"
+    find_cmd+=(-type d -print0)
     
     # Process each directory
     while IFS= read -r -d '' dir; do
@@ -635,7 +635,7 @@ walk_and_generate() {
         fi
         
         generate_directory_manifests "$dir"
-    done < <(eval "$find_cmd")
+    done < <("${find_cmd[@]}")
     
     # Summary
     echo ""
