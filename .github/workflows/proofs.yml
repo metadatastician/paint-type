@@ -20,11 +20,14 @@ on:
     paths:
       - 'verification/proofs/**'
       - '.github/workflows/proofs.yml'
+  # pull_request is deliberately NOT path-filtered. `Agda proof (INV-3)` is a
+  # required status check on main, and a required check must be emitted on
+  # EVERY pull request: a path-filtered trigger never reports on a PR that
+  # does not touch the proofs, so that PR would wait on the check forever.
+  # Do not re-add `paths:` here, and do not rename the job names below —
+  # renaming a required context orphans every PR opened before the rename.
   pull_request:
     branches: [main]
-    paths:
-      - 'verification/proofs/**'
-      - '.github/workflows/proofs.yml'
   workflow_dispatch:
 # Agda installs fast via apt (prebuilt binary); cancel superseded runs to
 # keep concurrency headroom for other workflows.
