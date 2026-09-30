@@ -21,7 +21,7 @@ workflows:
         - 'dtolnay/rust-toolchain@stable'
         - 'mlugg/setup-zig@v2.2.1'
         - 'Swatinem/rust-cache@v2.9.2'
-        - 'taiki-e/install-action@v2.87.17'
+        - 'taiki-e/install-action@v2.87.18'
     '.github/workflows/cross-platform.yml':
         - 'actions/checkout@v7.0.1'
         - 'dtolnay/rust-toolchain@stable'
@@ -278,9 +278,9 @@ dependencies:
         commit: 'sha1-6323deb102c322ba6fcbdcafc7e3dddab59af2b6'
         owner_id: 580492
         repo_id: 298565987
-    'taiki-e/install-action@v2.87.17':
-        ref: 'v2.87.17'
-        commit: 'sha1-94c31af3204a9f15ab40b35ad084410b905bbc73'
+    'taiki-e/install-action@v2.87.18':
+        ref: 'v2.87.18'
+        commit: 'sha1-dfae9bf3d6f6c6f20ef4ebb3486c01a51341ff12'
         owner_id: 43724913
         repo_id: 442947557
     'webfactory/ssh-agent@v0.10.0':
