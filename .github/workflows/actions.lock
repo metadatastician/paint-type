@@ -8,10 +8,10 @@ workflows:
     '.github/workflows/bridge-verify.yml':
         - 'actions/checkout@v7.0.1'
         - 'dtolnay/rust-toolchain@stable'
-        - 'Swatinem/rust-cache@v2.9.2'
+        - 'swatinem/rust-cache@v2.9.2'
     '.github/workflows/codeql.yml':
         - 'actions/checkout@v7.0.1'
-        - 'github/codeql-action@b96794f015dfd88f77b49b1c93e0fa7110f94c63'
+        - 'github/codeql-action@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2'
     '.github/workflows/collab-ci.yml':
         - 'actions/checkout@v7.0.1'
     '.github/workflows/coverage.yml':
@@ -20,13 +20,13 @@ workflows:
         - 'codecov/codecov-action@v7.1.1'
         - 'dtolnay/rust-toolchain@stable'
         - 'mlugg/setup-zig@v2.2.1'
-        - 'Swatinem/rust-cache@v2.9.2'
-        - 'taiki-e/install-action@v2.87.18'
+        - 'swatinem/rust-cache@v2.9.2'
+        - 'taiki-e/install-action@v2.87.26'
     '.github/workflows/cross-platform.yml':
         - 'actions/checkout@v7.0.1'
         - 'dtolnay/rust-toolchain@stable'
         - 'mlugg/setup-zig@v2.2.1'
-        - 'Swatinem/rust-cache@v2.9.2'
+        - 'swatinem/rust-cache@v2.9.2'
     '.github/workflows/dogfood-gate.yml':
         - 'actions/checkout@v7.0.1'
         - 'hyperpolymath/k9-ecosystem@main'
@@ -34,13 +34,13 @@ workflows:
         - 'actions/checkout@v7.0.1'
         - 'dtolnay/rust-toolchain@stable'
         - 'goto-bus-stop/setup-zig@v2.2.1'
-        - 'Swatinem/rust-cache@v2.9.2'
+        - 'swatinem/rust-cache@v2.9.2'
     '.github/workflows/fuzz-smoke.yml':
         - 'actions/checkout@v7.0.1'
         - 'actions/upload-artifact@v7.0.1'
         - 'dtolnay/rust-toolchain@stable'
         - 'mlugg/setup-zig@v2.2.1'
-        - 'Swatinem/rust-cache@v2.9.2'
+        - 'swatinem/rust-cache@v2.9.2'
     '.github/workflows/governance.yml':
         - 'hyperpolymath/standards@092dedada188f56c5915f74a5fd40aac093742c3'
     '.github/workflows/guix-nix-policy.yml':
@@ -68,7 +68,7 @@ workflows:
         - 'webfactory/ssh-agent@v0.10.0'
     '.github/workflows/oikosbot.yml':
         - 'actions/checkout@v7.0.1'
-        - 'github/codeql-action@b96794f015dfd88f77b49b1c93e0fa7110f94c63'
+        - 'github/codeql-action@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2'
         - 'hyperpolymath/oikosbot@main'
     '.github/workflows/openssf-compliance.yml':
         - 'actions/checkout@v7.0.1'
@@ -93,7 +93,7 @@ workflows:
         - 'actions/checkout@v7.0.1'
         - 'dtolnay/rust-toolchain@stable'
         - 'mlugg/setup-zig@v2.2.1'
-        - 'Swatinem/rust-cache@v2.9.2'
+        - 'swatinem/rust-cache@v2.9.2'
     '.github/workflows/scorecard.yml':
         - 'hyperpolymath/standards@092dedada188f56c5915f74a5fd40aac093742c3'
     '.github/workflows/secret-scanner.yml':
@@ -116,11 +116,6 @@ workflows:
     '.github/workflows/workflow-linter.yml':
         - 'actions/checkout@v7.0.1'
 dependencies:
-    'Swatinem/rust-cache@v2.9.2':
-        ref: 'v2.9.2'
-        commit: 'sha1-6323deb102c322ba6fcbdcafc7e3dddab59af2b6'
-        owner_id: 580492
-        repo_id: 298565987
     'actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9':
         ref: '55cc8345863c7cc4c66a329aec7e433d2d1c52a9'
         commit: 'sha1-55cc8345863c7cc4c66a329aec7e433d2d1c52a9'
@@ -215,9 +210,9 @@ dependencies:
         commit: 'sha1-54075bcc5e249e4758d363f27d099f55d843f124'
         owner_id: 47606891
         repo_id: 331103973
-    'github/codeql-action@b96794f015dfd88f77b49b1c93e0fa7110f94c63':
-        ref: 'v4.38.0'
-        commit: 'sha1-b96794f015dfd88f77b49b1c93e0fa7110f94c63'
+    'github/codeql-action@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2':
+        ref: 'v4.38.2'
+        commit: 'sha1-2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2'
         owner_id: 9919
         repo_id: 259445878
     'github/codeql-action@cdf488f595d80d6e07e03d4674febd5ab45fa938':
@@ -278,9 +273,9 @@ dependencies:
         commit: 'sha1-6323deb102c322ba6fcbdcafc7e3dddab59af2b6'
         owner_id: 580492
         repo_id: 298565987
-    'taiki-e/install-action@v2.87.18':
-        ref: 'v2.87.18'
-        commit: 'sha1-dfae9bf3d6f6c6f20ef4ebb3486c01a51341ff12'
+    'taiki-e/install-action@v2.87.26':
+        ref: 'v2.87.26'
+        commit: 'sha1-f7e5d7c961414b23f5b25b2da9294395d08513ad'
         owner_id: 43724913
         repo_id: 442947557
     'webfactory/ssh-agent@v0.10.0':
