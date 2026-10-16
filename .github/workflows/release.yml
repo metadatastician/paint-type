@@ -147,7 +147,7 @@ jobs:
           cat SHA256SUMS
 
       - name: Upload the package as a run artifact
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: ${{ steps.package.outputs.pkg }}
           path: dist/${{ steps.package.outputs.pkg }}.tar.gz

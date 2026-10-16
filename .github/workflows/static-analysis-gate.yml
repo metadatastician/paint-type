@@ -171,7 +171,7 @@ jobs:
           | **Total**| ${{ steps.assail.outputs.total }} |
           EOF
       - name: Upload panic-attack findings
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: panic-attack-findings
           path: |
@@ -295,7 +295,7 @@ jobs:
           | **Total**| ${{ steps.scan.outputs.total }} |
           EOF
       - name: Upload hypatia findings
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: hypatia-findings
           path: hypatia-findings.json
@@ -380,7 +380,7 @@ jobs:
           exit 1
       - name: Upload bridge report
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: bridge-report
           path: reports/bridge-report.json
@@ -396,17 +396,17 @@ jobs:
     if: always()
     steps:
       - name: Download panic-attack findings
-        uses: actions/download-artifact@v8.0.1
+        uses: actions/download-artifact@v8.0.2
         with:
           name: panic-attack-findings
           path: findings/
       - name: Download hypatia findings
-        uses: actions/download-artifact@v8.0.1
+        uses: actions/download-artifact@v8.0.2
         with:
           name: hypatia-findings
           path: findings/
       - name: Download bridge report
-        uses: actions/download-artifact@v8.0.1
+        uses: actions/download-artifact@v8.0.2
         with:
           name: bridge-report
           path: findings/
@@ -471,7 +471,7 @@ jobs:
           echo "medium=$MEDIUM"     >> "$GITHUB_OUTPUT"
           echo "low=$LOW"           >> "$GITHUB_OUTPUT"
       - name: Upload unified findings (fleet scanner picks these up)
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: unified-findings
           path: findings/unified-findings.json
