@@ -148,7 +148,7 @@ jobs:
           mv report.md reports/
       - name: Upload report artifact
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: manifest-verification-report
           path: reports/
@@ -255,7 +255,7 @@ jobs:
 
       - name: Upload currency report artifact
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: manifest-currency-report
           path: reports/

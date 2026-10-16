@@ -70,7 +70,7 @@ jobs:
         run: cargo +nightly fuzz run pt_layer_opacity -- -max_total_time=30 -timeout=10
       - name: Upload crash artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: fuzz-artifacts
           path: src/paint_core/fuzz/artifacts/
