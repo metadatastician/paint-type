@@ -107,7 +107,7 @@ COMMIT_JSON="$(
     const candidatePaths = new Set(
       execFileSync(
         "git",
-        ["ls-files", "--cached", "--others", "--exclude-standard"],
+        ["ls-files", "--cached", "--modified"],
         { encoding: "utf8" },
       )
         .split("\n")
