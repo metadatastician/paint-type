@@ -20,6 +20,9 @@ const std = @import("std");
 
 /// Configure shared/static libpt libraries, unit and integration tests,
 /// Hexadeca connector tests, and the optional benchmark step.
+///
+/// The default install and `lib` steps install the static archive last, leaving
+/// Windows MSVC `pt.lib` as the static archive for Rust callers.
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -44,7 +47,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .dynamic,
         .root_module = root_module,
     });
-    b.installArtifact(shared);
+    const install_shared = b.addInstallArtifact(shared, .{});
 
     //--------------------------------------------------------------------------
     // Static library: libpt.a (for the Rust crate)
@@ -98,15 +101,30 @@ pub fn build(b: *std.Build) void {
     // so nothing is left undefined. Bundle where the gap is real, not
     // everywhere.
     static.bundle_compiler_rt = target.result.os.tag != .windows;
-    b.installArtifact(static);
+    const install_static = b.addInstallArtifact(static, .{});
 
     //--------------------------------------------------------------------------
     // `zig build lib` step: builds both libraries explicitly.
     //--------------------------------------------------------------------------
 
     const lib_step = b.step("lib", "Build libpt as both shared and static libraries");
-    lib_step.dependOn(&b.addInstallArtifact(shared, .{}).step);
-    lib_step.dependOn(&b.addInstallArtifact(static, .{}).step);
+    if (target.result.os.tag == .windows) {
+        // On Windows MSVC, both `.dynamic` (DLL import library) and `.static`
+        // emit `zig-out/lib/pt.lib`. Zig's raw static COFF archive breaks
+        // rustc/MSVC `link.exe`, whereas Zig links `pt.dll` cleanly and CI puts
+        // `zig-out/bin` on `PATH`. Serialize `install_shared` strictly AFTER
+        // `install_static` so `zig-out/lib/pt.lib` is deterministically the
+        // clean MSVC import library on 100% of Windows builds instead of a
+        // non-deterministic 50/50 parallel install race.
+        install_shared.step.dependOn(&install_static.step);
+        b.getInstallStep().dependOn(&install_shared.step);
+        lib_step.dependOn(&install_shared.step);
+    } else {
+        b.getInstallStep().dependOn(&install_shared.step);
+        b.getInstallStep().dependOn(&install_static.step);
+        lib_step.dependOn(&install_shared.step);
+        lib_step.dependOn(&install_static.step);
+    }
 
     //--------------------------------------------------------------------------
     // Unit tests (in src/main.zig)

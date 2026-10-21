@@ -137,7 +137,7 @@ fi
 
 printf '%s\n' "${K9_FILES[@]}" > "$TMP_DIR/expected.txt"
 printf 'typecheck ok\n' > "$TMP_DIR/typecheck.log"
-bash "$STANDARDS_DIR/1-formats/k9/tools/k9-validate.sh" --self-test --layer L1 > "$TMP_DIR/selftest.log" 2>&1
+bash "$STANDARDS_DIR/1-formats/k9/tools/k9-validate.sh" --self-test > "$TMP_DIR/selftest.log" 2>&1
 
 bash "$STANDARDS_DIR/scripts/k9-grid.sh" render \
   --out "$TMP_DIR/k9-grid" \
@@ -154,7 +154,8 @@ bash "$STANDARDS_DIR/scripts/k9-grid.sh" render \
   --canon-ref "$STANDARDS_PIN" >/dev/null
 
 if grep -q '<!-- verdict-grid:k9 regenerated on every run -->' "$TMP_DIR/k9-grid/report.md" \
-  && [ "$(jq -r .verdict "$TMP_DIR/k9-grid/report.json")" = "green" ] \
+  && grep -q 'K9%20L0%E2%80%93L2-conformant-brightgreen' "$TMP_DIR/k9-grid/report.md" \
+  && [ "$(jq -r .state "$TMP_DIR/k9-grid/report.json")" = "green" ] \
   && [ "$(jq -r .color "$TMP_DIR/k9-grid/badge.json")" = "brightgreen" ]; then
   pass "Matrix 1 K9 Verdict Grid rendered clean ('green' / 'brightgreen')"
 else

@@ -116,14 +116,17 @@ innervation:
         - panll
         - verisimdb
   efferent:
+    - signal: "farm.propagate.dispatched"
+      action: "Dispatch repository_dispatch propagate to hyperpolymath/.git-private-farm via instant-sync.yml to fan out workflows and multi-forge mirrors"
+      auto_fix: true
     - signal: "standards.canon.released"
       action: "Update canon version and sha256 pins in paint-type_chora.deed and re-verify canon-lockstep"
       auto_fix: false
     - signal: "gitbot.report_back.deposited"
-      action: "Ingest .gitbot-fleet/report-backs/*.json into the next Hypatia verdict grid revision"
+      action: "Dispatch gitbot-fleet across supervised estate repos and ingest .gitbot-fleet/report-backs/*.json into the Hypatia verdict grid"
       auto_fix: true
     - signal: "squabbler.triage.verdict"
-      action: "Route cross-repo CI contention through cicd-squabbler formal dialogue before escalating to boj-server"
+      action: "Run embedded cicd-squabbler formal argumentation on complex CI/CD contention before escalating unresolved consultations to boj-server"
       auto_fix: false
   reflex:
     - trigger: "pre-commit"
@@ -178,10 +181,12 @@ ecosystem:
     - name: verisimdb
       role: "Stores CRG readiness, scan telemetry, and conformance baselines"
   related:
+    - name: .git-private-farm
+      role: "GitHub Actions estate propagation hub triggered by instant-sync.yml repository_dispatch and supplying the supervised repo roster"
     - name: cicd-squabbler
-      role: "Formal multi-agent argumentation CLI with optional host-side boj-server consultation"
+      role: "Embedded CI/CD formal argumentation engine resolving complex contention before escalating to boj-server"
     - name: boj-server
-      role: "Host-side MCP gateway housing echidna-llm-mcp, model-router-mcp, and claude-ai-mcp"
+      role: "Sole MCP LLM gateway housing echidna-llm-mcp, model-router-mcp, and claude-ai-mcp"
     - name: burble
       role: "Peer-to-peer real-time collaboration peer discovered over Groove"
 
