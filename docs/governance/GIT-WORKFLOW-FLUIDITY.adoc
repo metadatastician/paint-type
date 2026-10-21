@@ -57,7 +57,9 @@ previously created multi-hour PR friction:
 | Places CodeRabbit v2 config at the repository root so it overrides
   `ASSERTIVE` defaults with `profile: "chill"`, `request_changes_workflow: false`,
   `auto_review.drafts: false`, `auto_review.base_branches: ["main"]`,
-  `finishing_touches.docstrings.enabled: false`,
+  `finishing_touches.docstrings.enabled: false` (note: clicking CodeRabbit's
+  manual "Commit to this branch" button also pushes an unsigned `signature: null`
+  bot commit that blocks merging under `18225024`),
   `pre_merge_checks.docstrings.mode: "off"`, bundled symbolic linters disabled
   in favour of Hypatia / K9 / clippy / gitleaks, and `path_filters` scoping neural
   review strictly to source code.
