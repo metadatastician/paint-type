@@ -72,6 +72,9 @@ fn readAll(alloc: std.mem.Allocator, path: []const u8) ![]u8 {
     return buf;
 }
 
+/// Write six undo/redo PNG snapshots under `examples/images` and print byte
+/// comparisons. Canvas creation, brush, save, allocation, and read errors
+/// propagate; directory-creation errors and history result codes are ignored.
 pub fn main() !void {
     try dispatcher.init(std.heap.c_allocator);
     defer dispatcher.deinit();

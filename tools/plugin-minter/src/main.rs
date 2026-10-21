@@ -98,6 +98,9 @@ fn to_camel_case(s: &str) -> String {
 }
 
 /// Validate the minter configuration
+///
+/// Returns an aggregated error for missing required fields, unsafe names or
+/// IDs, unsupported plugin types, or `..` in the WASM entry.
 fn validate_config(cfg: &MinterConfig) -> Result<()> {
     let mut errors = Vec::new();
 
@@ -227,6 +230,8 @@ fn replace_placeholders(content: &str, cfg: &MinterConfig, crate_name: &str) -> 
     current
 }
 
+/// Read UTF-8 text up to `max_bytes` bytes, returning errors for excess size,
+/// file I/O, or invalid UTF-8.
 fn read_bounded_utf8(path: &Path, max_bytes: u64) -> Result<String> {
     use std::io::Read;
     let file = fs::File::open(path)
@@ -242,6 +247,12 @@ fn read_bounded_utf8(path: &Path, max_bytes: u64) -> Result<String> {
 }
 
 /// Mint a new plugin from configuration
+///
+/// Reads at most 1 MiB of configuration, validates it, and copies the template
+/// into a new destination. Rejects an existing destination or parent-directory
+/// components. Template files that cannot be read as UTF-8 within 4 MiB are
+/// skipped during substitution. Other parse, validation, and filesystem errors
+/// propagate and may leave a partially created plugin directory.
 fn mint(config_path: &Path, explicit_dest: Option<&str>) -> Result<()> {
     // Read and parse the minter.toml
     let toml_content = read_bounded_utf8(config_path, 1024 * 1024)?;

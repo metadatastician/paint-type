@@ -18,6 +18,8 @@
 
 const std = @import("std");
 
+/// Configure shared/static libpt libraries, unit and integration tests,
+/// Hexadeca connector tests, and the optional benchmark step.
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});

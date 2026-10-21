@@ -123,6 +123,8 @@ impl BurbleTransport {
 }
 
 impl Transport for BurbleTransport {
+    /// Queue an operation locally, dropping the oldest when `MAX_PENDING_OPS` is
+    /// reached. This scaffold does not send operations over the network.
     fn broadcast(&mut self, op: Op) {
         if self.pending_out.len() >= MAX_PENDING_OPS {
             self.pending_out.remove(0);

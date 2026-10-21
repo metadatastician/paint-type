@@ -10,6 +10,7 @@ use paint_type_plugins::effect::{
     BrightnessContrastEffect, EffectPlugin, GrayscaleEffect, InvertColourEffect,
 };
 
+/// Describe the three built-in effects exposed by the host plugin list.
 fn builtin_plugins() -> Vec<PluginInfo> {
     vec![
         PluginInfo {
@@ -36,6 +37,7 @@ fn builtin_plugins() -> Vec<PluginInfo> {
     ]
 }
 
+/// Render the entire current document into a base64 `Loaded` response.
 fn loaded_response(document: &Document, full: Rect) -> Response {
     let pixels = document.render_all();
     let rgba_base64 = base64::engine::general_purpose::STANDARD.encode(&pixels);
@@ -52,6 +54,13 @@ fn loaded_response(document: &Document, full: Rect) -> Response {
 
 /// Apply one command to the document, returning the response to hand
 /// back to the web UI. `doc` is `None` until the first `NewDoc`.
+///
+/// Invalid commands and file, layer, and effect errors become `Response::Error`.
+/// `NewDoc` replaces the document only for dimensions in `1..=MAX_DIM`.
+///
+/// Plugin loading validates a manifest; unloading only acknowledges the ID.
+/// Invocation supports built-in effects, ignores the requested function name,
+/// and defaults missing or unparsable brightness/contrast to `0`/`1`.
 pub fn dispatch(doc: &mut Option<Document>, cmd: Command) -> Response {
     if let Command::NewDoc { w, h } = cmd {
         if w == 0 || h == 0 || w > crate::codec::MAX_DIM || h > crate::codec::MAX_DIM {

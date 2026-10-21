@@ -122,6 +122,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+/// Reject empty IDs, NUL, path separators, and any `..` substring.
 fn validate_plugin_id(id: &str) -> Result<()> {
     if id.is_empty()
         || id.contains("..")
@@ -134,6 +135,7 @@ fn validate_plugin_id(id: &str) -> Result<()> {
     Ok(())
 }
 
+/// Reject parent-directory components; absolute output paths are allowed.
 fn validate_safe_path(path: &Path) -> Result<()> {
     if path
         .components()
@@ -144,6 +146,10 @@ fn validate_safe_path(path: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Create or overwrite a default plugin configuration in the selected format.
+///
+/// Rejects unsafe IDs and parent-directory output components. Serialization
+/// and file-write errors propagate; parent directories are not created.
 fn cmd_generate(plugin_id: &str, output: &Path, format: ConfigFormat) -> Result<()> {
     validate_plugin_id(plugin_id)?;
     validate_safe_path(output)?;
@@ -175,6 +181,9 @@ fn cmd_generate(plugin_id: &str, output: &Path, format: ConfigFormat) -> Result<
     Ok(())
 }
 
+/// Read at most 4 MiB of UTF-8 configuration text.
+///
+/// Returns errors for excess size, file I/O, or invalid UTF-8.
 fn read_bounded_utf8(path: &Path) -> Result<String> {
     use std::io::Read;
     const MAX_BYTES: u64 = 4 * 1024 * 1024;
@@ -190,6 +199,9 @@ fn read_bounded_utf8(path: &Path) -> Result<String> {
     Ok(content)
 }
 
+/// Check configuration syntax, inferring the format from the path when omitted.
+///
+/// `strict` currently adds no checks. Bounded-read and parser errors propagate.
 fn cmd_validate(path: &Path, format: Option<ConfigFormat>, strict: bool) -> Result<()> {
     info!("Validating configuration: {}", path.display());
 
@@ -218,6 +230,11 @@ fn cmd_validate(path: &Path, format: Option<ConfigFormat>, strict: bool) -> Resu
     Ok(())
 }
 
+/// Merge configuration files in order and overwrite `output` in the chosen format.
+///
+/// Override keeps the last object; deep merge combines object keys recursively
+/// and concatenates arrays. Nonobject roots are ignored. Returns errors for no inputs, bounded reads,
+/// parsing, serialization, or writing the output.
 fn cmd_merge(inputs: &[PathBuf], output: &Path, format: ConfigFormat, strategy: MergeStrategy) -> Result<()> {
     info!("Merging {} configuration files", inputs.len());
 
@@ -300,6 +317,10 @@ fn deep_merge_json(target: &mut Map<String, Value>, source: Value) {
     }
 }
 
+/// Print conventional configuration paths for a validated plugin ID.
+///
+/// Does not read these paths; `verbose` adds an explanatory note. Returns an
+/// error for an unsafe ID.
 fn cmd_list(plugin: &str, verbose: bool) -> Result<()> {
     validate_plugin_id(plugin)?;
     info!("Listing configuration layers for plugin: {}", plugin);

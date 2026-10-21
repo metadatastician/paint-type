@@ -195,6 +195,8 @@ impl Brush {
     /// affected pixel.
     ///
     /// Returns the number of pixels actually written (after clipping).
+    ///
+    /// Non-finite centers return `Ok(0)`. Tile read and write errors propagate.
     pub fn stamp(&self, tile: &Tile, cx: f32, cy: f32) -> Result<u32, TileError> {
         if !cx.is_finite() || !cy.is_finite() {
             return Ok(0);
@@ -247,7 +249,11 @@ impl Brush {
     /// drives the erase strength: each channel of the destination pixel is
     /// scaled by `(1 - mask_alpha)`, removing premultiplied colour and alpha
     /// in proportion to the tip. Pixels where the mask is zero are left
-    /// untouched. Only calls `write_buffer` when at least one pixel changed.
+    /// untouched. Only calls `write_buffer` when at least one pixel has a nonzero mask.
+    ///
+    /// Returns the number of pixels covered by a nonzero mask after clipping,
+    /// including pixels whose values were already zero. Non-finite centers return
+    /// `Ok(0)`. Tile read and write errors propagate.
     pub fn erase_stamp(&self, tile: &Tile, cx: f32, cy: f32) -> Result<u32, TileError> {
         if !cx.is_finite() || !cy.is_finite() {
             return Ok(0);
@@ -324,6 +330,10 @@ impl Stroke {
 
     /// Push the next cursor sample at `(x, y)`. Non-finite coordinates
     /// (`NaN`, `±Inf`) are ignored without corrupting stroke state.
+    ///
+    /// Returns stamp centers in pixels: the first finite sample emits one stamp,
+    /// then subsequent samples interpolate at the brush spacing with leftover
+    /// distance carried between calls. Repeated positions emit no new stamps.
     pub fn push(&mut self, x: f32, y: f32, brush: &Brush) -> Vec<(f32, f32)> {
         if !x.is_finite() || !y.is_finite() {
             return Vec::new();

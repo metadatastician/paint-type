@@ -26,12 +26,18 @@ pub const MAX_RENDER_BYTES: usize = 1024 * 1024 * 1024;
 /// Pixels covered by no visible tile come out `[0, 0, 0, 0]`. Returns an empty
 /// `Vec` if `width == 0`, `height == 0`, or `width * height * 4` overflows /
 /// exceeds [`MAX_RENDER_BYTES`].
+///
+/// Unreadable tiles are skipped.
 pub fn render_region(stack: &LayerStack, x: u32, y: u32, width: u32, height: u32) -> Vec<u8> {
     try_render_region(stack, x, y, width, height).unwrap_or_default()
 }
 
 /// Fallible counterpart to [`render_region`]. Returns `None` if
 /// `width * height * 4` overflows `usize` or exceeds [`MAX_RENDER_BYTES`].
+///
+/// A zero-sized region returns `Some(Vec::new())`. Unreadable tiles are skipped.
+/// The byte limit applies to the output size; allocation failures are not
+/// converted to `None`.
 pub fn try_render_region(
     stack: &LayerStack,
     x: u32,
@@ -140,6 +146,7 @@ fn x_or_max(a: u64, b: u64) -> u64 {
     }
 }
 
+/// Clamp a normalized channel to `[0, 1]` and round to RGBA8; NaN becomes zero.
 #[inline]
 fn to_u8(v: f32) -> u8 {
     (v.clamp(0.0, 1.0) * 255.0).round() as u8

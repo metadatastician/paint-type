@@ -133,6 +133,7 @@ impl Layer {
         }
     }
 
+    /// Return whether this layer requires the extended metadata trailer.
     fn has_extended_meta(&self) -> bool {
         self.layer_id.is_some() || self.locked
     }
@@ -257,6 +258,7 @@ impl std::error::Error for DecodeError {}
 // Encode
 // ----------------------------------------------------------------------------
 
+/// Append a presence byte and, for `Some`, a little-endian metadata integer.
 fn encode_opt_u32(out: &mut Vec<u8>, val: Option<u32>) {
     match val {
         None => out.push(0),
@@ -267,6 +269,7 @@ fn encode_opt_u32(out: &mut Vec<u8>, val: Option<u32>) {
     }
 }
 
+/// Append a presence byte and, for `Some`, a u32 length followed by the bytes.
 fn encode_opt_bytes(out: &mut Vec<u8>, val: Option<&[u8]>) {
     match val {
         None => out.push(0),
@@ -282,6 +285,9 @@ fn encode_opt_bytes(out: &mut Vec<u8>, val: Option<&[u8]>) {
 ///
 /// Deterministic: layers are written in stack order and tiles in ascending
 /// `TileKey` order, so two equal canvases always encode to identical bytes.
+///
+/// Includes the extended metadata trailer only when metadata is populated.
+/// Does not validate canvas contents before encoding.
 pub fn encode(canvas: &Canvas) -> Vec<u8> {
     let write_meta = canvas.has_extended_meta();
     let flags = if write_meta {
@@ -374,6 +380,8 @@ impl<'a> Reader<'a> {
         Ok(self.take(1, context)?[0])
     }
 
+    /// Read a boolean byte, rejecting values other than 0/1 as `InvalidBoolean`.
+    /// Short input propagates `UnexpectedEof` with the supplied context.
     fn bool_strict(&mut self, context: &'static str) -> Result<bool, DecodeError> {
         match self.u8(context)? {
             0 => Ok(false),
@@ -404,6 +412,8 @@ impl<'a> Reader<'a> {
         ]))
     }
 
+    /// Read a presence-tagged metadata integer, propagating invalid-boolean
+    /// and truncated-input errors with the supplied context.
     fn opt_u32(&mut self, context: &'static str) -> Result<Option<u32>, DecodeError> {
         if self.bool_strict(context)? {
             Ok(Some(self.u32(context)?))
@@ -412,6 +422,8 @@ impl<'a> Reader<'a> {
         }
     }
 
+    /// Read presence-tagged metadata bytes into an owned buffer, propagating
+    /// invalid-boolean and truncated-length/data errors with the supplied context.
     fn opt_bytes(&mut self, context: &'static str) -> Result<Option<Vec<u8>>, DecodeError> {
         if self.bool_strict(context)? {
             let len_u32 = self.u32(context)?;
@@ -429,6 +441,12 @@ impl<'a> Reader<'a> {
 }
 
 /// Parse a `.ptype` byte slice back into a [`Canvas`].
+///
+/// Accepts the base v1 layout and its optional metadata trailer. Returns
+/// `DecodeError` for invalid headers, unsupported format or tile geometry,
+/// truncated data, invalid UTF-8 or booleans, duplicate/unsorted tile keys,
+/// an empty flagged metadata trailer, or trailing bytes. Canvas dimensions
+/// and active-layer indices are not validated here.
 pub fn decode(bytes: &[u8]) -> Result<Canvas, DecodeError> {
     let mut r = Reader::new(bytes);
 
@@ -558,6 +576,10 @@ pub fn decode(bytes: &[u8]) -> Result<Canvas, DecodeError> {
 }
 
 /// Read and decode a `.ptype` file bounded by [`MAX_PTYPE_FILE_BYTES`].
+///
+/// Returns file metadata/read errors and decoder errors as strings. The size
+/// check uses metadata before reading; it does not bound a file that grows
+/// during the read.
 pub fn decode_from_file(path: &str) -> Result<Canvas, String> {
     let meta = std::fs::metadata(path).map_err(|e| e.to_string())?;
     if meta.len() > MAX_PTYPE_FILE_BYTES {

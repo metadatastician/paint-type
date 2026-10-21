@@ -79,6 +79,7 @@ impl ProvisioningState {
         }
     }
 
+    /// Append a provisioning message to the retained operation history.
     pub fn log(&mut self, message: String) {
         info!("{}", message);
         self.provisioning_log.push(message);
@@ -89,6 +90,7 @@ impl ProvisioningState {
         info!("{}", message);
     }
 
+    /// Append a failure message to the retained error list.
     pub fn error(&mut self, message: String) {
         error!("{}", message);
         self.errors.push(message);
@@ -421,7 +423,11 @@ fn validate_plugin(path: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Remove a plugin (rejects parent-directory traversal and paths escaping target_dir)
+/// Remove the plugin directory named by a relative path under `target_dir`.
+///
+/// Rejects absolute paths, parent-directory components, missing directories,
+/// and directories without a manifest. Manifest loading and removal errors
+/// propagate. This lexical check does not resolve symlinks.
 fn remove_plugin(plugin_id_or_path: &str, target_dir: &Path) -> Result<()> {
     let candidate = Path::new(plugin_id_or_path);
     if candidate.is_absolute()
@@ -562,6 +568,10 @@ enum Command {
     },
 }
 
+/// Dispatch provisioning CLI commands, propagating validation and filesystem errors.
+///
+/// Deployment writes a result JSON file. Network installation is a placeholder;
+/// resolve prints manifest capabilities without installing dependencies.
 fn main() -> Result<()> {
     // Initialize logging
     let directive = "plugin_provisioner=info"

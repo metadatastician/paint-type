@@ -102,7 +102,11 @@ impl PluginRegistry {
         }
     }
 
-    /// Load an effect plugin from a directory
+    /// Load and register an effect from a validated JSON manifest and WASM path.
+    ///
+    /// Returns the manifest ID and records its requested capabilities as granted.
+    /// Rejects a mismatched plugin type or duplicate ID; manifest and sandbox
+    /// load errors propagate before registration.
     pub fn load_effect_plugin(
         &mut self,
         manifest_path: impl AsRef<Path>,
@@ -136,7 +140,11 @@ impl PluginRegistry {
         Ok(id)
     }
 
-    /// Load a tool plugin from a directory
+    /// Load and register a tool from a validated JSON manifest and WASM path.
+    ///
+    /// Returns the manifest ID and records its requested capabilities as granted.
+    /// Rejects a mismatched plugin type or duplicate ID; manifest and sandbox
+    /// load errors propagate before registration.
     pub fn load_tool_plugin(
         &mut self,
         manifest_path: impl AsRef<Path>,
@@ -168,6 +176,9 @@ impl PluginRegistry {
     }
 
     /// Register a built-in effect plugin
+    ///
+    /// Returns a generated `builtin.effect.N` registry key, which may differ from
+    /// the plugin's own ID.
     pub fn register_builtin_effect(&mut self, effect: impl EffectPlugin + 'static) -> PluginId {
         let id = PluginId::new(format!("builtin.effect.{}", self.next_id));
         self.next_id += 1;
@@ -177,6 +188,9 @@ impl PluginRegistry {
     }
 
     /// Register a built-in tool plugin
+    ///
+    /// Returns a generated `builtin.tool.N` registry key, which may differ from
+    /// the plugin's own ID.
     pub fn register_builtin_tool(&mut self, tool: impl ToolPlugin + 'static) -> PluginId {
         let id = PluginId::new(format!("builtin.tool.{}", self.next_id));
         self.next_id += 1;
@@ -247,6 +261,10 @@ impl PluginRegistry {
     }
 
     /// Grant a capability to a plugin
+    ///
+    /// Returns `ManifestValidation` if an existing manifest did not request the
+    /// capability. Without a manifest, records the grant even for an unknown ID.
+    /// Repeated grants are ignored.
     pub fn grant_capability(&mut self, id: &PluginId, cap: PluginCapability) -> PluginResult<()> {
         if let Some(manifest) = self.manifests.get(id) {
             if !manifest.has_capability(cap) {
@@ -312,6 +330,8 @@ impl SafePluginRegistry {
         }
     }
 
+    /// Load and register an effect; returns its manifest ID and propagates errors
+    /// from [`PluginRegistry::load_effect_plugin`].
     pub fn load_effect_plugin(
         &self,
         manifest_path: impl AsRef<Path>,
@@ -323,6 +343,8 @@ impl SafePluginRegistry {
             .load_effect_plugin(manifest_path, wasm_path)
     }
 
+    /// Load and register a tool; returns its manifest ID and propagates errors
+    /// from [`PluginRegistry::load_tool_plugin`].
     pub fn load_tool_plugin(
         &self,
         manifest_path: impl AsRef<Path>,
@@ -334,6 +356,8 @@ impl SafePluginRegistry {
             .load_tool_plugin(manifest_path, wasm_path)
     }
 
+    /// Register a built-in effect and return its generated registry key, which
+    /// may differ from the plugin's own ID.
     pub fn register_builtin_effect(&self, effect: impl EffectPlugin + 'static) -> PluginId {
         self.inner
             .write()
@@ -341,6 +365,8 @@ impl SafePluginRegistry {
             .register_builtin_effect(effect)
     }
 
+    /// Register a built-in tool and return its generated registry key, which
+    /// may differ from the plugin's own ID.
     pub fn register_builtin_tool(&self, tool: impl ToolPlugin + 'static) -> PluginId {
         self.inner
             .write()
@@ -348,6 +374,8 @@ impl SafePluginRegistry {
             .register_builtin_tool(tool)
     }
 
+    /// Remove a registry entry, manifest, and grants; unknown IDs succeed.
+    /// Previously cloned plugin handles remain usable.
     pub fn unload(&self, id: &PluginId) -> PluginResult<()> {
         self.inner
             .write()
@@ -355,6 +383,8 @@ impl SafePluginRegistry {
             .unload(id)
     }
 
+    /// Clone a shared plugin handle for `id`, or return `None` when absent.
+    /// The handle can outlive its registration.
     pub fn get(&self, id: &PluginId) -> Option<PluginEntry> {
         self.inner
             .read()
@@ -363,6 +393,7 @@ impl SafePluginRegistry {
             .cloned()
     }
 
+    /// Return owned registry keys for all loaded entries, in unspecified order.
     pub fn plugin_ids(&self) -> Vec<PluginId> {
         self.inner
             .read()
@@ -373,6 +404,7 @@ impl SafePluginRegistry {
             .collect()
     }
 
+    /// Clone shared handles to loaded effects, in unspecified order.
     pub fn effect_plugins(&self) -> Vec<PluginEntry> {
         self.inner
             .read()
@@ -383,6 +415,7 @@ impl SafePluginRegistry {
             .collect()
     }
 
+    /// Clone shared handles to loaded tools, in unspecified order.
     pub fn tool_plugins(&self) -> Vec<PluginEntry> {
         self.inner
             .read()
@@ -393,6 +426,7 @@ impl SafePluginRegistry {
             .collect()
     }
 
+    /// Check whether `id` is a registry key for a loaded plugin.
     pub fn is_loaded(&self, id: &PluginId) -> bool {
         self.inner
             .read()
@@ -400,6 +434,7 @@ impl SafePluginRegistry {
             .is_loaded(id)
     }
 
+    /// Count registered plugin entries, including built-ins.
     pub fn len(&self) -> usize {
         self.inner.read().unwrap_or_else(|e| e.into_inner()).len()
     }

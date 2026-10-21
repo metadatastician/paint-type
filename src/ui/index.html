@@ -113,6 +113,9 @@
     return window.__gossamer_invoke("dispatch", payload);
   }
 
+  /**
+   * Return a timestamped export filename; `ext` is the extension without a leading dot.
+   */
   function defaultExportPath(ext) {
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     return "paint-type-" + stamp + "." + ext;
@@ -127,6 +130,9 @@
     };
   }
 
+  /**
+   * Refresh the brush size/hardness labels and preview from the current controls.
+   */
   function updatePreview() {
     const d = Number(sizeEl.value);
     const h = Number(hardnessEl.value);
@@ -142,6 +148,11 @@
     }
   }
 
+  /**
+   * Replace the displayed document with a full-canvas dirty rectangle.
+   * Resize and update coordinate scaling when dimensions change; otherwise clear
+   * the existing image before blitting. Missing dirty data is ignored.
+   */
   function applyLoadedDocument(dirty) {
     if (!dirty) return;
     if (dirty.w > 0 && dirty.h > 0 && (canvas.width !== dirty.w || canvas.height !== dirty.h)) {
@@ -161,6 +172,10 @@
     ctx.putImageData(new ImageData(bytes, dirty.w, dirty.h), dirty.x, dirty.y);
   }
 
+  /**
+   * Refresh the layer selector and active-layer controls from the host.
+   * Bridge or response-processing errors are caught and ignored.
+   */
   async function refreshLayers() {
     try {
       const resp = await invoke({ cmd: "list_layers" });
@@ -184,6 +199,9 @@
     } catch (e) { /* ignore */ }
   }
 
+  /**
+   * Convert viewport pointer coordinates to document pixels using the canvas CSS size.
+   */
   function canvasPos(ev) {
     const rect = canvas.getBoundingClientRect();
     return {
@@ -199,6 +217,11 @@
     return bridgeReady();
   }
 
+  /**
+   * Initialize the host document and controls after waiting for the bridge.
+   * A missing bridge updates status and returns; rejected document/color/brush
+   * commands reject the returned promise.
+   */
   async function boot() {
     updatePreview();
     if (!(await waitForBridge())) {
@@ -242,11 +265,19 @@
   document.getElementById("tool-eraser").addEventListener("click", () => selectTool("eraser"));
   document.getElementById("tool-fill").addEventListener("click", () => selectTool("fill"));
 
+  /**
+   * Request undo and refresh the canvas/layers when dirty data is returned.
+   * A missing bridge is ignored; command rejection rejects the returned promise.
+   */
   async function doUndo() {
     if (!bridgeReady()) return;
     const res = await invoke({ cmd: "undo" });
     if (res && res.dirty) { applyLoadedDocument(res.dirty); await refreshLayers(); status.textContent = "Undone."; }
   }
+  /**
+   * Request redo and refresh the canvas/layers when dirty data is returned.
+   * A missing bridge is ignored; command rejection rejects the returned promise.
+   */
   async function doRedo() {
     if (!bridgeReady()) return;
     const res = await invoke({ cmd: "redo" });
@@ -290,6 +321,10 @@
     if (res && res.dirty) blit(res.dirty);
   });
 
+  /**
+   * Apply the named built-in effect to the active layer and blit returned pixels.
+   * Bridge rejection rejects the returned promise; only dirty responses update status.
+   */
   async function applyFilter(pluginId) {
     const res = await invoke({
       cmd: "invoke_plugin",
@@ -402,6 +437,11 @@
     }
   });
 
+  /**
+   * Ask the native save dialog for a timestamped path with extension `ext`.
+   * On rejection or a nonstring/empty result, prompt for a path. Resolves to
+   * the chosen path or null when the prompt is canceled.
+   */
   async function resolveSavePath(ext) {
     const suggested = defaultExportPath(ext);
     try {
