@@ -39,6 +39,7 @@ jobs:
     needs: hypatia
     if: ${{ always() && github.event_name == 'pull_request' && needs.hypatia.result != 'skipped' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: write
@@ -54,16 +55,18 @@ jobs:
       - name: Post or update sticky Hypatia verdict grid comment
         if: steps.grid.outcome == 'success'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
           test -s grid/report.md || exit 0
           marker='<!-- verdict-grid:hypatia regenerated on every run -->'
-          existing=$(gh api --paginate "repos/$REPO/issues/$PR/comments" \
-            --jq '.[] | select(.user.type == "Bot" and (.body | contains("'"$marker"'"))) | .id' \
-            | head -n1 || true)
+          existing=""
+          if comments="$(gh api --paginate "repos/$REPO/issues/$PR/comments" \
+            --jq '.[] | select(.user.type == "Bot" and (.body | contains("'"$marker"'"))) | .id')"; then
+            existing="$(printf '%s\n' "$comments" | head -n1)"
+          fi
           if [ -n "$existing" ]; then
             gh api -X PATCH "repos/$REPO/issues/comments/$existing" -F body=@grid/report.md >/dev/null
           else
@@ -75,6 +78,7 @@ jobs:
     needs: hypatia
     if: ${{ always() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
     steps:
@@ -89,7 +93,7 @@ jobs:
       - name: Publish badges/hypatia.json
         if: steps.grid.outcome == 'success'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           test -s grid/badge.json || exit 0
@@ -107,11 +111,15 @@ jobs:
             gh api "repos/$REPO/git/refs" -f "ref=refs/heads/$BRANCH" -f "sha=$COMMIT" >/dev/null
           fi
 
-          cur=$(gh api "repos/$REPO/contents/badges/hypatia.json?ref=$BRANCH" 2>/dev/null || true)
-          body=$(cat grid/badge.json)
-          existing=$(printf '%s' "$cur" | jq -r '.content // empty' | tr -d '\n' | base64 -d 2>/dev/null || true)
+          cur=""
+          existing=""
+          sha=""
+          if cur="$(gh api "repos/$REPO/contents/badges/hypatia.json?ref=$BRANCH" 2>/dev/null)"; then
+            if existing="$(printf '%s' "$cur" | jq -r '.content // empty' | tr -d '\n' | base64 -d 2>/dev/null)"; then :; fi
+            sha="$(printf '%s' "$cur" | jq -r '.sha // empty')"
+          fi
+          body="$(cat grid/badge.json)"
           [ "$existing" = "$body" ] && exit 0
-          sha=$(printf '%s' "$cur" | jq -r '.sha // empty')
           printf '%s' "$body" | base64 -w0 \
             | jq -Rs --arg m "chore(badges): update badges/hypatia.json [skip ci]" --arg b "$BRANCH" --arg s "$sha" \
                 '{message:$m, content:., branch:$b} + (if $s == "" then {} else {sha:$s} end)' \

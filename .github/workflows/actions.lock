@@ -105,14 +105,15 @@ workflows:
         - 'mlugg/setup-zig@v2.2.1'
     '.github/workflows/static-analysis-gate.yml':
         - 'actions/cache@2f8e54208210a422b2efd51efaa6bd6d7ca8920f'
-        - 'actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd'
+        - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
         - 'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c'
-        - 'actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f'
+        - 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9'
         - 'dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8'
-        - 'erlef/setup-beam@v1.24.1'
+        - 'erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124'
+        - 'taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8'
     '.github/workflows/verify-manifests.yml':
-        - 'actions/checkout@v7.0.1'
-        - 'actions/upload-artifact@v7.0.2'
+        - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
+        - 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9'
     '.github/workflows/wellknown-enforcement.yml':
         - 'actions/checkout@v7.0.1'
     '.github/workflows/workflow-linter.yml':
@@ -285,6 +286,11 @@ dependencies:
         commit: 'sha1-6323deb102c322ba6fcbdcafc7e3dddab59af2b6'
         owner_id: 580492
         repo_id: 298565987
+    'taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8':
+        ref: 'v2.87.28'
+        commit: 'sha1-1168f6810a3cb30a3514bf5756a3b7f0422c6df8'
+        owner_id: 43724913
+        repo_id: 442947557
     'taiki-e/install-action@v2.87.28':
         ref: 'v2.87.28'
         commit: 'sha1-1168f6810a3cb30a3514bf5756a3b7f0422c6df8'

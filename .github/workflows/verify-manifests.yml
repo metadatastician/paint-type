@@ -18,13 +18,15 @@ concurrency:
 permissions:
   actions: read
   contents: read
+
 jobs:
   verify-manifests:
     name: Verify AI-MANIFEST and README.adoc files
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Verify manifest files exist
         id: verify
         run: |
@@ -42,14 +44,9 @@ jobs:
           # Walk every first-party directory. Non-content subtrees are pruned
           # by PATH (whole subtree), not by basename — the previous per-basename
           # skip let the walk descend into .git/objects, node_modules/*, etc.
-          # Pruned: VCS internals, build/tool caches, and the vendored
-          # third_party/ tree (its manifests are the upstream's concern; this
-          # mirrors the vendored carve-out in audits/ and .trusted-base-ignore).
+          # Pruned: VCS internals, build/tool caches, .gitbot-fleet enrolment
+          # metadata, and vendored third_party/.
           while IFS= read -r -d '' dir; do
-            # Component depth = number of path segments below the repo root.
-            # The manifest suffix follows the RSR convention 0.<depth>-… , so
-            # depth MUST count path segments (root=0, src=0.1, src/core=0.2),
-            # not slashes (which undercounts every subdirectory by one).
             rel="${dir#"$REPO_ROOT"}"
             rel="${rel#/}"
             if [ -z "$rel" ]; then
@@ -74,7 +71,6 @@ jobs:
               echo "OK manifest: $expected_manifest"
             fi
 
-            # Root may satisfy the README with README.md; deeper dirs need .adoc.
             if [ "$depth" -eq 0 ]; then
               if [ ! -f "$expected_readme" ] && [ ! -f "$dir/README.md" ]; then
                 echo "::error file=$expected_readme::Missing README: $expected_readme (or README.md)"
@@ -98,8 +94,8 @@ jobs:
                -o -name .mypy_cache -o -name .pytest_cache \
                -o -name .tox -o -name .nox -o -name .idea -o -name .vscode \
                -o -name __pycache__ -o -name '*.egg-info' \
-               -o -name .machine_readable -o -name third_party \
-               -o -name LICENSES -o -name session \
+               -o -name .machine_readable -o -name .gitbot-fleet \
+               -o -name third_party -o -name LICENSES -o -name session \
                -o -name .devcontainer -o -name .well-known \
                -o -name brand -o -name container \
                -o -name audits -o -name benches \
@@ -130,6 +126,7 @@ jobs:
             exit 1
           fi
           echo "::notice::All directories have required manifest files!"
+
       - name: Generate report
         if: always()
         run: |
@@ -146,9 +143,10 @@ jobs:
           } > report.md
           mkdir -p reports
           mv report.md reports/
+
       - name: Upload report artifact
         if: always()
-        uses: actions/upload-artifact@v7.0.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: manifest-verification-report
           path: reports/
@@ -159,67 +157,73 @@ jobs:
   verify-machine-readable:
     name: Verify Machine-Readable Manifest Currency
     runs-on: ubuntu-latest
-    continue-on-error: true  # Non-critical; report but don't block
-
+    timeout-minutes: 10
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Check TEMPLATE-STANDARDS-AUDIT.adoc currency
         run: |
           set -euo pipefail
           echo "=== Checking TEMPLATE-STANDARDS-AUDIT.adoc currency ==="
-          
+
           if [ ! -f "TEMPLATE-STANDARDS-AUDIT.adoc" ]; then
             echo "::error::TEMPLATE-STANDARDS-AUDIT.adoc missing"
             exit 1
           fi
-          
-          # Check version
-          AUDIT_VERSION=$(grep "^v" TEMPLATE-STANDARDS-AUDIT.adoc | head -1 | sed 's/^v//' | cut -d, -f1 | tr -d '[:space:]' || true)
-          
+
+          AUDIT_VERSION=""
+          if head_line="$(grep '^v' TEMPLATE-STANDARDS-AUDIT.adoc | head -1)"; then
+            AUDIT_VERSION="$(printf '%s' "$head_line" | sed 's/^v//' | cut -d, -f1 | tr -d '[:space:]')"
+          fi
+
           if [ "$AUDIT_VERSION" != "1.2" ]; then
             echo "::error::TEMPLATE-STANDARDS-AUDIT.adoc is version $AUDIT_VERSION (expected 1.2)"
             exit 1
           fi
-          
-          # Check date
-          AUDIT_DATE=$(grep "^v" TEMPLATE-STANDARDS-AUDIT.adoc | head -1 | grep -o "[0-9-]\{10\}" || true)
-          
+
+          AUDIT_DATE=""
+          if date_hit="$(printf '%s' "$head_line" | grep -o '[0-9-]\{10\}')"; then
+            AUDIT_DATE="$date_hit"
+          fi
+
           if [ -z "$AUDIT_DATE" ]; then
             echo "::warning::TEMPLATE-STANDARDS-AUDIT.adoc missing date"
           else
             echo "TEMPLATE-STANDARDS-AUDIT.adoc version: v$AUDIT_VERSION, date: $AUDIT_DATE"
           fi
-          
-          # Check that it references current standards
+
           if ! grep -q "2026-07-26\|DEP-09\|contractile trident" TEMPLATE-STANDARDS-AUDIT.adoc; then
             echo "::error::TEMPLATE-STANDARDS-AUDIT.adoc does not reference current DEP-09 work"
             exit 1
           fi
-          
+
           echo "::notice::TEMPLATE-STANDARDS-AUDIT.adoc is current"
 
       - name: Check reusable workflow pins
         run: |
           set -euo pipefail
           echo "=== Checking CI/CD reusable workflow pins ==="
-          
-          # Check that governance.yml uses a current pin
-          GOV_PIN=$(grep "governance-reusable.yml@" .github/workflows/governance.yml | sed 's/.*@//' || true)
-          SCORE_PIN=$(grep "scorecard-reusable.yml@" .github/workflows/scorecard.yml | sed 's/.*@//' || true)
-          
+
+          GOV_PIN=""
+          if gov_line="$(grep 'governance-reusable.yml@' .github/workflows/governance.yml)"; then
+            GOV_PIN="${gov_line##*@}"
+          fi
+          SCORE_PIN=""
+          if score_line="$(grep 'scorecard-reusable.yml@' .github/workflows/scorecard.yml)"; then
+            SCORE_PIN="${score_line##*@}"
+          fi
+
           if [ -z "$GOV_PIN" ]; then
             echo "::warning::governance.yml does not use reusable workflow"
           else
             echo "Governance reusable pin: $GOV_PIN"
-            # Check if pin is a valid commit hash (at least 40 chars)
             if [ ${#GOV_PIN} -lt 40 ]; then
               echo "::error::Governance reusable pin is too short (${#GOV_PIN} chars)"
               exit 1
             fi
           fi
-          
+
           if [ -z "$SCORE_PIN" ]; then
             echo "::warning::scorecard.yml does not use reusable workflow"
           else
@@ -229,12 +233,11 @@ jobs:
               exit 1
             fi
           fi
-          
-          # Both should use the same pin (from standards HEAD)
+
           if [ -n "$GOV_PIN" ] && [ -n "$SCORE_PIN" ] && [ "$GOV_PIN" != "$SCORE_PIN" ]; then
             echo "::warning::Governance and Scorecard use different pins (gov: $GOV_PIN, score: $SCORE_PIN)"
           fi
-          
+
           echo "::notice::Reusable workflow pins are valid"
 
       - name: Generate currency report
@@ -255,7 +258,7 @@ jobs:
 
       - name: Upload currency report artifact
         if: always()
-        uses: actions/upload-artifact@v7.0.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: manifest-currency-report
           path: reports/
