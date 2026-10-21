@@ -125,7 +125,7 @@ jobs:
           # lowercased, `.message` carrying the description. Both the raw
           # report and this array are uploaded below.
           jq '[.weak_points[] | select(.suppressed != true) | {
-                 file:     (.file // null),
+                 file:     (.file // .location // null),
                  line:     (.line // null),
                  severity: (.severity | ascii_downcase),
                  message:  .description,

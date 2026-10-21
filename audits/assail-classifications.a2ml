@@ -126,6 +126,24 @@
     (audit "audits/audit-track-c-2026-06-23.md")
     (rationale "Vendored third_party/gossamer. believe_me asserts commutativity of String inequality over the backend primitive prim__eq_String — a documented class-J FFI-boundary axiom (see the in-file note), NOT a soundness hole: panel isolation is enforced by phantom panel-tag types regardless of this lemma. Not paint-type code; fix belongs upstream in gossamer if the trusted base is reduced."))
   (classification
+    (file "./third_party/gossamer/src/abi/PanelIsolation.idr")
+    (category "ProofDrift")
+    (classification "vendored-documented-axiom")
+    (audit "audits/audit-track-c-2026-06-23.md")
+    (rationale "Same audited vendored third_party/gossamer class-J axiom when panic-attack assail is invoked with target '.' (./-prefixed path)."))
+  (classification
+    (file "./third_party/gossamer/src/interface/abi/PanelIsolation.idr")
+    (category "ProofDrift")
+    (classification "vendored-documented-axiom")
+    (audit "audits/audit-track-c-2026-06-23.md")
+    (rationale "Same audited vendored third_party/gossamer class-J axiom when panic-attack assail is invoked with target '.' (./-prefixed path)."))
+  (classification
+    (file "./third_party/gossamer/src/interface/Gossamer/ABI/PanelIsolation.idr")
+    (category "ProofDrift")
+    (classification "vendored-documented-axiom")
+    (audit "audits/audit-track-c-2026-06-23.md")
+    (rationale "Same audited vendored third_party/gossamer class-J axiom when panic-attack assail is invoked with target '.' (./-prefixed path)."))
+  (classification
     (file "third_party/gossamer/benchmarks/startup-bench.sh")
     (category "CommandInjection")
     (classification "false-positive-cli-flag")

@@ -5,10 +5,10 @@
 // its exact two-test output asserted by `tests/e2e/scenario_pipeline_dogfood.sh`.
 
 use paint_core::{
+    Tile,
     brush::{Brush, BrushTip, Stroke},
     layer::{BlendMode, Layer, LayerStack, TileCoord},
     render::{render_region, try_render_region},
-    Tile,
 };
 
 #[test]
@@ -47,8 +47,15 @@ fn b07_stroke_ignores_non_finite_samples_and_avoids_f32_drift() {
             last = s;
         }
     }
-    assert!((499..=501).contains(&count), "unexpected stamp count {count}");
-    assert!((last.0 - 1000.0).abs() <= 2.1, "last stamp drifted to {}", last.0);
+    assert!(
+        (499..=501).contains(&count),
+        "unexpected stamp count {count}"
+    );
+    assert!(
+        (last.0 - 1000.0).abs() <= 2.1,
+        "last stamp drifted to {}",
+        last.0
+    );
 }
 
 #[test]

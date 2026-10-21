@@ -16,7 +16,7 @@
 #![allow(clippy::needless_range_loop)]
 
 use crate::{
-    f16_bits_to_f32, f32_to_f16_bits, layer::BlendMode, Tile, TileError, TILE_SCALARS, TILE_SIZE,
+    TILE_SCALARS, TILE_SIZE, Tile, TileError, f16_bits_to_f32, f32_to_f16_bits, layer::BlendMode,
 };
 
 /// Number of pixels in a single 64×64 tile (64 * 64 = 4096).

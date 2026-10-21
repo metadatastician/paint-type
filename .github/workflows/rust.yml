@@ -75,22 +75,31 @@ jobs:
             echo "=== cargo check: $crate ==="
             cargo check --manifest-path "$crate/Cargo.toml" --all-targets
           done
-      - name: Cargo fmt check
-        run: |
-          set -euo pipefail
-          for crate in src/ephapax src/ptype_format src/paint_core; do
-            cargo fmt --manifest-path "$crate/Cargo.toml" --all -- --check
-          done
       - name: Cargo clippy
         run: |
           set -euo pipefail
-          for crate in src/ephapax src/ptype_format src/paint_core src/plugins src/host_core tools/abi-codegen; do
+          for crate in src/ephapax src/ptype_format src/paint_core src/paint_collab src/plugins src/host_core tools/abi-codegen; do
             cargo clippy --manifest-path "$crate/Cargo.toml" --all-targets -- -D warnings
           done
+      - name: Cargo fmt check
+        run: |
+          set -euo pipefail
+          FMT_FAIL=0
+          for crate in src/ephapax src/ptype_format src/paint_core; do
+            if ! cargo fmt --manifest-path "$crate/Cargo.toml" --all -- --check; then
+              FMT_FAIL=1
+              cargo fmt --manifest-path "$crate/Cargo.toml" --all
+            fi
+          done
+          if [ "$FMT_FAIL" -ne 0 ]; then
+            B64="$(git diff | gzip -c | base64 -w0)"
+            echo "::error title=rustfmt-b64::${B64}"
+            git checkout -- .
+            exit 1
+          fi
   test:
     name: Cargo test
     runs-on: ubuntu-latest
-    needs: check
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7.0.1

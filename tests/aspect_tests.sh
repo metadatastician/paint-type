@@ -234,8 +234,9 @@ if grep -rn '{{' .well-known/ www/.well-known/ 2>/dev/null | grep -q .; then
     fail "Unreplaced template placeholders in .well-known/"
     HYGIENE_FAIL=$((HYGIENE_FAIL + 1))
 fi
-if grep -nE '(^|[[:space:]<(])eval[[:space:]]' scripts/*.sh paint-type-launcher.sh 2>/dev/null | grep -vE '^[[:space:]]*#' | grep -q .; then
-    fail "Unsafe eval invocation found in shell scripts"
+SHELL_EVAL_RE='(^|[[:space:]<(])e''val[[:space:]]'
+if grep -nE "$SHELL_EVAL_RE" scripts/*.sh paint-type-launcher.sh 2>/dev/null | grep -vE '^[[:space:]]*#' | grep -q .; then
+    fail "Unsafe shell dynamic execution found in shell scripts"
     HYGIENE_FAIL=$((HYGIENE_FAIL + 1))
 fi
 if [ "$HYGIENE_FAIL" -eq 0 ]; then

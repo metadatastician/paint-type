@@ -716,7 +716,7 @@ mod tests {
             decode(&bytes),
             Err(DecodeError::InvalidBoolean {
                 context: "layer visible",
-                value: 2
+                value: 2,
             })
         );
     }
