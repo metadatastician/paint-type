@@ -55,6 +55,7 @@
     ".trusted-base-ignore"     ;; RSR vendored-base carve-out (paired with verify-manifests + dogfood-gate)
     ;; Language-specific build files (if project root IS the source)
     "Cargo.toml" "Cargo.lock"
+    "package.json" "bun.lock" "bun.lockb" "bunfig.toml"
     "deno.json" "deno.lock"
     "rescript.json"
     "mix.exs" "mix.lock"

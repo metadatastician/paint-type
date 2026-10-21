@@ -24,7 +24,7 @@
 
 # BANNED LANGUAGES
 # TypeScript -> use ReScript
-# Node.js / npm / bun -> use Deno
+# JS runtimes / package managers -> Bun (preferred) > Deno > pnpm > npm (no mixed lockfiles)
 # Go -> use Rust
 # Python -> use Julia or Rust
 

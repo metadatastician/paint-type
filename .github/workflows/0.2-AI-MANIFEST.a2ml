@@ -22,7 +22,7 @@ GitHub Actions workflow YAML files:
 - `coverage.yml` -- Code coverage measurement and reporting
 - `scorecard-enforcer.yml` -- OpenSSF Scorecard security checks
 - `guix-nix-policy.yml` -- Guix/Nix package policy enforcement
-- `npm-bun-blocker.yml` -- Block npm and bun usage
+- `runtime-policy.yml` -- Enforce JS runtime tier policy (Bun > Deno > pnpm > npm) and reject mixed lockfiles
 - `ts-blocker.yml` -- Block TypeScript usage
 - `workflow-linter.yml` -- Lint GitHub Actions workflows
 - `dogfood-gate.yml` -- Dogfooding validation gate
