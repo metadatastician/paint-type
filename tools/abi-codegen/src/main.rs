@@ -353,11 +353,16 @@ fn set_opacity(
 ")
 }
 
+/// Locate `src/bridges` relative to this crate, independent of the working directory.
 fn bridges_dir() -> std::path::PathBuf {
     let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     manifest_dir.join("../../src/bridges")
 }
 
+/// Generate bridge files from newline-delimited ABI JSON on standard input.
+///
+/// Skips blank lines and overwrites the matching tile/layer `.twasm` file in
+/// `src/bridges`. Input, JSON parse, and file-write errors propagate.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let stdin = io::stdin();
     let out_dir = bridges_dir();

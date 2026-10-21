@@ -10,6 +10,7 @@ use paint_type_plugins::effect::{
     BrightnessContrastEffect, EffectPlugin, GrayscaleEffect, InvertColourEffect,
 };
 
+/// Describe the three built-in effects exposed by the host plugin list.
 fn builtin_plugins() -> Vec<PluginInfo> {
     vec![
         PluginInfo {
@@ -36,6 +37,8 @@ fn builtin_plugins() -> Vec<PluginInfo> {
     ]
 }
 
+/// Resolve a companion `.wasm` binary next to `manifest_path`, checking
+/// `<manifest_stem>.wasm`, `<parent>/<manifest.id>.wasm`, and `<parent>/plugin.wasm`.
 fn resolve_plugin_wasm_path(
     manifest_path: &str,
     manifest: &paint_type_plugins::PluginManifest,
@@ -56,6 +59,7 @@ fn resolve_plugin_wasm_path(
     ))
 }
 
+/// Render the entire current document into a base64 `Loaded` response.
 fn loaded_response(document: &Document, full: Rect) -> Response {
     let pixels = document.render_all();
     let rgba_base64 = base64::engine::general_purpose::STANDARD.encode(&pixels);
@@ -72,6 +76,17 @@ fn loaded_response(document: &Document, full: Rect) -> Response {
 
 /// Apply one command to the document, returning the response to hand
 /// back to the web UI. `doc` is `None` until the first `NewDoc`.
+///
+/// Invalid commands and file, layer, and effect errors become `Response::Error`.
+/// `NewDoc` replaces the document only for dimensions in `1..=MAX_DIM`.
+///
+/// `LoadPlugin` validates a `.json` or `.toml` manifest, resolves its companion
+/// `.wasm` module, and registers it in the document's `PluginRegistry`;
+/// `UnloadPlugin` removes loaded plugins and errors on unknown IDs; `ListPlugins`
+/// returns built-in effects followed by loaded registry plugins. `InvokePlugin`
+/// dispatches registered custom effects first, otherwise runs built-in effects
+/// (ignoring the requested function name and defaulting missing or unparsable
+/// brightness/contrast parameters to `0`/`1`).
 pub fn dispatch(doc: &mut Option<Document>, cmd: Command) -> Response {
     if let Command::NewDoc { w, h } = cmd {
         if w == 0 || h == 0 || w > crate::codec::MAX_DIM || h > crate::codec::MAX_DIM {

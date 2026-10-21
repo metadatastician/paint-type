@@ -220,6 +220,9 @@ impl PluginManifest {
     }
 
     /// Load a manifest from a JSON file
+    ///
+    /// Validates the decoded manifest. File I/O and UTF-8 errors become `IoError`;
+    /// JSON parse errors become `ManifestValidation`. Validation errors propagate.
     pub fn from_json_file(path: impl AsRef<Path>) -> PluginResult<Self> {
         let path = path.as_ref();
         let content = std::fs::read_to_string(path)
@@ -231,6 +234,12 @@ impl PluginManifest {
     }
 
     /// Load a manifest from a TOML string
+    ///
+    /// Parses supported fields line by line; this is not a general TOML parser.
+    /// `_base_path` is unused. Unknown fields are ignored; malformed version/API
+    /// values leave existing values unchanged. Unknown capabilities in arrays return
+    /// `ManifestValidation`; unknown capability-table keys are ignored. Final
+    /// manifest validation errors propagate.
     pub fn from_toml(content: &str, _base_path: &Path) -> PluginResult<Self> {
         let mut manifest = Self::default();
         let mut in_capabilities_section = false;
@@ -316,6 +325,10 @@ impl PluginManifest {
     }
 
     /// Validate the manifest (including path-traversal checks on `id` and `wasm_entry`).
+    ///
+    /// Missing required fields and unsafe identifiers or entry paths return
+    /// `ManifestValidation`; unsupported API or plugin versions return
+    /// `UnsupportedVersion`. Does not check whether the WASM file exists.
     pub fn validate(&self) -> PluginResult<()> {
         if self.id.0.is_empty() {
             return Err(PluginError::manifest_validation("id is required"));
@@ -372,6 +385,8 @@ impl PluginManifest {
 }
 
 impl Default for PluginManifest {
+    /// Create an effect manifest template with empty required identity fields;
+    /// it must be populated before validation succeeds.
     fn default() -> Self {
         PluginManifest {
             id: PluginId::new(String::new()),

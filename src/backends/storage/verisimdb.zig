@@ -134,6 +134,8 @@ pub fn escapeJsonContent(out: []u8, input: []const u8) error{NoSpaceLeft}![]cons
     return out[0..pos];
 }
 
+/// Return whether nonempty trimmed input parses as JSON; parse and allocation
+/// errors become false.
 fn isValidJsonPayload(raw: []const u8) bool {
     const trimmed = std.mem.trim(u8, raw, " \t\r\n");
     if (trimmed.len == 0) return false;
@@ -166,6 +168,7 @@ pub const Transport = struct {
 };
 
 pub const StubTransport = struct {
+    /// Create a transport whose requests always fail with `error.Unavailable`.
     pub fn make() Transport {
         return .{ .ctx = @ptrCast(@constCast(&dummy)), .vtable = &vt };
     }
@@ -197,6 +200,9 @@ pub const Client = struct {
         return .ok;
     }
 
+    /// POST a valid JSON value and copy up to 64 raw response bytes into `out_id`,
+    /// zero-filling unused bytes. Invalid JSON returns `invalid`, transport errors
+    /// return `unavailable`, and an empty response returns `err`.
     pub fn createOctad(self: *Client, payload_json: []const u8, out_id: *[64]u8) StorageResult {
         if (!isValidJsonPayload(payload_json)) return .invalid;
         var buf: [4096]u8 = undefined;
@@ -208,6 +214,9 @@ pub const Client = struct {
         return .ok;
     }
 
+    /// Fetch an octad into `out_buf`, returning the response byte count.
+    /// Unsafe IDs/path overflow return `{ invalid, 0 }`; transport errors return
+    /// `{ unavailable, 0 }`.
     pub fn getOctad(self: *Client, id: []const u8, out_buf: []u8) struct { rc: StorageResult, n: usize } {
         if (!isSafePathSegment(id)) return .{ .rc = .invalid, .n = 0 };
         var path_buf: [256]u8 = undefined;
@@ -216,6 +225,9 @@ pub const Client = struct {
         return .{ .rc = .ok, .n = n };
     }
 
+    /// POST a temporal operation with an escaped name and JSON payload.
+    /// Unsafe IDs, invalid JSON, or request-buffer overflow return `invalid`;
+    /// transport errors become `unavailable`.
     pub fn temporalRecord(self: *Client, canvas_id: []const u8, op_name: []const u8, payload_json: []const u8) StorageResult {
         if (!isSafePathSegment(canvas_id)) return .invalid;
         if (!isValidJsonPayload(payload_json)) return .invalid;
@@ -235,6 +247,9 @@ pub const Client = struct {
         return .ok;
     }
 
+    /// Fetch temporal state at `at_node` into `out_buf`, returning the byte count.
+    /// Unsafe identifiers/path overflow return `{ invalid, 0 }`; transport errors
+    /// return `{ unavailable, 0 }`.
     pub fn temporalWalk(self: *Client, canvas_id: []const u8, at_node: []const u8, out_buf: []u8) struct { rc: StorageResult, n: usize } {
         if (!isSafePathSegment(canvas_id) or !isSafePathSegment(at_node)) {
             return .{ .rc = .invalid, .n = 0 };
@@ -245,6 +260,9 @@ pub const Client = struct {
         return .{ .rc = .ok, .n = n };
     }
 
+    /// POST an escaped VQL query and return the response byte count in `out_buf`.
+    /// Empty queries or request-buffer overflow return `{ invalid, 0 }`; transport
+    /// errors return `{ unavailable, 0 }`.
     pub fn queryVQL(self: *Client, vql: []const u8, out_buf: []u8) struct { rc: StorageResult, n: usize } {
         if (vql.len == 0) return .{ .rc = .invalid, .n = 0 };
         var escaped_vql_buf: [7936]u8 = undefined;

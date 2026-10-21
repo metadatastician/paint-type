@@ -22,6 +22,7 @@ const std = @import("std");
 pub const SpinMutex = struct {
     held: std.atomic.Value(bool) = std.atomic.Value(bool).init(false),
 
+    /// Wait until this non-reentrant mutex is acquired.
     pub fn lock(self: *SpinMutex) void {
         while (self.held.cmpxchgWeak(false, true, .acquire, .monotonic) != null) {
             std.atomic.spinLoopHint();
@@ -229,6 +230,8 @@ const Registry = struct {
         }
     }
 
+    /// Return the reference backend, or null if none is registered.
+    /// An out-of-range reference slot falls back to the first registered backend.
     fn reference(self: *const Registry) ?*const BackendImpl {
         if (self.backends.items.len == 0) return null;
         if (self.reference_index >= self.backends.items.len) return self.backends.items[0];
@@ -261,12 +264,15 @@ pub fn deinit() void {
     }
 }
 
-/// C-ABI lifecycle entry points for external FFI callers (Rust, C, Idris2).
+/// Initialize the dispatcher with the C allocator; repeated calls succeed.
+/// Returns `ok`, or `out_of_memory` if initialization fails.
 pub export fn pt_dispatcher_init() callconv(.c) u32 {
     init(std.heap.c_allocator) catch return @intFromEnum(ResultCode.out_of_memory);
     return @intFromEnum(ResultCode.ok);
 }
 
+/// Free dispatcher registry storage; safe to call before initialization.
+/// Backend-owned resources must be released separately.
 pub export fn pt_dispatcher_deinit() callconv(.c) void {
     deinit();
 }
@@ -282,6 +288,8 @@ pub fn register(impl: *const BackendImpl) !void {
 // 3. Per-operation dispatch
 //==============================================================================
 
+/// Choose the first non-reference backend providing the operation, otherwise the
+/// reference backend. Returns null when the registry is absent or empty.
 fn pickFor(comptime field_name: []const u8) ?*const BackendImpl {
     global_registry_lock.lock();
     defer global_registry_lock.unlock();
@@ -295,6 +303,10 @@ fn pickFor(comptime field_name: []const u8) ?*const BackendImpl {
     return r.reference();
 }
 
+/// Invoke an operation, retrying on the reference backend only when absent
+/// or returning `not_implemented`, and count such fallbacks. Unknown numeric
+/// results become `err`; unavailable registry/reference returns `err`, and a
+/// missing reference operation returns `not_implemented`. Other errors propagate.
 fn invokeOrFallback(
     comptime field_name: []const u8,
     chosen: *const BackendImpl,
@@ -336,6 +348,8 @@ fn invokeOrFallback(
 // 4. Public dispatch entry points
 //==============================================================================
 
+/// Create a canvas through the selected backend and write its handle to `out_canvas`.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_canvas_new(
     width: u32,
     height: u32,
@@ -350,131 +364,183 @@ pub export fn pt_canvas_new(
     return @intFromEnum(invokeOrFallback("canvas_new", chosen, .{ width, height, fmt, bg_r, bg_g, bg_b, bg_a, out_canvas }));
 }
 
+/// Resize a canvas through the selected backend, forwarding dimensions and anchors.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_canvas_resize(canvas: u64, w: u32, h: u32, ax: f64, ay: f64) callconv(.c) u32 {
     const chosen = pickFor("canvas_resize") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("canvas_resize", chosen, .{ canvas, w, h, ax, ay }));
 }
 
+/// Release a canvas through the selected backend.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_canvas_free(canvas: u64) callconv(.c) u32 {
     const chosen = pickFor("canvas_free") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("canvas_free", chosen, .{canvas}));
 }
 
+/// Open a document through the selected backend and write its canvas handle.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_io_open(path: [*:0]const u8, fmt: ?[*:0]const u8, out_canvas: *u64) callconv(.c) u32 {
     const chosen = pickFor("io_open") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("io_open", chosen, .{ path, fmt, out_canvas }));
 }
 
+/// Save a canvas through the selected backend, forwarding format and options.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_io_save(canvas: u64, path: [*:0]const u8, fmt: [*:0]const u8, opts: [*:0]const u8) callconv(.c) u32 {
     const chosen = pickFor("io_save") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("io_save", chosen, .{ canvas, path, fmt, opts }));
 }
 
+/// Dispatch a pencil stroke; `points_len` counts XY scalars and `n` counts points.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_tool_stroke_pencil(canvas: u64, layer: u64, n: u32, points: [*]const f64, points_len: usize, colour: *const [4]f32) callconv(.c) u32 {
     const chosen = pickFor("tool_stroke_pencil") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("tool_stroke_pencil", chosen, .{ canvas, layer, n, points, points_len, colour }));
 }
 
+/// Dispatch a brush stroke; `points_len` and `n` count stroke points.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_tool_stroke_brush(canvas: u64, layer: u64, state: *const BrushStateC, n: u32, points: [*]const StrokePointC, points_len: usize, colour: *const [4]f32) callconv(.c) u32 {
     const chosen = pickFor("tool_stroke_brush") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("tool_stroke_brush", chosen, .{ canvas, layer, state, n, points, points_len, colour }));
 }
 
+/// Dispatch an eraser stroke; `points_len` and `n` count stroke points.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_tool_stroke_eraser(canvas: u64, layer: u64, state: *const BrushStateC, n: u32, points: [*]const StrokePointC, points_len: usize, mode: u32) callconv(.c) u32 {
     const chosen = pickFor("tool_stroke_eraser") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("tool_stroke_eraser", chosen, .{ canvas, layer, state, n, points, points_len, mode }));
 }
 
+/// Dispatch a color sample and write RGBA channels to `out_colour`.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_tool_sample_colour(canvas: u64, x: f64, y: f64, area: u32, out_colour: *[4]f32) callconv(.c) u32 {
     const chosen = pickFor("tool_sample_colour") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("tool_sample_colour", chosen, .{ canvas, x, y, area, out_colour }));
 }
 
+/// Dispatch a fill, forwarding the seed, tolerance, and contiguous flag.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_tool_fill(canvas: u64, layer: u64, sx: f64, sy: f64, colour: *const [4]f32, tol: f64, contig: u32) callconv(.c) u32 {
     const chosen = pickFor("tool_fill") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("tool_fill", chosen, .{ canvas, layer, sx, sy, colour, tol, contig }));
 }
 
+/// Dispatch rectangular selection creation and write its mask handle.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_selection_rect(canvas: u64, x0: u32, y0: u32, x1: u32, y1: u32, out_mask: *u64) callconv(.c) u32 {
     const chosen = pickFor("selection_rect") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("selection_rect", chosen, .{ canvas, x0, y0, x1, y1, out_mask }));
 }
 
+/// Dispatch polygon selection creation; `pts` contains `n` XY pairs.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_selection_lasso(canvas: u64, n: u32, pts: [*]const f64, out_mask: *u64) callconv(.c) u32 {
     const chosen = pickFor("selection_lasso") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("selection_lasso", chosen, .{ canvas, n, pts, out_mask }));
 }
 
+/// Dispatch selection inversion and write the new mask handle.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_selection_invert(canvas: u64, mask: u64, out_mask: *u64) callconv(.c) u32 {
     const chosen = pickFor("selection_invert") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("selection_invert", chosen, .{ canvas, mask, out_mask }));
 }
 
+/// Dispatch cutting selected layer pixels to the clipboard.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_selection_cut(canvas: u64, layer: u64, mask: u64) callconv(.c) u32 {
     const chosen = pickFor("selection_cut") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("selection_cut", chosen, .{ canvas, layer, mask }));
 }
 
+/// Dispatch copying selected layer pixels to the clipboard.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_selection_copy(canvas: u64, layer: u64, mask: u64) callconv(.c) u32 {
     const chosen = pickFor("selection_copy") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("selection_copy", chosen, .{ canvas, layer, mask }));
 }
 
+/// Dispatch clipboard paste with pixel offsets `(dx, dy)`.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_selection_paste(canvas: u64, layer: u64, dx: f64, dy: f64) callconv(.c) u32 {
     const chosen = pickFor("selection_paste") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("selection_paste", chosen, .{ canvas, layer, dx, dy }));
 }
 
+/// Dispatch release of a selection mask handle.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_selection_free(mask: u64) callconv(.c) u32 {
     const chosen = pickFor("selection_free") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("selection_free", chosen, .{mask}));
 }
 
+/// Dispatch line drawing with the supplied endpoints, width, and color.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_shape_line(canvas: u64, layer: u64, ax: f64, ay: f64, bx: f64, by: f64, w: f64, colour: *const [4]f32, aa: u32) callconv(.c) u32 {
     const chosen = pickFor("shape_line") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("shape_line", chosen, .{ canvas, layer, ax, ay, bx, by, w, colour, aa }));
 }
 
+/// Dispatch rectangle drawing with the supplied stroke and fill settings.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_shape_rectangle(canvas: u64, layer: u64, ax: f64, ay: f64, bx: f64, by: f64, sw: f64, sc: *const [4]f32, fc: *const [4]f32, has_stroke: u32, has_fill: u32, aa: u32) callconv(.c) u32 {
     const chosen = pickFor("shape_rectangle") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("shape_rectangle", chosen, .{ canvas, layer, ax, ay, bx, by, sw, sc, fc, has_stroke, has_fill, aa }));
 }
 
+/// Dispatch ellipse drawing with the supplied stroke and fill settings.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_shape_ellipse(canvas: u64, layer: u64, cx: f64, cy: f64, rx: f64, ry: f64, sw: f64, sc: *const [4]f32, fc: *const [4]f32, has_stroke: u32, has_fill: u32, aa: u32) callconv(.c) u32 {
     const chosen = pickFor("shape_ellipse") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("shape_ellipse", chosen, .{ canvas, layer, cx, cy, rx, ry, sw, sc, fc, has_stroke, has_fill, aa }));
 }
 
+/// Dispatch polygon drawing; `verts` contains `n` XY pairs.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_shape_polygon(canvas: u64, layer: u64, n: u32, verts: [*]const f64, sw: f64, sc: *const [4]f32, fc: *const [4]f32, has_stroke: u32, has_fill: u32, aa: u32) callconv(.c) u32 {
     const chosen = pickFor("shape_polygon") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("shape_polygon", chosen, .{ canvas, layer, n, verts, sw, sc, fc, has_stroke, has_fill, aa }));
 }
 
+/// Dispatch text rasterization, forwarding font settings and point size.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_text_rasterise(canvas: u64, layer: u64, ox: f64, oy: f64, text: [*:0]const u8, family: [*:0]const u8, size_points: f64, weight: u32, italic: u32, colour: *const [4]f32) callconv(.c) u32 {
     const chosen = pickFor("text_rasterise") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("text_rasterise", chosen, .{ canvas, layer, ox, oy, text, family, size_points, weight, italic, colour }));
 }
 
+/// Dispatch history recording; `payload_len` is the payload byte count.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_history_record(canvas: u64, opcode: [*:0]const u8, payload_len: u32, payload: [*]const u8, redo_cost: u64) callconv(.c) u32 {
     const chosen = pickFor("history_record") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("history_record", chosen, .{ canvas, opcode, payload_len, payload, redo_cost }));
 }
 
+/// Dispatch undo to the selected backend.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_history_undo(canvas: u64) callconv(.c) u32 {
     const chosen = pickFor("history_undo") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("history_undo", chosen, .{canvas}));
 }
 
+/// Dispatch redo to the selected backend.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_history_redo(canvas: u64) callconv(.c) u32 {
     const chosen = pickFor("history_redo") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("history_redo", chosen, .{canvas}));
 }
 
+/// Dispatch viewport settings to the selected backend.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_viewport_set(canvas: u64, zoom: f64, px: f64, py: f64, rot: f64) callconv(.c) u32 {
     const chosen = pickFor("viewport_set") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("viewport_set", chosen, .{ canvas, zoom, px, py, rot }));
 }
 
+/// Dispatch viewport fitting and write zoom/pan outputs.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_viewport_fit(canvas: u64, oz: *f64, opx: *f64, opy: *f64) callconv(.c) u32 {
     const chosen = pickFor("viewport_fit") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("viewport_fit", chosen, .{ canvas, oz, opx, opy }));
@@ -495,31 +561,43 @@ pub export fn pt_viewport_fit(canvas: u64, oz: *f64, opx: *f64, opy: *f64) callc
 // through the `pt_layer_*` inline forwarders below.
 //------------------------------------------------------------------------------
 
+/// Dispatch layer creation and write its canvas-scoped stable ID.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_canvas_layer_new(canvas: u64, after: u64, has_after: u32, name: [*:0]const u8, out_layer: *u64) callconv(.c) u32 {
     const chosen = pickFor("layer_new") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("layer_new", chosen, .{ canvas, after, has_after, name, out_layer }));
 }
 
+/// Dispatch deletion of a canvas-scoped layer ID.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_canvas_layer_delete(canvas: u64, layer: u64) callconv(.c) u32 {
     const chosen = pickFor("layer_delete") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("layer_delete", chosen, .{ canvas, layer }));
 }
 
+/// Dispatch layer reorder to a zero-based position from the bottom.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_canvas_layer_reorder(canvas: u64, layer: u64, new_index: u32) callconv(.c) u32 {
     const chosen = pickFor("layer_reorder") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("layer_reorder", chosen, .{ canvas, layer, new_index }));
 }
 
+/// Dispatch layer visibility; zero hides and nonzero shows.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_canvas_layer_set_visible(canvas: u64, layer: u64, visible: u32) callconv(.c) u32 {
     const chosen = pickFor("layer_set_visible") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("layer_set_visible", chosen, .{ canvas, layer, visible }));
 }
 
+/// Dispatch layer opacity to the selected backend.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_canvas_layer_set_opacity(canvas: u64, layer: u64, opacity: f64) callconv(.c) u32 {
     const chosen = pickFor("layer_set_opacity") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("layer_set_opacity", chosen, .{ canvas, layer, opacity }));
 }
 
+/// Dispatch layer blend mode to the selected backend.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_canvas_layer_set_blend(canvas: u64, layer: u64, mode: u32) callconv(.c) u32 {
     const chosen = pickFor("layer_set_blend") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("layer_set_blend", chosen, .{ canvas, layer, mode }));
@@ -549,6 +627,8 @@ pub inline fn pt_layer_set_blend(canvas: u64, layer: u64, mode: u32) u32 {
     return pt_canvas_layer_set_blend(canvas, layer, mode);
 }
 
+/// Dispatch rendering a rectangle into caller-owned RGBA8 output storage.
+/// Returns a numeric `ResultCode`, or `err` if no backend is available.
 pub export fn pt_canvas_render_rgba8(canvas: u64, x: u32, y: u32, w: u32, h: u32, out_buf: [*]u8, out_buf_len: usize) callconv(.c) u32 {
     const chosen = pickFor("canvas_render_rgba8") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("canvas_render_rgba8", chosen, .{ canvas, x, y, w, h, out_buf, out_buf_len }));

@@ -13,6 +13,9 @@ use host_core::protocol::Command;
 use std::io::Read;
 use std::sync::{Arc, Mutex};
 
+/// Read a UTF-8 UI file of at most `max_bytes` bytes.
+///
+/// Returns `InvalidString` for file I/O errors, invalid UTF-8, or excess size.
 fn read_bounded_utf8_file(path: &str, max_bytes: u64) -> Result<String, gossamer_rs::Error> {
     let file = std::fs::File::open(path)
         .map_err(|e| gossamer_rs::Error::InvalidString(format!("{path}: {e}")))?;
@@ -30,6 +33,10 @@ fn read_bounded_utf8_file(path: &str, max_bytes: u64) -> Result<String, gossamer
         .map_err(|e| gossamer_rs::Error::InvalidString(format!("{path}: invalid UTF-8: {e}")))
 }
 
+/// Run the desktop window with document commands exposed through Gossamer IPC.
+///
+/// `PT_UI_FILE` selects an external UI file; `PT_UI_FILE_MAX_BYTES` sets its byte
+/// limit (10 MiB by default). File loading and Gossamer setup errors propagate.
 fn main() -> Result<(), gossamer_rs::Error> {
     let mut app = App::new("paint.type", 1024, 768)?;
 

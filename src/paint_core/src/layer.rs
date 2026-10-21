@@ -289,6 +289,9 @@ impl LayerStack {
     /// visible non-zero-opacity layer, produce the bottom-up composite of the
     /// per-tile stack honouring each layer's fractional `opacity()` and
     /// `blend` mode, preserving tile grid coordinates `(coord.x, coord.y)`.
+    ///
+    /// Returns an empty layer when nothing contributes. Tile allocation and I/O
+    /// errors are returned as `LayerStackError::Tile`; the source stack is unchanged.
     pub fn flatten(&self, name: impl Into<String>) -> Result<Layer, LayerStackError> {
         let mut coords: BTreeSet<TileCoord> = BTreeSet::new();
         for layer in &self.layers {

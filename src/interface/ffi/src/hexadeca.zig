@@ -78,6 +78,9 @@ pub const PortError = error{
     PortRangeOverflow,
 };
 
+/// Start all sixteen connectors on consecutive ports beginning at `base_port`.
+/// Returns `PortZero` or `PortRangeOverflow` before starting any connector if
+/// the port range is invalid.
 pub fn startAll(base_port: u16) PortError!void {
     if (base_port == 0) return PortError.PortZero;
     if (base_port > MAX_BASE_PORT) return PortError.PortRangeOverflow;

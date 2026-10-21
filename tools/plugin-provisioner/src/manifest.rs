@@ -258,6 +258,9 @@ pub enum PluginError {
 
 impl PluginManifest {
     /// Load a manifest from a TOML file
+    ///
+    /// Limited to `MAX_MANIFEST_BYTES` of UTF-8 text. File I/O, size, parsing, and
+    /// manifest validation errors propagate.
     pub fn from_toml_file(path: impl AsRef<Path>) -> Result<Self, PluginError> {
         let path = path.as_ref();
         let content = read_bounded_manifest_file(path)?;
@@ -265,6 +268,9 @@ impl PluginManifest {
     }
 
     /// Load a manifest from a JSON file
+    ///
+    /// Limited to `MAX_MANIFEST_BYTES` of UTF-8 text. File I/O, size, parsing, and
+    /// manifest validation errors propagate.
     pub fn from_json_file(path: impl AsRef<Path>) -> Result<Self, PluginError> {
         let path = path.as_ref();
         let content = read_bounded_manifest_file(path)?;
@@ -302,6 +308,10 @@ impl PluginManifest {
     }
 
     /// Validate the manifest
+    ///
+    /// Returns `ManifestValidation` for missing required fields, unsafe ID
+    /// components, or `..` in the WASM entry; returns `UnsupportedVersion` for an
+    /// API below the minimum. Does not check the WASM file on disk.
     pub fn validate(&self) -> Result<(), PluginError> {
         if self.id.0.is_empty() {
             return Err(PluginError::ManifestValidation(String::from("id is required")));
@@ -361,6 +371,10 @@ pub type PluginResult<T> = Result<T, PluginError>;
 
 const MAX_MANIFEST_BYTES: u64 = 1024 * 1024;
 
+/// Read UTF-8 manifest text up to `MAX_MANIFEST_BYTES`.
+///
+/// File I/O and UTF-8 errors become `IoError`; excess size becomes
+/// `ManifestValidation`.
 fn read_bounded_manifest_file(path: &Path) -> Result<String, PluginError> {
     use std::io::Read;
     let file = std::fs::File::open(path)

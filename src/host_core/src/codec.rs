@@ -8,6 +8,7 @@
 /// decompression-bomb dimensions).
 pub const MAX_DIM: u32 = 16_384;
 
+/// Reject empty paths and paths containing NUL with an error message.
 fn validate_io_path(path: &str) -> Result<(), String> {
     if path.is_empty() || path.contains('\0') {
         return Err("invalid empty or NUL-containing file path".to_string());
@@ -16,6 +17,10 @@ fn validate_io_path(path: &str) -> Result<(), String> {
 }
 
 /// Encode `rgba` (length `w * h * 4`, straight alpha) to a PNG file.
+///
+/// Creates or truncates `path` after validation. Returns an error message for
+/// an empty or NUL-containing path, dimensions outside `1..=MAX_DIM`, an
+/// overflowing or mismatched buffer size, or file I/O and PNG encoding errors.
 pub fn save_png(path: &str, rgba: &[u8], w: u32, h: u32) -> Result<(), String> {
     validate_io_path(path)?;
     if w == 0 || h == 0 || w > MAX_DIM || h > MAX_DIM {
@@ -46,6 +51,10 @@ pub fn save_png(path: &str, rgba: &[u8], w: u32, h: u32) -> Result<(), String> {
 
 /// Decode a PNG file into `(rgba, w, h)` straight-alpha RGBA8, expanding
 /// sub-byte / paletted / tRNS images and stripping 16-bit channels cleanly.
+///
+/// Returns an error message for an empty or NUL-containing path, dimensions
+/// outside `1..=MAX_DIM`, an overflowing RGBA8 size, unexpected RGBA frame
+/// length, unsupported color type, or file I/O and PNG decoding errors.
 pub fn load_png(path: &str) -> Result<(Vec<u8>, u32, u32), String> {
     validate_io_path(path)?;
     let file = std::fs::File::open(path).map_err(|e| e.to_string())?;

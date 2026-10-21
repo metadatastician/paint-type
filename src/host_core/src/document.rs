@@ -23,6 +23,7 @@ use crate::protocol::{LayerInfo, ToolKind};
 const MAX_HISTORY_REVS: usize = 64;
 const MAX_HISTORY_BYTES: usize = 256 * 1024 * 1024;
 
+/// Estimate the retained heap footprint of `canvas` in bytes for undo budget pruning.
 fn snapshot_byte_cost(canvas: &PtypeCanvas) -> usize {
     let mut bytes = core::mem::size_of::<PtypeCanvas>();
     if let Some(author) = &canvas.author {
@@ -69,6 +70,7 @@ fn ptype_to_core_blend(b: PtypeBlendMode) -> CoreBlendMode {
     }
 }
 
+/// Return the lowercase blend-mode name used by the UI protocol.
 fn blend_name(b: CoreBlendMode) -> &'static str {
     match b {
         CoreBlendMode::Normal => "normal",
@@ -77,6 +79,7 @@ fn blend_name(b: CoreBlendMode) -> &'static str {
     }
 }
 
+/// Parse a trimmed, case-insensitive UI blend name, returning an error for unknown names.
 fn parse_blend_name(raw: &str) -> Result<CoreBlendMode, String> {
     match raw.trim().to_ascii_lowercase().as_str() {
         "normal" => Ok(CoreBlendMode::Normal),
@@ -112,6 +115,8 @@ pub struct Document {
 impl Document {
     /// Create a document with one empty layer named "Layer 1" and initialise
     /// its `UndoGraph` root snapshot.
+    ///
+    /// Zero dimensions are raised to one pixel.
     pub fn new(width: u32, height: u32) -> Self {
         let width = width.max(1);
         let height = height.max(1);
@@ -157,18 +162,22 @@ impl Document {
         self.height
     }
 
+    /// Count all history revisions, including the root and retained branches.
     pub fn history_len(&self) -> usize {
         self.history.len()
     }
 
+    /// Borrow the document's loaded plugin registry.
     pub fn plugins(&self) -> &PluginRegistry {
         &self.plugins
     }
 
+    /// Mutably borrow the document's loaded plugin registry.
     pub fn plugins_mut(&mut self) -> &mut PluginRegistry {
         &mut self.plugins
     }
 
+    /// Commit an in-progress stroke once; do nothing if no stroke is pending.
     fn flush_pending_stroke(&mut self) {
         if self.stroke_in_progress {
             self.stroke_in_progress = false;
@@ -176,6 +185,8 @@ impl Document {
         }
     }
 
+    /// Snapshot the document as a child revision, compacting history within
+    /// `MAX_HISTORY_REVS` and `MAX_HISTORY_BYTES`, and clear the redo path.
     fn record_revision(&mut self) {
         let snapshot = self.to_ptype_canvas();
         let new_cost = snapshot_byte_cost(&snapshot);
@@ -226,6 +237,11 @@ impl Document {
         self.redo_stack.clear();
     }
 
+    /// Replace canvas contents and return the full dirty rectangle without recording history.
+    ///
+    /// Dimensions are raised to at least one pixel. Invalid active indices select
+    /// the first layer, creating one if needed. Tile allocation failures skip tiles;
+    /// tile write errors are ignored. Layer IDs and lock flags are not restored.
     fn restore_ptype_canvas_internal(&mut self, ptype_canvas: &PtypeCanvas) -> Rect {
         self.width = ptype_canvas.width.max(1);
         self.height = ptype_canvas.height.max(1);
@@ -279,6 +295,9 @@ impl Document {
     }
 
     /// Step backward one revision along the `UndoGraph` parent chain.
+    ///
+    /// Commits a pending stroke first. Returns the full dirty rectangle after
+    /// restoration, or `None` if no parent snapshot is available.
     pub fn undo(&mut self) -> Option<Rect> {
         self.flush_pending_stroke();
         let parent = self.history.parent_of(self.current_rev)?;
@@ -289,6 +308,9 @@ impl Document {
     }
 
     /// Step forward one revision along `redo_stack` or latest child branch.
+    ///
+    /// Commits a pending stroke first. Returns the full dirty rectangle after
+    /// restoration, or `None` if no next snapshot is available.
     pub fn redo(&mut self) -> Option<Rect> {
         self.flush_pending_stroke();
         let next_rev = self
@@ -305,6 +327,10 @@ impl Document {
         self.brush = build_brush(self.diameter, self.hardness, self.colour);
     }
 
+    /// Set brush diameter in pixels and choose a hard tip for hardness at least `0.5`.
+    ///
+    /// Diameter is clamped to `1..=TILE_SIZE`; hardness to `[0, 1]`, with NaN
+    /// treated as zero. Rebuilds the brush using the current color.
     pub fn set_brush(&mut self, diameter: u32, hardness: f32) {
         self.diameter = diameter.clamp(1, TILE_SIZE);
         self.hardness = if hardness.is_nan() {
@@ -340,6 +366,9 @@ impl Document {
     }
 
     /// Push a new transparent layer onto the stack and make it active.
+    ///
+    /// Commits a pending stroke and the layer addition, clearing the redo path.
+    /// Blank or missing names use `Layer N`. Returns the new bottom-based stack index.
     pub fn add_layer(&mut self, name: Option<String>) -> usize {
         self.flush_pending_stroke();
         let next_num = self.stack.len() + 1;
@@ -353,6 +382,10 @@ impl Document {
     }
 
     /// Delete the layer at `index` (refuses to delete the last remaining layer).
+    ///
+    /// Indices are zero-based from the bottom. Returns the full dirty rectangle
+    /// and records a revision on success; errors on an invalid index or the last
+    /// remaining layer. A pending stroke is committed before validation.
     pub fn delete_layer(&mut self, index: usize) -> Result<Rect, String> {
         self.flush_pending_stroke();
         if self.stack.len() <= 1 {
@@ -379,6 +412,8 @@ impl Document {
     }
 
     /// Select the active painting layer by 0-based stack index.
+    ///
+    /// Returns an error if the index is out of bounds; does not record a revision.
     pub fn select_layer(&mut self, index: usize) -> Result<(), String> {
         let id = self
             .stack
@@ -389,6 +424,10 @@ impl Document {
     }
 
     /// Reorder a layer from stack index `from` to `to`.
+    ///
+    /// Indices are zero-based from the bottom. Returns the full dirty rectangle
+    /// and records a revision on success; errors if either index is out of bounds.
+    /// A pending stroke is committed before validation.
     pub fn reorder_layer(&mut self, from: usize, to: usize) -> Result<Rect, String> {
         self.flush_pending_stroke();
         let id = self
@@ -407,7 +446,10 @@ impl Document {
         })
     }
 
-    /// Toggle layer visibility at `index`.
+    /// Set layer visibility at the zero-based, bottom-based `index`.
+    ///
+    /// Returns the full dirty rectangle and records a revision on success; errors
+    /// if the index is out of bounds. Commits a pending stroke before validation.
     pub fn set_layer_visibility(&mut self, index: usize, visible: bool) -> Result<Rect, String> {
         self.flush_pending_stroke();
         let id = self
@@ -426,7 +468,11 @@ impl Document {
         })
     }
 
-    /// Set layer opacity at `index`.
+    /// Set opacity at the zero-based, bottom-based `index`, clamping to `[0, 1]`.
+    ///
+    /// NaN becomes full opacity. Returns the full dirty rectangle and records a
+    /// revision on success; errors if the index is out of bounds. Commits a pending
+    /// stroke before validation.
     pub fn set_layer_opacity(&mut self, index: usize, opacity: f32) -> Result<Rect, String> {
         self.flush_pending_stroke();
         let id = self
@@ -446,6 +492,10 @@ impl Document {
     }
 
     /// Set layer blend mode (`"normal"`, `"multiply"`, `"screen"`) at `index`.
+    ///
+    /// Names are trimmed and case-insensitive; indices are zero-based from the
+    /// bottom. Returns the full dirty rectangle and records a revision on success;
+    /// errors on unknown names or invalid indices. Commits a pending stroke first.
     pub fn set_layer_blend(&mut self, index: usize, blend: &str) -> Result<Rect, String> {
         self.flush_pending_stroke();
         let mode = parse_blend_name(blend)?;
@@ -467,6 +517,11 @@ impl Document {
 
     /// Apply an `EffectPlugin` across every allocated tile of the active layer
     /// and record the resulting state into `UndoGraph`.
+    ///
+    /// Uses straight-alpha RGBA8 for each tile and returns the full dirty rectangle.
+    /// Returns an error string if the effect fails or returns a byte count other
+    /// than `TILE_SIZE * TILE_SIZE * 4` (which may leave earlier tiles modified);
+    /// tile I/O errors are ignored. A pending stroke is committed first.
     pub fn apply_effect(&mut self, effect: &dyn EffectPlugin) -> Result<Rect, String> {
         self.flush_pending_stroke();
         let active = self.active;
@@ -543,6 +598,10 @@ impl Document {
     /// Replace the document contents with the given straight-alpha RGBA8 image.
     /// Converts straight-alpha source pixels to premultiplied RGBA16F tiles and
     /// records a revision in `UndoGraph`.
+    ///
+    /// Expects at least `w * h * 4` input bytes; indexing missing pixels panics. Zero
+    /// dimensions are raised to one internally, while the returned dirty rectangle
+    /// uses `w` and `h`. Tile allocation failures skip tiles; write errors are ignored.
     pub fn load_png(&mut self, rgba8: &[u8], w: u32, h: u32) -> Rect {
         self.flush_pending_stroke();
         self.width = w.max(1);
@@ -589,6 +648,10 @@ impl Document {
         Rect { x: 0, y: 0, w, h }
     }
 
+    /// Stamp or erase at canvas-pixel coordinates and return the clipped dirty bounds.
+    ///
+    /// Non-finite or fully clipped centers return an empty rectangle. Tile
+    /// allocation failures skip tiles, and stamp I/O errors are ignored.
     fn stamp_at(&mut self, cx: f32, cy: f32) -> Rect {
         if !cx.is_finite() || !cy.is_finite() {
             return Rect {
@@ -668,10 +731,14 @@ impl Document {
     }
 
     /// Finish a stroke and commit the new revision into `UndoGraph`.
+    ///
+    /// Does nothing when no stroke is pending.
     pub fn pointer_up(&mut self) {
         self.flush_pending_stroke();
     }
 
+    /// Apply stamp centers in canvas pixels and return their nonempty dirty bounds,
+    /// or an empty rectangle if none intersects the canvas.
     fn apply_stamps(&mut self, stamps: &[(f32, f32)]) -> Rect {
         stamps
             .iter()
@@ -697,6 +764,11 @@ impl Document {
     }
 
     /// Flood-fill from `(cx, cy)` with the current colour and commit a revision.
+    ///
+    /// Uses four-way connectivity and a tolerance of two per RGBA8 channel, filling
+    /// at most 4,000,000 matching pixels on the active layer. Finite seeds are
+    /// clamped to the canvas; non-finite seeds return an empty rectangle. Returns
+    /// the bounds of touched tiles. Tile allocation and I/O failures are ignored.
     pub fn fill_at(&mut self, cx: f32, cy: f32) -> Rect {
         if !cx.is_finite() || !cy.is_finite() {
             return Rect {
@@ -846,6 +918,10 @@ impl Document {
     }
 
     /// Replace document contents with `ptype_canvas` and commit into `UndoGraph`.
+    ///
+    /// Returns the full dirty rectangle and preserves extended layer IDs and lock
+    /// flags via `layer_meta`. Tile allocation failures skip tiles, and tile write
+    /// errors are ignored.
     pub fn load_ptype(&mut self, ptype_canvas: &PtypeCanvas) -> Rect {
         self.flush_pending_stroke();
         let rect = self.restore_ptype_canvas_internal(ptype_canvas);
@@ -853,8 +929,12 @@ impl Document {
         rect
     }
 
-    /// Convert the document to a lossless `.ptype` `Canvas` preserving
-    /// background, blend modes, visibility, opacity, and metadata.
+    /// Convert the document to a `.ptype` `Canvas`, preserving background,
+    /// blend modes, visibility, opacity, author, ICC profile, and retained
+    /// layer IDs and lock flags.
+    ///
+    /// Active layers above index zero are recorded explicitly. Tile read errors
+    /// are ignored.
     pub fn to_ptype_canvas(&self) -> PtypeCanvas {
         let mut ptype_canvas = PtypeCanvas::new(self.width, self.height);
         ptype_canvas.background = self.background;
