@@ -321,7 +321,11 @@ mod tests {
         };
         let bytes = decode(&dirty.rgba_base64);
         assert_eq!(bytes.len() as u32, dirty.w * dirty.h * 4);
-        let has_opaque = bytes.chunks_exact(4).any(|p| p[3] > 240 && p[0] > 200);
+        let has_opaque = bytes
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .any(|p| p[3] > 240 && p[0] > 200);
         assert!(has_opaque, "expected a near-opaque red pixel in the dab");
 
         assert_eq!(dispatch(&mut doc, Command::PointerUp), Response::Ack);
@@ -489,7 +493,11 @@ mod tests {
             panic!("expected Painted, got {response:?}");
         };
         let bytes = decode(&dirty.rgba_base64);
-        let has_red = bytes.chunks_exact(4).any(|p| p[0] > 200 && p[3] > 200);
+        let has_red = bytes
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .any(|p| p[0] > 200 && p[3] > 200);
         assert!(has_red, "expected red pixels after fill");
     }
 
@@ -507,7 +515,7 @@ mod tests {
         let w: u32 = 4;
         let h: u32 = 4;
         let mut src = vec![0u8; (w * h * 4) as usize];
-        let target_offset = ((1 * w + 1) * 4) as usize;
+        let target_offset = ((w + 1) * 4) as usize;
         src[target_offset] = 0;
         src[target_offset + 1] = 200;
         src[target_offset + 2] = 0;

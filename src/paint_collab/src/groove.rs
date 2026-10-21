@@ -160,7 +160,7 @@ impl GrooveManifest {
 
             s.push_str("      \"panel_compatible\": ");
             s.push_str(&cap.panel_compatible.to_string());
-            s.push_str("\n");
+            s.push('\n');
 
             s.push_str(if i + 1 == caps.len() { "    }\n" } else { "    },\n" });
         }
@@ -181,7 +181,7 @@ impl GrooveManifest {
             s.push_str(&jstr(v));
             let comma = if i + 1 == eps.len() { "" } else { "," };
             s.push_str(comma);
-            s.push_str("\n");
+            s.push('\n');
         }
         s.push_str("  },\n");
 
@@ -193,7 +193,7 @@ impl GrooveManifest {
         // applicability
         s.push_str("  \"applicability\": ");
         s.push_str(&jarr(&self.applicability));
-        s.push_str("\n");
+        s.push('\n');
 
         s.push_str("}\n");
         s

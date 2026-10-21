@@ -176,7 +176,7 @@ pub trait ToolPlugin: std::fmt::Debug + Send + Sync {
 }
 
 /// Tool response
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ToolResponse {
     /// Whether the canvas was modified
     pub canvas_modified: bool,
@@ -186,17 +186,6 @@ pub struct ToolResponse {
     pub preview: Option<Vec<u8>>,
     /// Status message (optional)
     pub status: Option<String>,
-}
-
-impl Default for ToolResponse {
-    fn default() -> Self {
-        ToolResponse {
-            canvas_modified: false,
-            dirty_rect: None,
-            preview: None,
-            status: None,
-        }
-    }
 }
 
 impl ToolResponse {

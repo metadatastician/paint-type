@@ -141,7 +141,7 @@ impl EffectPlugin for WasmEffectPlugin {
         check_rgba8_dimensions(input, width, height)?;
 
         let mut output = Vec::with_capacity(input.len());
-        for pixel in input.chunks_exact(4) {
+        for pixel in input.as_chunks::<4>().0 {
             output.extend_from_slice(&[255 - pixel[0], 255 - pixel[1], 255 - pixel[2], pixel[3]]);
         }
         Ok(output)
@@ -183,7 +183,7 @@ impl EffectPlugin for BrightnessContrastEffect {
         check_rgba8_dimensions(input, width, height)?;
         let mut output = Vec::with_capacity(input.len());
 
-        for pixel in input.chunks_exact(4) {
+        for pixel in input.as_chunks::<4>().0 {
             let r = ((pixel[0] as f32 / 255.0 - 0.5) * self.contrast
                 + 0.5
                 + self.brightness / 255.0)
@@ -249,7 +249,7 @@ impl EffectPlugin for InvertColourEffect {
     fn apply(&self, input: &[u8], width: u32, height: u32) -> PluginResult<Vec<u8>> {
         check_rgba8_dimensions(input, width, height)?;
         let mut output = Vec::with_capacity(input.len());
-        for px in input.chunks_exact(4) {
+        for px in input.as_chunks::<4>().0 {
             if px[3] == 0 {
                 output.extend_from_slice(&[0, 0, 0, 0]);
             } else {
@@ -300,7 +300,7 @@ impl EffectPlugin for GrayscaleEffect {
     fn apply(&self, input: &[u8], width: u32, height: u32) -> PluginResult<Vec<u8>> {
         check_rgba8_dimensions(input, width, height)?;
         let mut output = Vec::with_capacity(input.len());
-        for px in input.chunks_exact(4) {
+        for px in input.as_chunks::<4>().0 {
             let luma = (0.2126 * px[0] as f32 + 0.7152 * px[1] as f32 + 0.0722 * px[2] as f32)
                 .round()
                 .clamp(0.0, 255.0) as u8;

@@ -85,14 +85,14 @@ pub fn load_png(path: &str) -> Result<(Vec<u8>, u32, u32), String> {
         }
         png::ColorType::Rgb => {
             let mut out = Vec::with_capacity(out_len);
-            for px in buf.chunks_exact(3) {
+            for px in buf.as_chunks::<3>().0 {
                 out.extend_from_slice(&[px[0], px[1], px[2], 255]);
             }
             out
         }
         png::ColorType::GrayscaleAlpha => {
             let mut out = Vec::with_capacity(out_len);
-            for px in buf.chunks_exact(2) {
+            for px in buf.as_chunks::<2>().0 {
                 out.extend_from_slice(&[px[0], px[0], px[0], px[1]]);
             }
             out

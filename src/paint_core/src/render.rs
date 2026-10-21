@@ -64,7 +64,7 @@ pub fn try_render_region(
 
     for ty in tile_y0..=tile_y1 {
         let tile_origin_y = (ty as u64) * tile_size_u64;
-        let py_start = (x_or_max(y as u64, tile_origin_y)) as u64;
+        let py_start = x_or_max(y as u64, tile_origin_y);
         let py_end = y_end.min(tile_origin_y + tile_size_u64);
 
         for tx in tile_x0..=tile_x1 {

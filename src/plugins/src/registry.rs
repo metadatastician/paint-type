@@ -168,10 +168,7 @@ impl PluginRegistry {
     }
 
     /// Register a built-in effect plugin
-    pub fn register_builtin_effect(
-        &mut self,
-        effect: impl EffectPlugin + Send + Sync + 'static,
-    ) -> PluginId {
+    pub fn register_builtin_effect(&mut self, effect: impl EffectPlugin + 'static) -> PluginId {
         let id = PluginId::new(format!("builtin.effect.{}", self.next_id));
         self.next_id += 1;
         let entry = PluginEntry::Effect(Arc::new(effect));
@@ -180,10 +177,7 @@ impl PluginRegistry {
     }
 
     /// Register a built-in tool plugin
-    pub fn register_builtin_tool(
-        &mut self,
-        tool: impl ToolPlugin + Send + Sync + 'static,
-    ) -> PluginId {
+    pub fn register_builtin_tool(&mut self, tool: impl ToolPlugin + 'static) -> PluginId {
         let id = PluginId::new(format!("builtin.tool.{}", self.next_id));
         self.next_id += 1;
         let entry = PluginEntry::Tool(Arc::new(tool));
@@ -340,17 +334,14 @@ impl SafePluginRegistry {
             .load_tool_plugin(manifest_path, wasm_path)
     }
 
-    pub fn register_builtin_effect(
-        &self,
-        effect: impl EffectPlugin + Send + Sync + 'static,
-    ) -> PluginId {
+    pub fn register_builtin_effect(&self, effect: impl EffectPlugin + 'static) -> PluginId {
         self.inner
             .write()
             .unwrap_or_else(|e| e.into_inner())
             .register_builtin_effect(effect)
     }
 
-    pub fn register_builtin_tool(&self, tool: impl ToolPlugin + Send + Sync + 'static) -> PluginId {
+    pub fn register_builtin_tool(&self, tool: impl ToolPlugin + 'static) -> PluginId {
         self.inner
             .write()
             .unwrap_or_else(|e| e.into_inner())

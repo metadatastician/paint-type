@@ -77,10 +77,7 @@ jobs:
           done
       - name: Cargo clippy
         run: |
-          set +e
-          CLIPPY_FAIL=0
-          ALL_LOG="$RUNNER_TEMP/clippy-all.log"
-          : > "$ALL_LOG"
+          set -euo pipefail
           for crate in \
             src/ephapax \
             src/ptype_format \
@@ -90,37 +87,15 @@ jobs:
             src/host_core \
             tools/abi-codegen
           do
-            LOG="$RUNNER_TEMP/clippy-$(echo "$crate" | tr '/' '_').log"
-            cargo clippy --manifest-path "$crate/Cargo.toml" --all-targets -- -D warnings >"$LOG" 2>&1
-            RC=$?
-            if [ "$RC" -ne 0 ]; then
-              cat "$LOG"
-              { echo "=== $crate ==="; cat "$LOG"; } >> "$ALL_LOG"
-              CLIPPY_FAIL=1
-            fi
+            echo "=== cargo clippy: $crate ==="
+            cargo clippy --manifest-path "$crate/Cargo.toml" --all-targets -- -D warnings
           done
-          if [ "$CLIPPY_FAIL" -ne 0 ]; then
-            B64="$(gzip -c "$ALL_LOG" | base64 -w0)"
-            echo "::error title=clippy-b64::${B64}"
-            exit 1
-          fi
       - name: Cargo fmt check
-        if: always()
         run: |
           set -euo pipefail
-          FMT_FAIL=0
           for crate in src/ephapax src/ptype_format src/paint_core; do
-            if ! cargo fmt --manifest-path "$crate/Cargo.toml" --all -- --check; then
-              FMT_FAIL=1
-              cargo fmt --manifest-path "$crate/Cargo.toml" --all
-            fi
+            cargo fmt --manifest-path "$crate/Cargo.toml" --all -- --check
           done
-          if [ "$FMT_FAIL" -ne 0 ]; then
-            B64="$(git diff | gzip -c | base64 -w0)"
-            echo "::error title=rustfmt-b64::${B64}"
-            git checkout -- .
-            exit 1
-          fi
   test:
     name: Cargo test
     runs-on: ubuntu-latest
@@ -157,8 +132,7 @@ jobs:
           zig build
       - name: Run tests across all standalone crates
         run: |
-          set -uo pipefail
-          TEST_FAIL=0
+          set -euo pipefail
           for crate in \
             src/ephapax \
             src/ptype_format \
@@ -174,15 +148,8 @@ jobs:
             tools/plugin-provisioner
           do
             echo "=== cargo test: $crate ==="
-            LOG="$RUNNER_TEMP/test-$(echo "$crate" | tr '/' '_').log"
-            if ! cargo test --manifest-path "$crate/Cargo.toml" --all-targets >"$LOG" 2>&1; then
-              cat "$LOG"
-              MSG="$(grep -E 'FAILED|panicked|error(\[|:)' -B 1 -A 4 "$LOG" | tr '\n' ' ' | cut -c1-3500)"
-              echo "::error title=test-${crate}::${MSG}"
-              TEST_FAIL=1
-            fi
+            cargo test --manifest-path "$crate/Cargo.toml" --all-targets
           done
-          exit "$TEST_FAIL"
       - name: Smoke-test plugin-wizard non-interactive scaffolding
         run: |
           set -euo pipefail
@@ -203,4 +170,5 @@ jobs:
           echo "## Rust CI Results" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "- **cargo check (12 crates)**: passed" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **cargo clippy (7 core/interface crates, -D warnings)**: passed" >> "$GITHUB_STEP_SUMMARY"
           echo "- **cargo test (12 crates + wizard smoke)**: completed" >> "$GITHUB_STEP_SUMMARY"
