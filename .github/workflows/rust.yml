@@ -77,11 +77,28 @@ jobs:
           done
       - name: Cargo clippy
         run: |
-          set -euo pipefail
-          for crate in src/ephapax src/ptype_format src/paint_core src/paint_collab src/plugins src/host_core tools/abi-codegen; do
-            cargo clippy --manifest-path "$crate/Cargo.toml" --all-targets -- -D warnings
+          set -uo pipefail
+          CLIPPY_FAIL=0
+          for crate in \
+            src/ephapax \
+            src/ptype_format \
+            src/paint_core \
+            src/paint_collab \
+            src/plugins \
+            src/host_core \
+            tools/abi-codegen
+          do
+            LOG="$RUNNER_TEMP/clippy-$(echo "$crate" | tr '/' '_').log"
+            if ! cargo clippy --manifest-path "$crate/Cargo.toml" --all-targets -- -D warnings >"$LOG" 2>&1; then
+              cat "$LOG"
+              MSG="$(grep -E 'error(\[|:)|warning:' -A 3 "$LOG" | tr '\n' ' ' | cut -c1-3500)"
+              echo "::error title=clippy-${crate}::${MSG}"
+              CLIPPY_FAIL=1
+            fi
           done
+          exit "$CLIPPY_FAIL"
       - name: Cargo fmt check
+        if: always()
         run: |
           set -euo pipefail
           FMT_FAIL=0
@@ -133,7 +150,8 @@ jobs:
           zig build
       - name: Run tests across all standalone crates
         run: |
-          set -euo pipefail
+          set -uo pipefail
+          TEST_FAIL=0
           for crate in \
             src/ephapax \
             src/ptype_format \
@@ -149,8 +167,15 @@ jobs:
             tools/plugin-provisioner
           do
             echo "=== cargo test: $crate ==="
-            cargo test --manifest-path "$crate/Cargo.toml" --all-targets
+            LOG="$RUNNER_TEMP/test-$(echo "$crate" | tr '/' '_').log"
+            if ! cargo test --manifest-path "$crate/Cargo.toml" --all-targets >"$LOG" 2>&1; then
+              cat "$LOG"
+              MSG="$(grep -E 'FAILED|panicked|error(\[|:)' -B 1 -A 4 "$LOG" | tr '\n' ' ' | cut -c1-3500)"
+              echo "::error title=test-${crate}::${MSG}"
+              TEST_FAIL=1
+            fi
           done
+          exit "$TEST_FAIL"
       - name: Smoke-test plugin-wizard non-interactive scaffolding
         run: |
           set -euo pipefail
