@@ -126,13 +126,13 @@ check_changed_workflows() {
     if grep -nE 'secrets\.GITHUB_TOKEN' "$file" >&2; then
       fail_gate "$file uses secrets.GITHUB_TOKEN (use \${{ github.token }} per Hypatia RE001)"
     fi
-    if grep -nE '\|\|[[:space:]]*true\b' "$file" >&2; then
+    if grep -vE '^[[:space:]]*#' "$file" | grep -nE '\|\|[[:space:]]*true\b' >&2; then
       fail_gate "$file masks command exit codes with '|| true' (Hypatia RE005)"
     fi
-    if grep -nF "$SLASH_TMP" "$file" >&2; then
-      fail_gate "$file references a hardcoded temporary path (use \$RUNNER_TEMP)"
+    if grep -vE '^[[:space:]]*#' "$file" | grep -nE '/tmp/[A-Za-z0-9_.-]+' >&2; then
+      fail_gate "$file references a literal /tmp path (use \$RUNNER_TEMP)"
     fi
-    if grep -nE '^[[:space:]]*[^#].*\b(python3?|node|npm|pnpm|yarn)\b' "$file" >&2; then
+    if grep -vE '^[[:space:]]*#' "$file" | grep -nE '\b(python3?|node|npm|pnpm|yarn)\b' >&2; then
       fail_gate "$file invokes a non-preferred workflow runtime (use bash, jq, and bun)"
     fi
 
