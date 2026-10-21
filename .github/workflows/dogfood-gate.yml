@@ -57,6 +57,7 @@ jobs:
     needs: k9-validate
     if: ${{ always() && github.event_name == 'pull_request' && needs.k9-validate.result != 'skipped' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: write
@@ -72,16 +73,18 @@ jobs:
       - name: Post or update sticky K9 verdict grid comment
         if: steps.grid.outcome == 'success'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
           test -s grid/report.md || exit 0
           marker='<!-- verdict-grid:k9 regenerated on every run -->'
-          existing=$(gh api --paginate "repos/$REPO/issues/$PR/comments" \
-            --jq '.[] | select(.user.type == "Bot" and (.body | contains("'"$marker"'"))) | .id' \
-            | head -n1 || true)
+          existing=""
+          if comments="$(gh api --paginate "repos/$REPO/issues/$PR/comments" \
+            --jq '.[] | select(.user.type == "Bot" and (.body | contains("'"$marker"'"))) | .id')"; then
+            existing="$(printf '%s\n' "$comments" | head -n1)"
+          fi
           if [ -n "$existing" ]; then
             gh api -X PATCH "repos/$REPO/issues/comments/$existing" -F body=@grid/report.md >/dev/null
           else
@@ -94,6 +97,7 @@ jobs:
   k9-coordination-validate:
     name: K9 Coordination Grammar
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -123,6 +127,7 @@ jobs:
     needs: [deed-validate, k9-validate]
     if: ${{ always() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
     steps:
@@ -136,7 +141,7 @@ jobs:
 
       - name: Publish DEED and K9 shields endpoints
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           DEED_RESULT: ${{ needs.deed-validate.result }}
           K9_RESULT: ${{ needs.k9-validate.result }}
         run: |
@@ -164,11 +169,12 @@ jobs:
           fi
 
           put() {
-            local path="$1" body="$2" cur existing sha
-            cur=$(gh api "repos/$REPO/contents/$path?ref=$BRANCH" 2>/dev/null || true)
-            existing=$(printf '%s' "$cur" | jq -r '.content // empty' | tr -d '\n' | base64 -d 2>/dev/null || true)
+            local path="$1" body="$2" cur="" existing="" sha=""
+            if cur="$(gh api "repos/$REPO/contents/$path?ref=$BRANCH" 2>/dev/null)"; then
+              if existing="$(printf '%s' "$cur" | jq -r '.content // empty' | tr -d '\n' | base64 -d 2>/dev/null)"; then :; fi
+              sha="$(printf '%s' "$cur" | jq -r '.sha // empty')"
+            fi
             [ "$existing" = "$body" ] && return 0
-            sha=$(printf '%s' "$cur" | jq -r '.sha // empty')
             printf '%s' "$body" | base64 -w0 \
               | jq -Rs --arg m "chore(badges): update $path [skip ci]" --arg b "$BRANCH" --arg s "$sha" \
                   '{message:$m, content:., branch:$b} + (if $s == "" then {} else {sha:$s} end)' \
@@ -188,6 +194,7 @@ jobs:
   empty-lint:
     name: Empty-Linter (Invisible Characters)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -200,7 +207,7 @@ jobs:
 
           while IFS= read -r -d '' f; do
             case "$f" in
-              *.png|*.ico|*.woff2|*.ttf|*.otf|*.wasm|*.ptype|*.a|*.so) continue ;;
+              *.png|*.bmp|*.jpg|*.jpeg|*.gif|*.webp|*.pdf|*.ico|*.woff|*.woff2|*.ttf|*.otf|*.wasm|*.ptype|*.a|*.so|*.zip|*.gz|*.tar|*.zst) continue ;;
             esac
             COUNT=$((COUNT + 1))
 
@@ -224,6 +231,7 @@ jobs:
   groove-check:
     name: Groove Surface Check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -252,6 +260,7 @@ jobs:
   eclexiaiser-validate:
     name: eclexiaiser Carbon-Budget Validation
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -263,7 +272,7 @@ jobs:
             echo "::error::eclexiaiser.toml missing at repository root"
             exit 1
           }
-          for section in '\[project\]' '\[budgets\]'; do
+          for section in '\[project\]' '\[\[functions\]\]' '\[carbon\]'; do
             grep -qE "^${section}" eclexiaiser.toml || {
               echo "::error file=eclexiaiser.toml::Missing required TOML table ${section}"
               exit 1
@@ -281,13 +290,14 @@ jobs:
   canon-lockstep:
     name: Canon Lockstep Check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Verify (canon) clause matches hyperpolymath/standards/canon.lock
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           STANDARDS_PIN="01c9b0c9f2646ebea0b30a9588462642ac94aee9"
@@ -301,7 +311,8 @@ jobs:
           FAIL=0
           for pair in "version:$want_version" "criteria-sha256:$want_criteria" "gates-sha256:$want_gates"; do
             k="${pair%:*}"; want="${pair#*:}"
-            got=$(bash scripts/deed-field.sh "$DEED" canon "$k" || true)
+            got=""
+            if got="$(bash scripts/deed-field.sh "$DEED" canon "$k")"; then :; fi
             if [ -z "$want" ] || [ "$got" != "$want" ]; then
               echo "::error file=$DEED::canon :$k is '$got' (canon.lock at $STANDARDS_PIN has '$want')"
               FAIL=1
@@ -316,6 +327,7 @@ jobs:
   dogfood-summary:
     name: Dogfooding Scorecard Summary
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs:
       - deed-validate
       - k9-validate
