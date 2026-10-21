@@ -1,0 +1,109 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# CodeRabbit configuration for metadatastician/paint-type.
+# Tuned for org rulesets 18225024 (EstateBranching: squash-merge, required
+# commit signatures, required review-thread resolution, dismiss stale reviews)
+# and 24634124 (Branch-Signatures).
+
+language: "en-GB"
+early_access: false
+tone_instructions: >-
+  Be direct, technical, and concise without emoji or filler. Report only
+  concrete correctness defects, security hazards, ABI/FFI soundness bugs, or
+  violations of documented repository gates.
+
+reviews:
+  # Keep threads limited to genuine defects so nitpicks do not block merges
+  # under EstateBranching (required_review_thread_resolution: true).
+  profile: "chill"
+  request_changes_workflow: false
+  high_level_summary: true
+  high_level_summary_in_walkthrough: false
+  collapse_walkthrough: true
+  review_status: true
+  commit_status: true
+  poem: false
+  sequence_diagrams: false
+  suggested_labels: false
+  suggested_reviewers: false
+  auto_apply_labels: false
+
+  path_filters:
+    - "!third_party/**"
+    - "!Cargo.lock"
+    - "!**/*.lock"
+
+  path_instructions:
+    - path: "**"
+      instructions: >-
+        Repository licence exception: source code is AGPL-3.0-or-later and
+        documentation is CC-BY-SA-4.0 (never suggest MPL-2.0 or bare AGPL-3.0).
+        Never suggest emoji in code, comments, commit messages, or docs.
+        JS runtime order is Bun (preferred) > Deno > pnpm > npm with a single
+        lockfile only. Never suggest introducing TypeScript (.ts/.tsx), Go
+        (.go), Python (.py), Makefiles, Dockerfiles, or new .a2ml files (use
+        .deed or .k9.ncl instead). Every newly added function should carry a
+        concise doc comment above its signature.
+    - path: ".github/workflows/**"
+      instructions: >-
+        Workflow hygiene gates: pin every third-party action uses: to a full
+        40-character hex commit SHA synchronized with .github/workflows/actions.lock
+        in LC_ALL=C byte order (verified via ./scripts/check-lock-sync.sh and
+        regenerated via `just sync-lock`). Prefer `${{ github.token }}` over
+        `secrets.GITHUB_TOKEN`. Declare an explicit `timeout-minutes:` on every
+        job with `runs-on:`. Avoid exit-masking `|| true`, literal `/tmp` paths
+        (use `$RUNNER_TEMP`), and `python3`/`node`/`npm` inside `run:` steps
+        (use POSIX bash, `jq`, and `bun`).
+    - path: "src/interface/ffi/**"
+      instructions: >-
+        Windows MSVC dual-library invariant: both `.dynamic` (DLL import
+        library) and `.static` emit `zig-out/lib/pt.lib`. On Windows targets,
+        `install_shared` must run strictly after `install_static` so
+        `zig-out/lib/pt.lib` deterministically holds the MSVC import library
+        paired with `zig-out/bin/pt.dll` rather than Zig's raw COFF archive.
+    - path: "**/*.{deed,k9,ncl}"
+      instructions: >-
+        Governance formats: `paint-type_chora.deed` SHA-256 digests stay in
+        lockstep with `hyperpolymath/standards/canon.lock`; `coordination.k9`
+        follows `coordination-k9-grammar_v1.2.abnf` without `---` YAML
+        document separators (ruling D318); `*.k9.ncl` validate against K9 v1.0.0.
+
+  auto_review:
+    enabled: true
+    # Work in Draft PRs freely without burning review quota or accumulating
+    # premature threads; flip `gh pr ready` once CI is green.
+    drafts: false
+    ignore_title_keywords:
+      - "WIP"
+      - "DO NOT MERGE"
+      - "[skip-review]"
+    # Only review PRs targeting main — never stack reviews onto ephemeral bot
+    # or agent branches.
+    base_branches:
+      - "main"
+
+  finishing_touches:
+    # Disable stacked `coderabbit/document-changed-functions/*` and unit-test
+    # child branches: squash-merging parent PRs into `main` turns every stacked
+    # bot PR into an immediate merge conflict (see closed PRs #132 and #138),
+    # and unsigned bot commits trip `required_signatures` on `main`. Local
+    # `.githooks/pre-commit` (`just preflight`) checks docstrings pre-commit.
+    docstrings:
+      enabled: false
+    unit_tests:
+      enabled: false
+
+  pre_merge_checks:
+    docstrings:
+      mode: "warning"
+      threshold: 80
+    title:
+      mode: "warning"
+    description:
+      mode: "off"
+    issue_assessment:
+      mode: "off"
+
+chat:
+  auto_reply: true

@@ -48,13 +48,18 @@ Containerfile  text eol=lf
 *.png   binary
 *.jpg   binary
 *.gif   binary
+*.bmp   binary
+*.ico   binary
+*.webp  binary
+*.wasm  binary
 *.pdf   binary
 *.woff2 binary
 *.zip   binary
 *.gz    binary
 
-# Lock files
-Cargo.lock  text eol=lf -diff
+# Lock files and line-oriented allowlists
+Cargo.lock                        text eol=lf -diff
+.machine_readable/root-allow.txt  text eol=lf merge=union
 
 # Linguist overrides
 third_party/ linguist-vendored

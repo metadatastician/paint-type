@@ -1,0 +1,129 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+= Git Flow & CI/CD Fluidity Guide (`paint.type`)
+
+== Root Causes Diagnosis
+
+Auditing recent pull requests (`#129` through `#138`) against active GitHub
+organization rulesets (`18225024` `EstateBranching`, `24634124`
+`Branch-Signatures`, and `23868655` `Branch-Floor`) isolated five concrete
+mechanisms that previously created multi-hour PR friction:
+
+1. **Stacked bot PRs + squash-only merges (`PR #132`, `PR #138`):**
+   `paint-type` enables squash merges only (`allow_squash_merge: true`,
+   `allow_merge_commit: false`). CodeRabbit's default finishing-touch docstring
+   generator opens stacked child PRs (`coderabbit/document-changed-functions/*`)
+   against the feature PR branch. The instant the parent PR squash-merges into
+   `main`, GitHub retargets the child PR onto `main`, guaranteeing a 3-way
+   history conflict (`mergeable: CONFLICTING`), while bot-authored PRs lack an
+   assigned seat to rebase themselves.
+2. **Split branch-signature rulesets (`24634124` vs `18225024`):**
+   `Branch-Signatures` (`24634124`) exempts `refs/heads/arena/**` on push,
+   allowing unsigned local commits onto feature branches, whereas
+   `EstateBranching` (`18225024`) enforces `required_signatures: true` on
+   `main`, blocking merge only after CI finishes. In addition, `24634124`
+   lists `refs/heads/coderabbitai/**` whereas CodeRabbit branches use
+   `refs/heads/coderabbit/**`.
+3. **Assertive bot nitpicks + `required_review_thread_resolution: true` + `dismiss_stale_reviews_on_push: true`:**
+   Under CodeRabbit's org-default `ASSERTIVE` profile, minor stylistic notes open
+   blocking review threads; pushing fixes then dismisses prior CODEOWNERS
+   approvals, forcing repeated human re-approval cycles.
+4. **Late CI discovery of fast static invariants:**
+   `actions.lock` closure, Hypatia workflow rules (`WH001`, `WH006`, `RE001`,
+   `RE005`), D43 `.a2ml` freeze rules, `Ratchet-exception:` commit trailers, and
+   invisible Unicode checks previously ran only after pushing 70+ GitHub Actions
+   jobs.
+5. **Lockfile & allowlist merge collisions:**
+   Concurrent PRs editing `.github/workflows/*.yml` or
+   `.machine_readable/root-allow.txt` collided on adjacent lines.
+
+---
+
+== In-Repository Automation Shipped Here
+
+[cols="2,4"]
+|===
+| Artifact | What It Solves
+
+| `.github/.coderabbit.yaml`
+| Sets `reviews.profile: "chill"`, `request_changes_workflow: false`,
+  `auto_review.drafts: false`, `auto_review.base_branches: ["main"]`,
+  `finishing_touches.docstrings.enabled: false` (eliminating orphaned conflicting
+  `coderabbit/document-changed-functions/*` PRs permanently), disables noisy
+  issue-link description warnings, and encodes all `paint.type` licence, runtime
+  (`Bun > Deno`), workflow, FFI, and DEED/K9 rules in `path_instructions`.
+
+| `.githooks/{install.sh,pre-commit,commit-msg,pre-push}`
+| Enrolls `metadatastician/paint-type` into estate-wide hook propagation
+  (`hyperpolymath/standards/.github/workflows/propagate-hooks.yml`), validates
+  staged changes and Conventional Commit trailers pre-commit, and blocks
+  accidental pushes of unsigned commits pre-push before CI time is spent.
+
+| `scripts/preflight.sh` (`just preflight`)
+| Runs in under 2 seconds locally to check `actions.lock` sync, Hypatia workflow
+  rules, banned extensions, `Bun > Deno` lockfile discipline, D43 `.a2ml`
+  freeze, invisible Unicode, DEED + `coordination.k9` ABNF v1.2, and function
+  docstrings.
+
+| `scripts/sync-actions-lock.js` (`just sync-lock`)
+| Bun script that automatically strips git conflict markers in
+  `.github/workflows/actions.lock`, recomputes all workflow action entries in
+  strict `LC_ALL=C` byte order, resolves missing dependency records via `gh api`,
+  and verifies closure via `./scripts/check-lock-sync.sh`.
+
+| `scripts/git-push-signed.sh` (`just push-signed`)
+| Runs `just preflight`, verifies `Ratchet-exception:` trailers, commits working
+  tree additions/modifications/deletions directly to `origin/<branch>` via
+  GitHub's GraphQL `createCommitOnBranch` API so every commit carries a `VALID`
+  GitHub `web-flow` signature with zero local GPG setup, and syncs local `HEAD`.
+
+| `.gitattributes` + `.github/copilot-instructions.*` + `Justfile`
+| Enables `merge=union` on `.machine_readable/root-allow.txt`, marks binary
+  image/Wasm formats explicitly, aligns Copilot instructions with current repo
+  gates, and resolves four `Justfile` `SD024` path findings.
+|===
+
+---
+
+== Recommended Daily Developer & Agent Flow
+
+[source,bash]
+----
+# One-time setup in any local clone:
+just install-hooks
+
+# 1. Iterate freely on a Draft PR (skips review noise while CI validates):
+gh pr create --draft --fill
+
+# 2. If you edited .github/workflows/*.yml (or rebased across an actions.lock conflict):
+just sync-lock
+
+# 3. Validate everything locally in <2s, then push a cryptographically signed commit:
+just push-signed "feat(core): concise summary" "Optional body details"
+
+# 4. Once CI checks are green, mark ready for single-pass review + approval:
+gh pr ready
+----
+
+---
+
+== Three Optional GitHub Organization Ruleset Tweaks (Owner UI Only)
+
+The repository changes above eliminate conflict-loop PRs, pre-catch CI failures,
+and sign agent commits automatically. An organization owner on `metadatastician`
+can optionally make three small adjustments in **Organization Settings ->
+Repository -> Rulesets** to remove the final layer of manual UI friction across
+all repos:
+
+1. **Fix the branch-prefix typo in Ruleset `24634124` (`Branch-Signatures`):**
+   Add `refs/heads/coderabbit/**` beside `refs/heads/coderabbitai/**` in the
+   exclude list (CodeRabbit creates branches under `coderabbit/...`, without the
+   trailing `ai`).
+2. **Consider toggling `dismiss_stale_reviews_on_push: false` (or `require_last_push_approval: false`) in Ruleset `18225024` (`EstateBranching`):**
+   With required CI status checks, `required_signatures: true`, and
+   `require_code_owner_review: true` active, disabling stale-review dismissal
+   means fixing a tiny typo after `@hyperpolymath` has already approved no
+   longer forces a second manual approval round.
+3. **Disable Copilot auto-review on Draft PRs in Ruleset `18225024`:**
+   Flip `copilot_code_review.parameters.review_draft_pull_requests` from `true`
+   to `false` (matching `.github/.coderabbit.yaml` `auto_review.drafts: false`)
+   so Draft PR pushes spend zero review quota until `gh pr ready`.

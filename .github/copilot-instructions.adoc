@@ -6,8 +6,8 @@
 
 == Before Writing Code
 
-* Read `0-AI-MANIFEST.a2ml` in the repo root for canonical file locations.
-* State files (.a2ml) live in `.machine_readable/` ONLY, never the root.
+* Read `CLAUDE.md`, `paint-type_chora.deed`, and `coordination.k9` in the repo root for canonical architecture and file locations.
+* Legacy state descriptiles live in `.machine_readable/descriptiles/` ONLY, never the repo root; author new metadata in `.deed` or `.k9.ncl` (new `.a2ml` files are frozen under ruling D43).
 
 == License
 
@@ -54,4 +54,11 @@
 
 Never create these in the repo root:
 STATE.a2ml, META.a2ml, ECOSYSTEM.a2ml, AGENTIC.a2ml, NEUROSYM.a2ml, PLAYBOOK.a2ml.
-They belong in `.machine_readable/` only.
+They belong in `.machine_readable/descriptiles/` only, and new `.a2ml` files are frozen under ruling D43.
+
+== Git Flow, Hooks, and Workflow Gates
+
+* Install repo hooks once with `just install-hooks` (`git config core.hooksPath .githooks`).
+* Run `just preflight` before pushing to catch `actions.lock` drift, Hypatia workflow rules (`WH001`, `WH006`, `RE001`, `RE005`), D43 `.a2ml` violations, invisible Unicode, and missing function docstrings locally in under 2 seconds.
+* In `.github/workflows/*.yml`: pin all external actions to 40-hex commit SHAs synced via `just sync-lock`, prefer `${{ github.token }}` over `secrets.GITHUB_TOKEN`, declare `timeout-minutes:` on every `runs-on:` job, avoid `|| true` and literal `/tmp` paths, and use `bash` + `jq` + `bun` (never `python3`, `node`, or `npm`).
+* Organization ruleset `18225024` requires cryptographically verified commit signatures on all commits merged to `main`. In headless or cloud agent environments without a local signing key, push commits via `just push-signed "type(scope): summary"`.

@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Regression suite for paint-type git-flow fluidity tooling:
+#   - .github/.coderabbit.yaml schema and anti-conflict settings
+#   - .githooks/{install.sh,pre-commit,commit-msg,pre-push}
+#   - scripts/preflight.sh positive and negative controls
+#   - scripts/sync-actions-lock.js check mode + conflict-marker auto-healing
+#   - Justfile SD024 descriptile path alignment
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$REPO_ROOT"
+export PATH="$HOME/.bun/bin:/tmp/tools-bin:/usr/local/bin:$PATH"
+
+PASS=0
+FAIL=0
+
+# Record a passing assertion.
+ok() {
+  printf '  PASS: %s\n' "$1"
+  PASS=$((PASS + 1))
+}
+
+# Record a failing assertion.
+fail() {
+  printf '  FAIL: %s\n' "$1" >&2
+  FAIL=$((FAIL + 1))
+}
+
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+printf '=== Git Fluidity & Preflight Regression Suite ===\n'
+
+# 1. Verify .github/.coderabbit.yaml guards against stacked conflict PRs & nitpick blocks
+CR_CFG=".github/.coderabbit.yaml"
+if [ -f "$CR_CFG" ] \
+  && grep -q 'profile: "chill"' "$CR_CFG" \
+  && grep -q 'request_changes_workflow: false' "$CR_CFG" \
+  && grep -q 'drafts: false' "$CR_CFG" \
+  && grep -A3 'docstrings:' "$CR_CFG" | grep -q 'enabled: false'; then
+  ok ".github/.coderabbit.yaml disables stacked docstring PRs and chill-tunes review threads"
+else
+  fail ".github/.coderabbit.yaml missing required anti-friction settings"
+fi
+
+# 2. Verify all .githooks scripts and workflow helpers exist and parse cleanly
+chmod +x .githooks/install.sh .githooks/pre-commit .githooks/commit-msg .githooks/pre-push \
+         scripts/preflight.sh scripts/git-push-signed.sh scripts/sync-actions-lock.js
+for req in .githooks/install.sh .githooks/pre-commit .githooks/commit-msg .githooks/pre-push \
+           scripts/preflight.sh scripts/git-push-signed.sh scripts/sync-actions-lock.js; do
+  if [ -f "$req" ] && { [[ "$req" == *.js ]] || bash -n "$req" 2>/dev/null; }; then
+    ok "$req exists and parses cleanly"
+  else
+    fail "$req missing or failed syntax check"
+  fi
+done
+
+# 3. Verify live repository passes `./scripts/preflight.sh` cleanly
+if bash ./scripts/preflight.sh >/dev/null; then
+  ok "Live repository passes ./scripts/preflight.sh with zero errors"
+else
+  fail "Live repository failed ./scripts/preflight.sh"
+fi
+
+# 4. Verify `commit-msg` hook accepts valid Conventional Commits and rejects bad subjects
+printf 'feat(ci): add preflight hooks\n' > "$TMP_DIR/good_msg"
+printf 'WIP bad message\n' > "$TMP_DIR/bad_msg"
+if bash ./.githooks/commit-msg "$TMP_DIR/good_msg"; then
+  ok "commit-msg hook accepts valid Conventional Commit subject"
+else
+  fail "commit-msg hook rejected valid Conventional Commit subject"
+fi
+if bash ./.githooks/commit-msg "$TMP_DIR/bad_msg" 2>/dev/null; then
+  fail "commit-msg hook accepted malformed subject"
+else
+  ok "commit-msg hook rejects non-Conventional Commit subject"
+fi
+
+# 5. Verify `Justfile` carries zero retired root `.machine_readable/STATE.a2ml` path checks
+if grep -nE '\.machine_readable/(STATE|META|ECOSYSTEM|AGENTIC|NEUROSYM|PLAYBOOK|ANCHOR)\.a2ml' Justfile; then
+  fail "Justfile still references retired top-level .machine_readable/*.a2ml path"
+else
+  ok "Justfile uses canonical .machine_readable/descriptiles/ paths throughout (0 SD024 findings)"
+fi
+
+# 6. Verify `sync-actions-lock.js` matches live `actions.lock` and heals git conflict markers
+if command -v bun >/dev/null 2>&1; then
+  if bun ./scripts/sync-actions-lock.js --check >/dev/null; then
+    ok "sync-actions-lock.js --check agrees 100% with .github/workflows/actions.lock"
+  else
+    fail "sync-actions-lock.js --check detected canonical ordering drift"
+  fi
+
+  mkdir -p "$TMP_DIR/repo/.github/workflows" "$TMP_DIR/repo/scripts"
+  cp .github/workflows/*.yml "$TMP_DIR/repo/.github/workflows/"
+  cp scripts/check-lock-sync.sh scripts/sync-actions-lock.js "$TMP_DIR/repo/scripts/"
+  {
+    printf '<<<<<<< HEAD\n'
+    head -n 30 .github/workflows/actions.lock
+    printf '=======\n'
+    cat .github/workflows/actions.lock
+    printf '>>>>>>> feature-branch\n'
+  } > "$TMP_DIR/repo/.github/workflows/actions.lock"
+
+  if (cd "$TMP_DIR/repo" && bun ./scripts/sync-actions-lock.js --write >/dev/null) \
+    && cmp -s .github/workflows/actions.lock "$TMP_DIR/repo/.github/workflows/actions.lock"; then
+    ok "sync-actions-lock.js auto-heals git conflict markers back to exact canonical bytes"
+  else
+    fail "sync-actions-lock.js conflict-marker recovery differed from canonical actions.lock"
+  fi
+fi
+
+printf 'Summary: %d passed, %d failed\n' "$PASS" "$FAIL"
+[ "$FAIL" -eq 0 ]

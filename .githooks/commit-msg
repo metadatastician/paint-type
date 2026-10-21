@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Commit-message hook for paint-type.
+# Enforces Conventional Commits subject formatting, no trailing whitespace, and
+# the required `Ratchet-exception: .machine_readable/root-allow.txt -- <reason>`
+# trailer whenever `.machine_readable/root-allow.txt` is modified.
+
+set -euo pipefail
+
+MSG_FILE="$1"
+MSG="$(cat "$MSG_FILE")"
+SUBJECT="$(printf '%s\n' "$MSG" | head -n 1)"
+ERRORS=0
+
+# Record a commit message validation error.
+fail_msg() {
+  printf '[commit-msg] ERROR: %s\n' "$1" >&2
+  ERRORS=$((ERRORS + 1))
+}
+
+if [ -z "$SUBJECT" ]; then
+  fail_msg "Commit message is empty"
+fi
+
+if ! printf '%s\n' "$SUBJECT" | grep -qE '^(Merge |Revert |feat|fix|docs|style|refactor|test|chore|build|ci|perf)(\([a-z0-9_.,/-]+\))?!?: .+'; then
+  fail_msg "Subject must follow Conventional Commits: type(scope): description"
+fi
+
+if [ "${#SUBJECT}" -gt 72 ]; then
+  fail_msg "Subject exceeds 72 characters (${#SUBJECT}); move detail into the commit body"
+fi
+
+if printf '%s\n' "$SUBJECT" | grep -qE '[[:space:]]+$'; then
+  fail_msg "Subject has trailing whitespace"
+fi
+
+if git diff --cached --name-only | grep -qxF '.machine_readable/root-allow.txt'; then
+  if ! printf '%s\n' "$MSG" | grep -q 'Ratchet-exception:.*\.machine_readable/root-allow\.txt'; then
+    fail_msg "Staged .machine_readable/root-allow.txt requires trailer: Ratchet-exception: .machine_readable/root-allow.txt -- <reason>"
+  fi
+fi
+
+if [ "$ERRORS" -gt 0 ]; then
+  exit 1
+fi

@@ -1,0 +1,27 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+= Git Hooks (`.githooks/`)
+
+Local git hooks for `paint.type`, aligned with `hyperpolymath/standards`
+(`.github/workflows/propagate-hooks.yml`) and organization ruleset `18225024`
+(`EstateBranching`).
+
+== Installation
+
+[source,bash]
+----
+just install-hooks
+# equivalent to:
+./.githooks/install.sh
+----
+
+== Hooks Included
+
+* `pre-commit` — Invokes `./scripts/preflight.sh --staged` (`actions.lock` sync,
+  Hypatia workflow hygiene, language/lockfile rules, D43 `.a2ml` freeze,
+  invisible-Unicode scan, DEED/K9 checks, and function docstring verification).
+* `commit-msg` — Enforces Conventional Commits headers (`<= 72` chars) and
+  requires the `Ratchet-exception: .machine_readable/root-allow.txt -- <reason>`
+  trailer whenever `.machine_readable/root-allow.txt` is modified.
+* `pre-push` — Runs `./scripts/preflight.sh --push` and blocks accidental pushes
+  of unsigned commits that would later fail `required_signatures` at merge time
+  on `main` (pointing directly to `just push-signed` or SSH commit signing).

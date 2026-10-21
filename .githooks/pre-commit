@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Pre-commit hook for paint-type.
+# Runs fast (<2s) staged preflight checks covering actions.lock, Hypatia workflow
+# rules, banned extensions, D43 .a2ml freeze, invisible Unicode, DEED/K9, and
+# function docstrings before creating a commit.
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+exec bash "$REPO_ROOT/scripts/preflight.sh" --staged
