@@ -185,8 +185,10 @@ impl Document {
         }
     }
 
-    /// Snapshot the document as a child revision, compacting history within
-    /// `MAX_HISTORY_REVS` and `MAX_HISTORY_BYTES`, and clear the redo path.
+    /// Snapshot the document as a child revision, enforcing `MAX_HISTORY_REVS`,
+    /// pruning older revisions against `MAX_HISTORY_BYTES` on a best-effort basis
+    /// (retaining a standalone new snapshot even if its cost exceeds `MAX_HISTORY_BYTES`),
+    /// and clear the redo path.
     fn record_revision(&mut self) {
         let snapshot = self.to_ptype_canvas();
         let new_cost = snapshot_byte_cost(&snapshot);
@@ -240,8 +242,10 @@ impl Document {
     /// Replace canvas contents and return the full dirty rectangle without recording history.
     ///
     /// Dimensions are raised to at least one pixel. Invalid active indices select
-    /// the first layer, creating one if needed. Tile allocation failures skip tiles;
-    /// tile write errors are ignored. Layer IDs and lock flags are not restored.
+    /// the first layer, creating one if needed. Runtime `LayerId` handles are
+    /// regenerated while external `.ptype` `layer_id` and `locked` metadata are
+    /// retained in `layer_meta`. Tile allocation failures skip tiles; tile write
+    /// errors are ignored.
     fn restore_ptype_canvas_internal(&mut self, ptype_canvas: &PtypeCanvas) -> Rect {
         self.width = ptype_canvas.width.max(1);
         self.height = ptype_canvas.height.max(1);

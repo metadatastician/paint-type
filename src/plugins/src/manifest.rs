@@ -327,8 +327,9 @@ impl PluginManifest {
     /// Validate the manifest (including path-traversal checks on `id` and `wasm_entry`).
     ///
     /// Missing required fields and unsafe identifiers or entry paths return
-    /// `ManifestValidation`; unsupported API or plugin versions return
-    /// `UnsupportedVersion`. Does not check whether the WASM file exists.
+    /// `ManifestValidation`; `api_version` below `PluginVersion::MIN_API_VERSION`
+    /// or incompatible plugin versions return `UnsupportedVersion`. Does not check
+    /// whether the WASM file exists.
     pub fn validate(&self) -> PluginResult<()> {
         if self.id.0.is_empty() {
             return Err(PluginError::manifest_validation("id is required"));
