@@ -23,7 +23,7 @@ if [ -z "$SUBJECT" ]; then
   fail_msg "Commit message is empty"
 fi
 
-if ! printf '%s\n' "$SUBJECT" | grep -qE '^(Merge |Revert |feat|fix|docs|style|refactor|test|chore|build|ci|perf)(\([a-z0-9_.,/-]+\))?!?: .+'; then
+if ! printf '%s\n' "$SUBJECT" | grep -qE '^(Merge |Revert |(feat|fix|docs|style|refactor|test|chore|build|ci|perf)(\([a-z0-9_.,/-]+\))?!?: ).+'; then
   fail_msg "Subject must follow Conventional Commits: type(scope): description"
 fi
 

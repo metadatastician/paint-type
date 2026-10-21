@@ -3,10 +3,10 @@
 #
 # Regression suite for paint-type git-flow fluidity tooling:
 #   - Root .coderabbit.yaml + .machine_readable/root-allow.txt registration
-#   - .githooks/{install.sh,pre-commit,commit-msg,pre-push}
+#   - .githooks/{install.sh,pre-commit,commit-msg,pre-push} without mutating repo modes
 #   - scripts/preflight.sh positive and negative controls (Hypatia + panic-attack)
 #   - scripts/sync-actions-lock.js check mode + conflict-marker auto-healing
-#   - AGENTS.md review guidance and Justfile SD024 descriptile path alignment
+#   - AGENTS.md review guidance and Justfile S-expression descriptile recipes
 
 set -euo pipefail
 
@@ -48,17 +48,29 @@ else
   fail "Root .coderabbit.yaml missing required registration or anti-friction settings"
 fi
 
-# 2. Verify all .githooks scripts and workflow helpers exist and parse cleanly
-chmod +x .githooks/install.sh .githooks/pre-commit .githooks/commit-msg .githooks/pre-push \
-         scripts/preflight.sh scripts/git-push-signed.sh scripts/sync-actions-lock.js
+# 2. Verify all .githooks scripts and workflow helpers parse cleanly WITHOUT mutating repo modes
 for req in .githooks/install.sh .githooks/pre-commit .githooks/commit-msg .githooks/pre-push \
            scripts/preflight.sh scripts/git-push-signed.sh scripts/sync-actions-lock.js; do
   if [ -f "$req" ] && { [[ "$req" == *.js ]] || bash -n "$req" 2>/dev/null; }; then
-    ok "$req exists and parses cleanly"
+    ok "$req exists and parses cleanly without working-tree mode mutation"
   else
     fail "$req missing or failed syntax check"
   fi
 done
+
+# Verify `.githooks/install.sh` applies +x inside an isolated temporary git repository
+mkdir -p "$TMP_DIR/hookrepo/.githooks"
+cp .githooks/install.sh .githooks/pre-commit .githooks/commit-msg .githooks/pre-push "$TMP_DIR/hookrepo/.githooks/"
+chmod 0644 "$TMP_DIR/hookrepo/.githooks/"*
+git -C "$TMP_DIR/hookrepo" init -q
+if (cd "$TMP_DIR/hookrepo" && bash ./.githooks/install.sh >/dev/null) \
+  && [ -x "$TMP_DIR/hookrepo/.githooks/pre-commit" ] \
+  && [ -x "$TMP_DIR/hookrepo/.githooks/commit-msg" ] \
+  && [ -x "$TMP_DIR/hookrepo/.githooks/pre-push" ]; then
+  ok ".githooks/install.sh sets executable bits and core.hooksPath cleanly"
+else
+  fail ".githooks/install.sh did not configure executable hooks"
+fi
 
 # 3. Verify zero hardcoded shared temp paths or child_process calls across new scripts
 if grep -rnF "$SLASH_TMP" .githooks/ scripts/preflight.sh scripts/git-push-signed.sh \
@@ -82,13 +94,14 @@ else
   fail "Live repository failed ./scripts/preflight.sh"
 fi
 
-# 5. Verify `commit-msg` hook accepts valid Conventional Commits and rejects bad subjects
+# 5. Verify `commit-msg` hook accepts valid Conventional Commits & Merge subjects and rejects bad ones
 printf 'feat(ci): add preflight hooks\n' > "$TMP_DIR/good_msg"
+printf "Merge branch 'main'\n" > "$TMP_DIR/merge_msg"
 printf 'WIP bad message\n' > "$TMP_DIR/bad_msg"
-if bash ./.githooks/commit-msg "$TMP_DIR/good_msg"; then
-  ok "commit-msg hook accepts valid Conventional Commit subject"
+if bash ./.githooks/commit-msg "$TMP_DIR/good_msg" && bash ./.githooks/commit-msg "$TMP_DIR/merge_msg"; then
+  ok "commit-msg hook accepts valid Conventional Commit and Merge subjects"
 else
-  fail "commit-msg hook rejected valid Conventional Commit subject"
+  fail "commit-msg hook rejected valid Conventional Commit or Merge subject"
 fi
 if bash ./.githooks/commit-msg "$TMP_DIR/bad_msg" 2>/dev/null; then
   fail "commit-msg hook accepted malformed subject"

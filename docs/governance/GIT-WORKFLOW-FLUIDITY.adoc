@@ -19,8 +19,8 @@ previously created multi-hour PR friction:
    refused by policy (owner ruling `D324`).
 2. **CodeRabbit path trap (`.coderabbit.yaml` at root vs `.github/`):**
    CodeRabbit v2 reads `.coderabbit.yaml` strictly from the repository root and
-   silently falls back to `Organization UI` (`ASSERTIVE`) when placed inside
-   `.github/`. Root placement requires registering `.coderabbit.yaml` in
+   falls back to `Organization UI` (`ASSERTIVE`) when placed inside `.github/`.
+   Root placement requires registering `.coderabbit.yaml` in
    `.machine_readable/root-allow.txt` with an explicit `Ratchet-exception:`
    commit trailer.
 3. **Split branch-signature rulesets (`24634124` vs `18225024`):**
@@ -54,10 +54,10 @@ previously created multi-hour PR friction:
 | Artifact | What It Solves
 
 | `.coderabbit.yaml` + `.machine_readable/root-allow.txt`
-| Places CodeRabbit v2 config at the repository root so it overrides the
-  `Organization UI` `ASSERTIVE` profile with `profile: "chill"`,
-  `request_changes_workflow: false`, `auto_review.drafts: false`,
-  `auto_review.base_branches: ["main"]`, `finishing_touches.docstrings.enabled: false`,
+| Places CodeRabbit v2 config at the repository root so it overrides
+  `ASSERTIVE` defaults with `profile: "chill"`, `request_changes_workflow: false`,
+  `auto_review.drafts: false`, `auto_review.base_branches: ["main"]`,
+  `finishing_touches.docstrings.enabled: false`,
   `pre_merge_checks.docstrings.mode: "off"`, bundled symbolic linters disabled
   in favour of Hypatia / K9 / clippy / gitleaks, and `path_filters` scoping neural
   review strictly to source code.
@@ -82,16 +82,17 @@ previously created multi-hour PR friction:
   records from `api.github.com`, and verifies closure.
 
 | `scripts/git-push-signed.sh` (`just push-signed`)
-| Runs `just preflight`, checks `Ratchet-exception:` trailers, stages/diffs only
-  explicitly tracked/staged paths (`git ls-files --cached --modified`) while
-  preserving `120000` symlinks, pushes commits via GraphQL
-  `createCommitOnBranch` so every commit carries a `VALID` GitHub `web-flow`
-  signature, and syncs local `HEAD`.
+| Seeds new remote branches from `origin/main` automatically, hashes clean git
+  blobs via NUL-delimited index queries (`git ls-files -z --cached --modified`),
+  guards against unintended executable-mode loss, pushes commits via GraphQL
+  `createCommitOnBranch` with a `VALID` `web-flow` signature, and safely
+  reconciles local stashes on sync.
 
 | `AGENTS.md` + `.gitattributes` + `.github/copilot-instructions.*` + `Justfile`
 | Scopes Codex review in `AGENTS.md` per the estate Kautz-Ladder specification,
   enables `merge=union` on `.machine_readable/root-allow.txt`, aligns Copilot
-  instructions, and clears four `Justfile` `SD024` path findings.
+  instructions, updates `Justfile` recipes to parse S-expression descriptiles,
+  and clears four `Justfile` `SD024` path findings.
 |===
 
 ---
@@ -103,15 +104,19 @@ previously created multi-hour PR friction:
 # One-time setup in any local clone:
 just install-hooks
 
-# 1. Iterate freely on a Draft PR (skips review noise while CI validates):
+# 1. Stage intended changes and publish the initial signed commit + remote branch
+#    BEFORE opening the Draft PR (avoids any unsigned local commit hitting pre-push):
+git checkout -b feat/core-example
+git add <files>
+just push-signed "feat(core): initial draft implementation" "Optional body details"
+
+# 2. Open the Draft PR (skips review noise while CI validates):
 gh pr create --draft --fill
 
-# 2. If you edited .github/workflows/*.yml (or rebased across an actions.lock conflict):
+# 3. Iterate as needed; if workflows changed, regenerate actions.lock first:
 just sync-lock
-
-# 3. Stage intended files explicitly, validate in <2s, and push a signed commit:
 git add <files>
-just push-signed "feat(core): concise summary" "Optional body details"
+just push-signed "fix(core): follow-up refinement"
 
 # 4. Once CI checks are green, mark ready for single-pass review + approval:
 gh pr ready
@@ -124,13 +129,16 @@ gh pr ready
 1. **Set Codex review trigger to manual `@codex review` only (`chatgpt.com/codex/cloud/settings/general`):**
    Eliminates the two automatic `You have reached your Codex usage limits`
    failure comments on every newly opened PR while keeping on-demand `@codex review`.
-2. **Fix the branch-prefix typo in Ruleset `24634124` (`Branch-Signatures`):**
-   Add `refs/heads/coderabbit/**` beside `refs/heads/coderabbitai/**` if bot
-   branches are ever explicitly allowed outside ruling `D324`.
-3. **Consider toggling `dismiss_stale_reviews_on_push: false` in Ruleset `18225024` (`EstateBranching`):**
-   With required CI status checks, `required_signatures: true`, and
-   `require_code_owner_review: true` active, fixing a one-line nitpick after
-   `@hyperpolymath` has approved will no longer require a second manual review.
-4. **Disable Copilot auto-review on Draft PRs in Ruleset `18225024`:**
+2. **Allow repository `.coderabbit.yaml` overrides in CodeRabbit Org Settings (`app.coderabbit.ai`):**
+   Ensure Organization UI settings permit repository `.coderabbit.yaml` files to
+   override `ASSERTIVE` profile defaults once merged to `main`.
+3. **Review `dismiss_stale_reviews_on_push` and `require_last_push_approval` together in Ruleset `18225024` (`EstateBranching`):**
+   Both settings interact: disabling `dismiss_stale_reviews_on_push` alone still
+   blocks merge on a new push while `require_last_push_approval` remains `true`,
+   and disabling `require_last_push_approval` alone still dismisses the existing
+   approval on a new push while `dismiss_stale_reviews_on_push` remains `true`.
+   Toggling both only if desired (or using Draft PRs until ready) avoids repeat
+   approval rounds on trivial post-review fixes.
+4. **Disable Copilot auto-review on Draft PRs in Ruleset `18225024` (and add `refs/heads/coderabbit/**` to `24634124` if needed):**
    Flip `copilot_code_review.parameters.review_draft_pull_requests` from `true`
-   to `false` (matching root `.coderabbit.yaml` `auto_review.drafts: false`).
+   to `false` to match `.coderabbit.yaml` `auto_review.drafts: false`.

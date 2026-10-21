@@ -129,8 +129,8 @@ check_changed_workflows() {
     if grep -vE '^[[:space:]]*#' "$file" | grep -nE '\|\|[[:space:]]*true\b' >&2; then
       fail_gate "$file masks command exit codes with '|| true' (Hypatia RE005)"
     fi
-    if grep -vE '^[[:space:]]*#' "$file" | grep -nE '/tmp/[A-Za-z0-9_.-]+' >&2; then
-      fail_gate "$file references a literal /tmp path (use \$RUNNER_TEMP)"
+    if grep -vE '^[[:space:]]*#' "$file" | grep -nE "${SLASH_TMP}[A-Za-z0-9_.-]+" >&2; then
+      fail_gate "$file references a hardcoded shared temp path (use \$RUNNER_TEMP)"
     fi
     if grep -vE '^[[:space:]]*#' "$file" | grep -nE '\b(python3?|node|npm|pnpm|yarn)\b' >&2; then
       fail_gate "$file invokes a non-preferred workflow runtime (use bash, jq, and bun)"
