@@ -1,0 +1,131 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Repository-root CodeRabbit v2 configuration for metadatastician/paint-type.
+# Tuned for org rulesets 18225024 (EstateBranching: squash-merge only, required
+# signatures, required review-thread resolution, dismiss stale reviews on push),
+# 24634124 (Branch-Signatures / owner ruling D324), and the Kautz-Ladder spec
+# in hyperpolymath/standards (docs/ULTRAPLAN-KAUTZ-LADDER-2026-10-19.adoc).
+
+language: "en-GB"
+early_access: false
+tone_instructions: >-
+  Be direct, technical, and concise without emoji or filler. Focus strictly on
+  architectural intent, Idris2 ABI <-> Zig FFI <-> Rust compositing invariants,
+  memory/thread safety, and security defects not already enforced by Hypatia,
+  panic-attack, workflow-linter, and K9/DEED CI gates.
+
+reviews:
+  # Keep threads restricted to genuine defects so stylistic nitpicks never block
+  # merges under EstateBranching (`required_review_thread_resolution: true`).
+  profile: "chill"
+  request_changes_workflow: false
+  high_level_summary: true
+  high_level_summary_in_walkthrough: false
+  collapse_walkthrough: true
+  review_status: true
+  commit_status: true
+  poem: false
+  sequence_diagrams: false
+  suggested_labels: false
+  suggested_reviewers: false
+  auto_apply_labels: false
+
+  # Exclude paths owned by deterministic estate validators (Hypatia, K9, lock
+  # gates, manifest checks) and vendored/lock trees.
+  path_filters:
+    - "!third_party/**"
+    - "!.machine_readable/**"
+    - "!.github/workflows/**"
+    - "!docs/**"
+    - "!Cargo.lock"
+    - "!**/*.lock"
+
+  path_instructions:
+    - path: "**"
+      instructions: >-
+        Repository licence exception: source code is AGPL-3.0-or-later and
+        documentation is CC-BY-SA-4.0 (never suggest MPL-2.0 or bare AGPL-3.0).
+        Never suggest emoji in code, comments, commit messages, or docs.
+        JS runtime order is Bun (preferred) > Deno > pnpm > npm with a single
+        lockfile only. Never suggest introducing TypeScript (.ts/.tsx), Go
+        (.go), Python (.py), Makefiles, Dockerfiles, literal `/tmp/` paths, or
+        new `.a2ml` files (use `.deed` or `.k9.ncl` instead).
+    - path: "src/interface/ffi/**"
+      instructions: >-
+        Windows MSVC dual-library invariant: both `.dynamic` (DLL import
+        library) and `.static` emit `zig-out/lib/pt.lib`. On Windows targets,
+        `install_shared` must run strictly after `install_static` so
+        `zig-out/lib/pt.lib` deterministically holds the MSVC import library
+        paired with `zig-out/bin/pt.dll` rather than Zig's raw COFF archive.
+    - path: "**/*.{deed,k9,ncl}"
+      instructions: >-
+        Governance formats: `paint-type_chora.deed` SHA-256 digests stay in
+        lockstep with `hyperpolymath/standards/canon.lock`; `coordination.k9`
+        follows `coordination-k9-grammar_v1.2.abnf` without `---` YAML
+        document separators (ruling D318); `*.k9.ncl` validate against K9 v1.0.0.
+
+  auto_review:
+    enabled: true
+    # Iterate freely in Draft PRs without burning review quota or accumulating
+    # premature threads; run `gh pr ready` once CI checks pass.
+    drafts: false
+    ignore_title_keywords:
+      - "WIP"
+      - "DO NOT MERGE"
+      - "[skip-review]"
+    # Review only PRs targeting `main` — never stack reviews onto ephemeral bot
+    # or agent branches.
+    base_branches:
+      - "main"
+
+  finishing_touches:
+    # Disable stacked `coderabbit/document-changed-functions/*` and unit-test
+    # child branches: squash-merging parent PRs into `main` turns every stacked
+    # bot PR into an immediate merge conflict (see closed PRs #132 and #138),
+    # and bot pushes are refused under owner ruling D324. Local `.githooks/`
+    # and `just preflight` enforce docstrings pre-commit instead.
+    docstrings:
+      enabled: false
+    unit_tests:
+      enabled: false
+
+  # Handled by estate symbolic gates rather than CodeRabbit's vendor check.
+  pre_merge_checks:
+    docstrings:
+      mode: "off"
+    title:
+      mode: "warning"
+    description:
+      mode: "off"
+    issue_assessment:
+      mode: "off"
+
+  # Disable bundled symbolic linters duplicated by Hypatia, clippy, gitleaks,
+  # workflow-linter, and K9/DEED CI gates (ULTRAPLAN-KAUTZ-LADDER-2026-10-19).
+  tools:
+    actionlint:
+      enabled: false
+    biome:
+      enabled: false
+    eslint:
+      enabled: false
+    gitleaks:
+      enabled: false
+    hadolint:
+      enabled: false
+    languagetool:
+      enabled: false
+    markdownlint:
+      enabled: false
+    ruff:
+      enabled: false
+    semgrep:
+      enabled: false
+    shellcheck:
+      enabled: false
+    yamllint:
+      enabled: false
+
+chat:
+  auto_reply: true

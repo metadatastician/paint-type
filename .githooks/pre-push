@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Pre-push hook for paint-type.
+# 1. Runs `./scripts/preflight.sh --push` so drifted workflows or lockfiles are
+#    caught before burning CI runs or dismissing CODEOWNERS approvals on GitHub.
+# 2. Checks that commits ahead of `origin/main` carry valid cryptographic
+#    signatures, catching ruleset 18225024 (`required_signatures` on `main`)
+#    before push instead of blocking at merge time.
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+bash "$REPO_ROOT/scripts/preflight.sh" --push
+
+if [ "${ALLOW_UNSIGNED_PUSH:-0}" != "1" ] && git rev-parse --verify origin/main >/dev/null 2>&1; then
+  UNSIGNED_COUNT=0
+  BRANCH="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+  SIGNATURE_RANGE="origin/main..HEAD"
+  if [ -n "$BRANCH" ] && git rev-parse --verify "origin/$BRANCH" >/dev/null 2>&1; then
+    SIGNATURE_RANGE="origin/$BRANCH..HEAD"
+  fi
+  while IFS=' ' read -r sha sig_status; do
+    [ -n "$sha" ] || continue
+    case "$sig_status" in
+      G|U) ;;
+      *)
+        printf '[pre-push] Unsigned commit ahead of origin/main: %s (status=%s)\n' "${sha:0:12}" "${sig_status:-none}" >&2
+        UNSIGNED_COUNT=$((UNSIGNED_COUNT + 1))
+        ;;
+    esac
+  done < <(git log --pretty='%H %G?' "$SIGNATURE_RANGE" 2>/dev/null || true)
+
+  if [ "$UNSIGNED_COUNT" -gt 0 ]; then
+    printf '[pre-push] BLOCKED: %d unsigned commit(s) would block merging into main under ruleset 18225024.\n' "$UNSIGNED_COUNT" >&2
+    printf '  Fix options:\n' >&2
+    printf '    1. Push signed via GitHub GraphQL API:  just push-signed "type(scope): summary"\n' >&2
+    printf '    2. Enable local SSH signing once:       git config gpg.format ssh && git config commit.gpgsign true\n' >&2
+    printf '    3. Intentional temporary push override: ALLOW_UNSIGNED_PUSH=1 git push\n' >&2
+    exit 1
+  fi
+fi

@@ -1,0 +1,146 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+= Git Flow & CI/CD Fluidity Guide (`paint.type`)
+
+== Root Causes Diagnosis
+
+Auditing pull requests `#129` through `#140` against active GitHub organization
+rulesets (`18225024` `EstateBranching`, `24634124` `Branch-Signatures`, and
+`23868655` `Branch-Floor`) and `hyperpolymath/standards` (`D213`, `D324`, and
+`ULTRAPLAN-KAUTZ-LADDER-2026-10-19.adoc`) isolated six concrete mechanisms that
+previously created multi-hour PR friction:
+
+1. **Stacked bot PRs + squash-only merges (`PR #132`, `PR #138`):**
+   `paint-type` enables squash merges only (`allow_squash_merge: true`,
+   `allow_merge_commit: false`). CodeRabbit's default finishing-touch docstring
+   generator opens stacked child PRs (`coderabbit/document-changed-functions/*`)
+   against the feature PR branch. The instant the parent PR squash-merges into
+   `main`, GitHub retargets the child PR onto `main`, guaranteeing a 3-way
+   history conflict (`mergeable: CONFLICTING`), while direct bot pushes are
+   refused by policy (owner ruling `D324`).
+2. **CodeRabbit path trap (`.coderabbit.yaml` at root vs `.github/`):**
+   CodeRabbit v2 reads `.coderabbit.yaml` strictly from the repository root and
+   falls back to `Organization UI` (`ASSERTIVE`) when placed inside `.github/`.
+   Root placement requires registering `.coderabbit.yaml` in
+   `.machine_readable/root-allow.txt` with an explicit `Ratchet-exception:`
+   commit trailer.
+3. **Split branch-signature rulesets (`24634124` vs `18225024`):**
+   `Branch-Signatures` (`24634124`) exempts `refs/heads/arena/**` on push,
+   allowing unsigned local commits onto feature branches, whereas
+   `EstateBranching` (`18225024`) enforces `required_signatures: true` on
+   `main`, blocking merge only after CI finishes. In addition, `24634124`
+   lists `refs/heads/coderabbitai/**` whereas CodeRabbit branches use
+   `refs/heads/coderabbit/**`.
+4. **Assertive bot nitpicks + `required_review_thread_resolution: true` + `dismiss_stale_reviews_on_push: true`:**
+   Under CodeRabbit's org-default `ASSERTIVE` profile, minor stylistic notes open
+   blocking review threads; pushing fixes then dismisses prior CODEOWNERS
+   approvals, forcing repeated human re-approval cycles. Meanwhile
+   `chatgpt-codex-connector` triggers automatically on every PR open and posts
+   two failure comments when quota is exhausted.
+5. **Late CI discovery of fast static invariants:**
+   `actions.lock` closure, Hypatia rules (`WH001`, `WH006`, `RE001`, `RE005`,
+   `js_exec_sync`, `hardcoded_tmp`), `panic-attack` weak-point rules, D43
+   `.a2ml` freeze rules, `Ratchet-exception:` trailers, and invisible Unicode
+   previously ran only after queueing 70+ GitHub Actions jobs.
+6. **Lockfile & allowlist merge collisions:**
+   Concurrent PRs editing `.github/workflows/*.yml` or
+   `.machine_readable/root-allow.txt` collided on adjacent lines.
+
+---
+
+== In-Repository Automation Shipped Here
+
+[cols="2,4"]
+|===
+| Artifact | What It Solves
+
+| `.coderabbit.yaml` + `.machine_readable/root-allow.txt`
+| Places CodeRabbit v2 config at the repository root so it overrides
+  `ASSERTIVE` defaults with `profile: "chill"`, `request_changes_workflow: false`,
+  `auto_review.drafts: false`, `auto_review.base_branches: ["main"]`,
+  `finishing_touches.docstrings.enabled: false` (note: clicking CodeRabbit's
+  manual "Commit to this branch" button also pushes an unsigned `signature: null`
+  bot commit that blocks merging under `18225024`),
+  `pre_merge_checks.docstrings.mode: "off"`, bundled symbolic linters disabled
+  in favour of Hypatia / K9 / clippy / gitleaks, and `path_filters` scoping neural
+  review strictly to source code.
+
+| `.githooks/{install.sh,pre-commit,commit-msg,pre-push}`
+| Enrolls `metadatastician/paint-type` into estate-wide hook propagation
+  (`hyperpolymath/standards/.github/workflows/propagate-hooks.yml`), validates
+  staged changes and Conventional Commit trailers pre-commit, and blocks
+  accidental pushes of unsigned commits pre-push before CI time is spent.
+
+| `scripts/preflight.sh` (`just preflight`)
+| Runs in under 2 seconds locally to verify `actions.lock` sync, Hypatia
+  workflow and code-scanning rules (`hardcoded_tmp`, `js_exec_sync`),
+  `panic-attack` `InputBoundary` guards, banned extensions, `Bun > Deno`
+  lockfile discipline, D43 `.a2ml` freeze, invisible Unicode, DEED +
+  `coordination.k9` ABNF v1.2, and function docstrings.
+
+| `scripts/sync-actions-lock.js` (`just sync-lock`)
+| Pure Bun script (native `fetch`, zero child processes) that strips git
+  conflict markers in `.github/workflows/actions.lock`, recomputes all workflow
+  action entries in strict `LC_ALL=C` byte order, resolves missing dependency
+  records from `api.github.com`, and verifies closure.
+
+| `scripts/git-push-signed.sh` (`just push-signed`)
+| Seeds new remote branches from `origin/main` automatically, hashes clean git
+  blobs via NUL-delimited index queries (`git ls-files -z --cached --modified`),
+  guards against unintended executable-mode loss, pushes commits via GraphQL
+  `createCommitOnBranch` with a `VALID` `web-flow` signature, and safely
+  reconciles local stashes on sync.
+
+| `AGENTS.md` + `.gitattributes` + `.github/copilot-instructions.*` + `Justfile`
+| Scopes Codex review in `AGENTS.md` per the estate Kautz-Ladder specification,
+  enables `merge=union` on `.machine_readable/root-allow.txt`, aligns Copilot
+  instructions, updates `Justfile` recipes to parse S-expression descriptiles,
+  and clears four `Justfile` `SD024` path findings.
+|===
+
+---
+
+== Recommended Daily Developer & Agent Flow
+
+[source,bash]
+----
+# One-time setup in any local clone:
+just install-hooks
+
+# 1. Stage intended changes and publish the initial signed commit + remote branch
+#    BEFORE opening the Draft PR (avoids any unsigned local commit hitting pre-push):
+git checkout -b feat/core-example
+git add <files>
+just push-signed "feat(core): initial draft implementation" "Optional body details"
+
+# 2. Open the Draft PR (skips review noise while CI validates):
+gh pr create --draft --fill
+
+# 3. Iterate as needed; if workflows changed, regenerate actions.lock first:
+just sync-lock
+git add <files>
+just push-signed "fix(core): follow-up refinement"
+
+# 4. Once CI checks are green, mark ready for single-pass review + approval:
+gh pr ready
+----
+
+---
+
+== Four Optional Organization / App UI Tweaks (Owner UI Only)
+
+1. **Set Codex review trigger to manual `@codex review` only (`chatgpt.com/codex/cloud/settings/general`):**
+   Eliminates the two automatic `You have reached your Codex usage limits`
+   failure comments on every newly opened PR while keeping on-demand `@codex review`.
+2. **Allow repository `.coderabbit.yaml` overrides in CodeRabbit Org Settings (`app.coderabbit.ai`):**
+   Ensure Organization UI settings permit repository `.coderabbit.yaml` files to
+   override `ASSERTIVE` profile defaults once merged to `main`.
+3. **Review `dismiss_stale_reviews_on_push` and `require_last_push_approval` together in Ruleset `18225024` (`EstateBranching`):**
+   Both settings interact: disabling `dismiss_stale_reviews_on_push` alone still
+   blocks merge on a new push while `require_last_push_approval` remains `true`,
+   and disabling `require_last_push_approval` alone still dismisses the existing
+   approval on a new push while `dismiss_stale_reviews_on_push` remains `true`.
+   Toggling both only if desired (or using Draft PRs until ready) avoids repeat
+   approval rounds on trivial post-review fixes.
+4. **Disable Copilot auto-review on Draft PRs in Ruleset `18225024` (and add `refs/heads/coderabbit/**` to `24634124` if needed):**
+   Flip `copilot_code_review.parameters.review_draft_pull_requests` from `true`
+   to `false` to match `.coderabbit.yaml` `auto_review.drafts: false`.

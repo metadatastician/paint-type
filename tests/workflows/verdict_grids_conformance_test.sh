@@ -22,12 +22,12 @@ FAIL=0
 pass() { printf '  PASS: %s\n' "$1"; PASS=$((PASS + 1)); }
 fail() { printf '  FAIL: %s\n' "$1" >&2; FAIL=$((FAIL + 1)); }
 
-TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/verdict-grids-test-XXXXXX")"
+TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 # Locate or shallow-clone hyperpolymath/standards at the pinned commit if needed
 STANDARDS_PIN="01c9b0c9f2646ebea0b30a9588462642ac94aee9"
-STANDARDS_DIR="${STANDARDS_DIR:-/tmp/estate/standards}"
+STANDARDS_DIR="${STANDARDS_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/hyperpolymath/standards}"
 if [ ! -d "$STANDARDS_DIR/1-formats" ]; then
   STANDARDS_DIR="$TMP_DIR/standards"
   git init -q "$STANDARDS_DIR"
