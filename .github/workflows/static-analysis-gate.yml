@@ -365,6 +365,7 @@ jobs:
           fi
 
       - name: Upload pons-asinorum findings
+        if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: pons-findings
@@ -471,6 +472,7 @@ jobs:
           fi
 
       - name: Upload bridge report
+        if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: bridge-report
@@ -488,24 +490,28 @@ jobs:
     if: always()
     steps:
       - name: Download panic-attack findings
+        continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.2
         with:
           name: panic-attack-findings
           path: findings/
 
       - name: Download hypatia findings
+        continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.2
         with:
           name: hypatia-findings
           path: findings/
 
       - name: Download pons-asinorum findings
+        continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.2
         with:
           name: pons-findings
           path: findings/
 
       - name: Download bridge report
+        continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.2
         with:
           name: bridge-report
@@ -515,6 +521,7 @@ jobs:
         id: combine
         run: |
           set -euo pipefail
+          mkdir -p findings
           PA_FILE="findings/panic-attack-findings.json"
           HYP_FILE="findings/hypatia-findings.json"
           PONS_FILE="findings/pons-findings.json"

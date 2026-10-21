@@ -62,11 +62,9 @@ jobs:
           set -euo pipefail
           test -s grid/report.md || exit 0
           marker='<!-- verdict-grid:hypatia regenerated on every run -->'
-          existing=""
-          if comments="$(gh api --paginate "repos/$REPO/issues/$PR/comments" \
-            --jq '.[] | select(.user.type == "Bot" and (.body | contains("'"$marker"'"))) | .id')"; then
-            existing="$(printf '%s\n' "$comments" | head -n1)"
-          fi
+          comments="$(gh api --paginate "repos/$REPO/issues/$PR/comments" \
+            --jq '.[] | select(.user.type == "Bot" and (.body | contains("'"$marker"'"))) | .id')"
+          existing="${comments%%$'\n'*}"
           if [ -n "$existing" ]; then
             gh api -X PATCH "repos/$REPO/issues/comments/$existing" -F body=@grid/report.md >/dev/null
           else
