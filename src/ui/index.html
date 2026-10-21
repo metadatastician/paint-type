@@ -6,15 +6,16 @@
 <style>
   :root { color-scheme: dark; }
   body { margin: 0; font-family: system-ui, sans-serif; background: #1e1e1e; color: #ddd; display: flex; height: 100vh; }
-  #toolbar { width: 220px; padding: 12px; background: #252526; display: flex; flex-direction: column; gap: 12px; }
+  #toolbar { width: 248px; padding: 12px; background: #252526; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
   #toolbar label { display: flex; flex-direction: column; font-size: 12px; gap: 4px; }
   #stage { flex: 1; display: grid; place-items: center; overflow: auto; }
   #canvas { background: #fff; box-shadow: 0 0 0 1px #000, 0 8px 24px rgba(0,0,0,.5); image-rendering: pixelated; cursor: crosshair; }
-  button { padding: 6px 10px; background: #0e639c; color: #fff; border: 0; border-radius: 3px; cursor: pointer; }
+  button, select { padding: 6px 8px; background: #0e639c; color: #fff; border: 0; border-radius: 3px; cursor: pointer; font-size: 12px; }
+  select { background: #3c3c3c; }
   #status { font-size: 11px; color: #888; min-height: 14px; }
-  .size-row { display: flex; align-items: center; gap: 8px; }
-  #size-val { font-variant-numeric: tabular-nums; min-width: 42px; }
-  #hardness-val { font-variant-numeric: tabular-nums; min-width: 42px; }
+  .size-row, .btn-row { display: flex; align-items: center; gap: 6px; }
+  .btn-row button { flex: 1; }
+  #size-val, #hardness-val, #layer-opacity-val { font-variant-numeric: tabular-nums; min-width: 42px; }
   #brush-preview { width: 72px; height: 72px; display: grid; place-items: center; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; }
   #brush-dot { border-radius: 50%; }
   #tools { display: flex; gap: 6px; }
@@ -29,6 +30,10 @@
       <button id="tool-brush">Brush</button>
       <button id="tool-eraser">Eraser</button>
       <button id="tool-fill">Fill</button>
+    </div>
+    <div class="btn-row">
+      <button id="undo-btn" title="Undo (Ctrl+Z)">Undo</button>
+      <button id="redo-btn" title="Redo (Ctrl+Y)">Redo</button>
     </div>
     <label>Colour <input id="colour" type="color" value="#cc0000"></label>
     <label>Brush size
@@ -46,8 +51,38 @@
     <label>Preview
       <span id="brush-preview"><span id="brush-dot"></span></span>
     </label>
-    <button id="open-btn">Open PNG</button>
-    <button id="save">Save PNG...</button>
+    <label>Active layer
+      <select id="layer-select"></select>
+    </label>
+    <div class="btn-row">
+      <button id="layer-add">+ Layer</button>
+      <button id="layer-del">- Layer</button>
+    </div>
+    <label>Layer opacity
+      <span class="size-row">
+        <input id="layer-opacity" type="range" min="0" max="100" value="100">
+        <output id="layer-opacity-val">100%</output>
+      </span>
+    </label>
+    <label>Blend mode
+      <select id="layer-blend">
+        <option value="normal">Normal</option>
+        <option value="multiply">Multiply</option>
+        <option value="screen">Screen</option>
+      </select>
+    </label>
+    <div class="btn-row">
+      <button id="fx-invert">Invert</button>
+      <button id="fx-grayscale">Grayscale</button>
+    </div>
+    <div class="btn-row">
+      <button id="open-btn">Open PNG</button>
+      <button id="save">Save PNG...</button>
+    </div>
+    <div class="btn-row">
+      <button id="open-ptype-btn">Open .ptype</button>
+      <button id="save-ptype">Save .ptype</button>
+    </div>
     <div id="status">Starting...</div>
   </div>
   <div id="stage"><canvas id="canvas" width="1024" height="768"></canvas></div>
@@ -62,14 +97,25 @@
   const sizeVal = document.getElementById("size-val");
   const hardnessEl = document.getElementById("hardness");
   const hardnessVal = document.getElementById("hardness-val");
+  const layerSelectEl = document.getElementById("layer-select");
+  const layerOpacityEl = document.getElementById("layer-opacity");
+  const layerOpacityVal = document.getElementById("layer-opacity-val");
+  const layerBlendEl = document.getElementById("layer-blend");
   const dot = document.getElementById("brush-dot");
-  const DOC_W = canvas.width, DOC_H = canvas.height;
+  let docW = canvas.width;
+  let docH = canvas.height;
+  let activeLayerIndex = 0;
 
   function bridgeReady() { return typeof window.__gossamer_invoke === "function"; }
 
   function invoke(payload) {
     if (!bridgeReady()) return Promise.reject(new Error("Gossamer runtime unavailable"));
     return window.__gossamer_invoke("dispatch", payload);
+  }
+
+  function defaultExportPath(ext) {
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    return "paint-type-" + stamp + "." + ext;
   }
 
   function hexToRgba(hex) {
@@ -81,8 +127,6 @@
     };
   }
 
-  // Show what the current brush actually looks like: a disc of the chosen
-  // diameter and colour, with feathering that mirrors the hardness setting.
   function updatePreview() {
     const d = Number(sizeEl.value);
     const h = Number(hardnessEl.value);
@@ -90,14 +134,25 @@
     hardnessVal.textContent = h + "%";
     dot.style.width = d + "px";
     dot.style.height = d + "px";
-    // Hard (>= 50): sharp two-stop disc; soft (< 50): Gaussian-style falloff.
     const col = colourEl.value;
     if (h >= 50) {
       dot.style.background = "radial-gradient(circle closest-side, " + col + " 50%, transparent 50%)";
     } else {
-      dot.style.background = "radial-gradient(circle, " + col + " 0%, " +
-        col + " 35%, transparent 70%)";
+      dot.style.background = "radial-gradient(circle, " + col + " 0%, " + col + " 35%, transparent 70%)";
     }
+  }
+
+  function applyLoadedDocument(dirty) {
+    if (!dirty) return;
+    if (dirty.w > 0 && dirty.h > 0 && (canvas.width !== dirty.w || canvas.height !== dirty.h)) {
+      canvas.width = dirty.w;
+      canvas.height = dirty.h;
+      docW = dirty.w;
+      docH = dirty.h;
+    } else {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    blit(dirty);
   }
 
   function blit(dirty) {
@@ -106,11 +161,34 @@
     ctx.putImageData(new ImageData(bytes, dirty.w, dirty.h), dirty.x, dirty.y);
   }
 
+  async function refreshLayers() {
+    try {
+      const resp = await invoke({ cmd: "list_layers" });
+      if (!resp || resp.ok !== "layer_list") return;
+      activeLayerIndex = resp.active_index;
+      layerSelectEl.textContent = "";
+      resp.layers.forEach((layer) => {
+        const opt = document.createElement("option");
+        opt.value = String(layer.index);
+        opt.textContent = layer.name + (layer.visible ? "" : " (hidden)");
+        opt.selected = layer.index === resp.active_index;
+        layerSelectEl.appendChild(opt);
+      });
+      const current = resp.layers[resp.active_index];
+      if (current) {
+        const pct = Math.round(current.opacity * 100);
+        layerOpacityEl.value = String(pct);
+        layerOpacityVal.textContent = pct + "%";
+        layerBlendEl.value = current.blend || "normal";
+      }
+    } catch (e) { /* ignore */ }
+  }
+
   function canvasPos(ev) {
     const rect = canvas.getBoundingClientRect();
     return {
-      x: (ev.clientX - rect.left) * (DOC_W / rect.width),
-      y: (ev.clientY - rect.top) * (DOC_H / rect.height)
+      x: (ev.clientX - rect.left) * (docW / rect.width),
+      y: (ev.clientY - rect.top) * (docH / rect.height)
     };
   }
 
@@ -127,12 +205,12 @@
       status.textContent = "IPC bridge unavailable - is this running inside Gossamer?";
       return;
     }
-    await invoke({ cmd: "new_doc", w: DOC_W, h: DOC_H });
+    await invoke({ cmd: "new_doc", w: docW, h: docH });
     const c = hexToRgba(colourEl.value);
     await invoke({ cmd: "set_colour", r: c.r, g: c.g, b: c.b, a: c.a });
     await invoke({ cmd: "set_brush", diameter: Number(sizeEl.value), hardness: Number(hardnessEl.value) / 100 });
-    // Set initial tool state and visual highlighting.
     selectTool("brush");
+    await refreshLayers();
     status.textContent = "Ready - drag on the canvas to paint.";
   }
 
@@ -150,18 +228,13 @@
     invoke({ cmd: "set_brush", diameter: Number(sizeEl.value), hardness: Number(hardnessEl.value) / 100 }).catch(() => {});
   });
 
-  //## Tool selection
   let activeTool = "brush";
-
   function selectTool(kind) {
     activeTool = kind;
-    // Update button visual state.
     ["brush", "eraser", "fill"].forEach((t) => {
       document.getElementById("tool-" + t).classList.toggle("active", t === kind);
     });
-    // Notify the backend (fire-and-forget).
     invoke({ cmd: "select_tool", kind }).catch(() => {});
-    // Reflect tool in cursor.
     canvas.style.cursor = kind === "fill" ? "cell" : "crosshair";
   }
 
@@ -169,9 +242,64 @@
   document.getElementById("tool-eraser").addEventListener("click", () => selectTool("eraser"));
   document.getElementById("tool-fill").addEventListener("click", () => selectTool("fill"));
 
-  // Coalesce pointer moves: keep only the latest position and run at most one
-  // invoke in flight, so a fast drag never queues behind the IPC channel. The
-  // core interpolates between samples, so dropping intermediate moves is lossless.
+  async function doUndo() {
+    if (!bridgeReady()) return;
+    const res = await invoke({ cmd: "undo" });
+    if (res && res.dirty) { applyLoadedDocument(res.dirty); await refreshLayers(); status.textContent = "Undone."; }
+  }
+  async function doRedo() {
+    if (!bridgeReady()) return;
+    const res = await invoke({ cmd: "redo" });
+    if (res && res.dirty) { applyLoadedDocument(res.dirty); await refreshLayers(); status.textContent = "Redone."; }
+  }
+  document.getElementById("undo-btn").addEventListener("click", doUndo);
+  document.getElementById("redo-btn").addEventListener("click", doRedo);
+  window.addEventListener("keydown", (ev) => {
+    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "z") {
+      ev.preventDefault();
+      if (ev.shiftKey) doRedo(); else doUndo();
+    } else if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "y") {
+      ev.preventDefault();
+      doRedo();
+    }
+  });
+
+  layerSelectEl.addEventListener("change", async () => {
+    activeLayerIndex = Number(layerSelectEl.value);
+    await invoke({ cmd: "select_layer", index: activeLayerIndex });
+    await refreshLayers();
+  });
+  document.getElementById("layer-add").addEventListener("click", async () => {
+    await invoke({ cmd: "add_layer", name: null });
+    await refreshLayers();
+    status.textContent = "Layer added.";
+  });
+  document.getElementById("layer-del").addEventListener("click", async () => {
+    const res = await invoke({ cmd: "delete_layer", index: activeLayerIndex });
+    if (res && res.dirty) blit(res.dirty);
+    await refreshLayers();
+  });
+  layerOpacityEl.addEventListener("input", async () => {
+    const pct = Number(layerOpacityEl.value);
+    layerOpacityVal.textContent = pct + "%";
+    const res = await invoke({ cmd: "set_layer_opacity", index: activeLayerIndex, opacity: pct / 100 });
+    if (res && res.dirty) blit(res.dirty);
+  });
+  layerBlendEl.addEventListener("change", async () => {
+    const res = await invoke({ cmd: "set_layer_blend", index: activeLayerIndex, blend: layerBlendEl.value });
+    if (res && res.dirty) blit(res.dirty);
+  });
+
+  async function applyFilter(pluginId) {
+    const res = await invoke({
+      cmd: "invoke_plugin",
+      invocation: { plugin_id: pluginId, function: "apply", args: {} }
+    });
+    if (res && res.dirty) { blit(res.dirty); status.textContent = "Applied " + pluginId + "."; }
+  }
+  document.getElementById("fx-invert").addEventListener("click", () => applyFilter("invert"));
+  document.getElementById("fx-grayscale").addEventListener("click", () => applyFilter("grayscale"));
+
   let painting = false;
   let pendingMove = null;
   let draining = false;
@@ -194,7 +322,6 @@
     if (!bridgeReady()) return;
     const p = canvasPos(ev);
     if (activeTool === "fill") {
-      // Fill does not initiate a stroke; send a single fill_at command instead.
       status.textContent = "Filling...";
       try {
         const resp = await invoke({ cmd: "fill_at", x: p.x, y: p.y });
@@ -205,7 +332,6 @@
       }
       return;
     }
-    // Brush or eraser: begin a stroke (backend tracks which tool is active).
     painting = true;
     canvas.setPointerCapture(ev.pointerId);
     try {
@@ -214,14 +340,12 @@
     } catch (e) { /* ignore */ }
   });
   canvas.addEventListener("pointermove", (ev) => {
-    if (activeTool === "fill") return;
-    if (!painting) return;
+    if (activeTool === "fill" || !painting) return;
     pendingMove = canvasPos(ev);
     drainMoves();
   });
   canvas.addEventListener("pointerup", async () => {
-    if (activeTool === "fill") return;
-    if (!painting) return;
+    if (activeTool === "fill" || !painting) return;
     painting = false;
     while (draining || pendingMove !== null) {
       await new Promise((r) => setTimeout(r, 4));
@@ -239,26 +363,67 @@
       path = window.prompt("PNG file path to open:");
     }
     if (!path) return;
-    status.textContent = "Opening...";
+    status.textContent = "Opening PNG...";
     try {
-      const resp = JSON.parse(await window.__gossamer_invoke("dispatch", JSON.stringify({ cmd: "open_png", path })));
-      if (resp.dirty) {
-        blit(resp.dirty);
+      const resp = await invoke({ cmd: "open_png", path });
+      if (resp && resp.dirty) {
+        applyLoadedDocument(resp.dirty);
+        await refreshLayers();
+        status.textContent = "Opened " + path;
+      } else {
+        status.textContent = "Open failed: " + (resp && resp.message ? resp.message : "unknown error");
       }
-      status.textContent = "Opened.";
     } catch (e) {
       status.textContent = "Open failed: " + e;
     }
   });
 
+  document.getElementById("open-ptype-btn").addEventListener("click", async () => {
+    if (!bridgeReady()) { status.textContent = "Cannot open - bridge unavailable."; return; }
+    let path;
+    if (typeof window.__gossamer_dialog_open === "function") {
+      path = await window.__gossamer_dialog_open({ filter: "paint.type files:*.ptype" });
+    } else {
+      path = window.prompt(".ptype file path to open:");
+    }
+    if (!path) return;
+    status.textContent = "Opening .ptype...";
+    try {
+      const resp = await invoke({ cmd: "open_ptype", path });
+      if (resp && resp.dirty) {
+        applyLoadedDocument(resp.dirty);
+        await refreshLayers();
+        status.textContent = "Opened " + path;
+      } else {
+        status.textContent = "Open failed: " + (resp && resp.message ? resp.message : "unknown error");
+      }
+    } catch (e) {
+      status.textContent = "Open failed: " + e;
+    }
+  });
+
+  async function resolveSavePath(ext) {
+    const suggested = defaultExportPath(ext);
+    try {
+      const chosen = await window.__gossamer_invoke("__gossamer_dialog_save", { defaultPath: suggested });
+      if (chosen && typeof chosen === "string") return chosen;
+    } catch (e) { /* fall back to user prompt */ }
+    return window.prompt("Save file path:", suggested);
+  }
+
   document.getElementById("save").addEventListener("click", async () => {
     if (!bridgeReady()) { status.textContent = "Cannot save - bridge unavailable."; return; }
-    let path = "/tmp/painting.png";
-    try {
-      const chosen = await window.__gossamer_invoke("__gossamer_dialog_save", { defaultPath: path });
-      if (chosen && typeof chosen === "string") path = chosen;
-    } catch (e) { /* fall back to default path */ }
+    const path = await resolveSavePath("png");
+    if (!path) return;
     const res = await invoke({ cmd: "save_png", path });
+    status.textContent = (res && res.ok === "saved") ? "Saved " + res.path : "Save failed";
+  });
+
+  document.getElementById("save-ptype").addEventListener("click", async () => {
+    if (!bridgeReady()) { status.textContent = "Cannot save - bridge unavailable."; return; }
+    const path = await resolveSavePath("ptype");
+    if (!path) return;
+    const res = await invoke({ cmd: "save_ptype", path });
     status.textContent = (res && res.ok === "saved") ? "Saved " + res.path : "Save failed";
   });
 

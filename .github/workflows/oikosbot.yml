@@ -22,24 +22,44 @@ jobs:
     name: Sustainability Analysis
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      OIKOSBOT_REV: a9c89a23403c6687a46d78d5f5bb83ab30ebdb7e
     steps:
       - uses: actions/checkout@v7.0.1
 
-      # OikosBot's own composite action runs the published CLI container.
-      # It replaces a hand-rolled job that could never work: the image tag it
-      # pinned has never existed on the package, so the job died at container
-      # pull, and the failure was masked. Config comes from .oikos.yml.
-      - name: Run OikosBot analysis
-        uses: hyperpolymath/oikosbot@main
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
         with:
-          mode: report
-          path: .
-          output: results.sarif
+          toolchain: stable
+
+      - name: Cache OikosBot CLI binary
+        uses: actions/cache@v6.1.0
+        with:
+          path: ~/oikosbot-bin
+          key: oikosbot-cli-${{ runner.os }}-${{ env.OIKOSBOT_REV }}
+
+      - name: Build OikosBot CLI from pinned source
+        run: |
+          set -euo pipefail
+          if [ ! -x "$HOME/oikosbot-bin/bin/oikosbot" ]; then
+            SRC="$RUNNER_TEMP/oikosbot-src"
+            git init "$SRC"
+            git -C "$SRC" remote add origin https://github.com/hyperpolymath/oikosbot.git
+            git -C "$SRC" fetch --depth 1 origin "$OIKOSBOT_REV"
+            git -C "$SRC" checkout --detach FETCH_HEAD
+            cargo install --locked --path "$SRC/crates/oikosbot-cli" --root "$HOME/oikosbot-bin"
+            rm -rf "$SRC"
+          fi
+          "$HOME/oikosbot-bin/bin/oikosbot" --version
+
+      - name: Run OikosBot analysis
+        run: |
+          set -euo pipefail
+          "$HOME/oikosbot-bin/bin/oikosbot" report . --format sarif --output results.sarif
+          jq empty results.sarif
 
       - name: Upload SARIF to GitHub Security
-        if: always()
-        # HOLD: v4.38.0 SHA — v4.38.1 startup-kills workflows estate-wide
-        # (hyperpolymath/nexia-list#100); hold enforced in dependabot.yml.
+        if: always() && hashFiles('results.sarif') != ''
         uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
         with:
           sarif_file: results.sarif

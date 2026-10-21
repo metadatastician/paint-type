@@ -3,12 +3,11 @@
 // Paint Core — compositing operators for paint.type tiles.
 //
 // This module implements the Porter-Duff "over" operator (premultiplied
-// and unpremultiplied), a mask-modulated variant for brush tips, and a
-// layer-stack flattener that uses these primitives. A tile-level wrapper
-// `Tile::composite_over` is provided as a proof-of-life that the layer
-// model can be driven through the safe `Tile` API. The wrapper currently
-// goes via `read_pixel_bits` / `fill_bits`; a future optimisation pass can
-// replace it with bulk buffer access once libpt exposes one.
+// and unpremultiplied), a mask-modulated variant for brush tips, separable
+// blend modes (`multiply`, `screen`), and a layer-stack flattener that uses
+// these primitives. Tile-level helpers `Tile::composite_over` and
+// `Tile::composite_over_with_mode` perform bulk tile compositing via
+// `Tile::read_buffer` / `Tile::write_buffer`.
 //
 // All operators traffic in `[u16; 4]` quadruples carrying the bit
 // patterns of IEEE 754 binary16 (R, G, B, A) channels, matching the
@@ -16,7 +15,9 @@
 
 #![allow(clippy::needless_range_loop)]
 
-use crate::{f16_bits_to_f32, f32_to_f16_bits, Tile, TileError, TILE_SIZE};
+use crate::{
+    f16_bits_to_f32, f32_to_f16_bits, layer::BlendMode, Tile, TileError, TILE_SCALARS, TILE_SIZE,
+};
 
 /// Number of pixels in a single 64×64 tile (64 * 64 = 4096).
 pub const TILE_PIXEL_COUNT: usize = (TILE_SIZE as usize) * (TILE_SIZE as usize);
@@ -45,6 +46,34 @@ fn pack(p: [f32; 4]) -> [u16; 4] {
         f32_to_f16_bits(p[2]),
         f32_to_f16_bits(p[3]),
     ]
+}
+
+/// Scale a premultiplied pixel uniformly by a clamped layer opacity in `[0, 1]`.
+#[inline]
+pub(crate) fn scale_premultiplied(px: [u16; 4], opacity: f32) -> [u16; 4] {
+    let op = if opacity.is_nan() {
+        1.0_f32
+    } else {
+        opacity.clamp(0.0_f32, 1.0_f32)
+    };
+    if (op - 1.0_f32).abs() <= f32::EPSILON {
+        return px;
+    }
+    if op <= 0.0_f32 {
+        return [0, 0, 0, 0];
+    }
+    let s = unpack(px);
+    pack([s[0] * op, s[1] * op, s[2] * op, s[3] * op])
+}
+
+/// Composite a premultiplied pixel `src` over `dst` using `mode`.
+#[inline]
+pub fn blend_premultiplied(src: [u16; 4], dst: [u16; 4], mode: BlendMode) -> [u16; 4] {
+    match mode {
+        BlendMode::Normal => over_premultiplied(src, dst),
+        BlendMode::Multiply => multiply(src, dst),
+        BlendMode::Screen => screen(src, dst),
+    }
 }
 
 //==============================================================================
@@ -291,26 +320,56 @@ pub fn xor(src: [u16; 4], dst: [u16; 4]) -> [u16; 4] {
 //==============================================================================
 
 impl Tile {
-    /// Composite `src` over `self` and return a fresh tile holding the
-    /// result. Reads both tiles pixel by pixel through the existing safe
-    /// API and writes each composited pixel via `write_pixel_bits`.
-    ///
-    /// Note: the FFI surface does not expose `(x, y)` on a live tile, so
-    /// the returned tile is allocated at `(0, 0)`. Callers who need the
-    /// destination's grid position should track it out-of-band — the
-    /// brush engine already does so via the layer manager.
+    /// Composite `src` over `self` using bulk buffer reads/writes and return
+    /// a freshly allocated tile holding the result.
     pub fn composite_over(&self, src: &Tile) -> Result<Tile, TileError> {
-        let out = Tile::alloc(0, 0).ok_or(TileError::LibError)?;
+        self.composite_over_with_mode(src, 0, 0, 1.0_f32, BlendMode::Normal)
+    }
 
-        for py in 0..TILE_SIZE {
-            for px in 0..TILE_SIZE {
-                let s = src.read_pixel_bits(px, py)?;
-                let d = self.read_pixel_bits(px, py)?;
-                let composed = over_premultiplied(s, d);
-                out.write_pixel_bits(px, py, composed[0], composed[1], composed[2], composed[3])?;
-            }
+    /// Composite `src` over `self` at grid position `(grid_x, grid_y)` with
+    /// `src_opacity` (`[0, 1]`) and `mode`, using single-crossing bulk
+    /// `read_buffer` / `write_buffer` operations rather than 12,288 per-pixel
+    /// FFI calls.
+    pub fn composite_over_with_mode(
+        &self,
+        src: &Tile,
+        grid_x: u32,
+        grid_y: u32,
+        src_opacity: f32,
+        mode: BlendMode,
+    ) -> Result<Tile, TileError> {
+        let out = Tile::alloc(grid_x, grid_y).ok_or(TileError::LibError)?;
+
+        let mut dst_buf = [0u16; TILE_SCALARS];
+        let mut src_buf = [0u16; TILE_SCALARS];
+        self.read_buffer(&mut dst_buf)?;
+        src.read_buffer(&mut src_buf)?;
+
+        for px in 0..TILE_PIXEL_COUNT {
+            let base = px * 4;
+            let s = scale_premultiplied(
+                [
+                    src_buf[base],
+                    src_buf[base + 1],
+                    src_buf[base + 2],
+                    src_buf[base + 3],
+                ],
+                src_opacity,
+            );
+            let d = [
+                dst_buf[base],
+                dst_buf[base + 1],
+                dst_buf[base + 2],
+                dst_buf[base + 3],
+            ];
+            let composed = blend_premultiplied(s, d, mode);
+            dst_buf[base] = composed[0];
+            dst_buf[base + 1] = composed[1];
+            dst_buf[base + 2] = composed[2];
+            dst_buf[base + 3] = composed[3];
         }
 
+        out.write_buffer(&dst_buf)?;
         Ok(out)
     }
 }
@@ -391,12 +450,9 @@ mod tests {
 
     #[test]
     fn over_unpremul_transparent_dst_returns_src() {
-        // Straight-alpha red, full opacity. With transparent dst the
-        // result is just src (RGB unchanged, alpha = a_src).
         let src = [F16_ONE, F16_ZERO, F16_ZERO, F16_ONE];
         let dst = [F16_ZERO, F16_ZERO, F16_ZERO, F16_ZERO];
         let out = over_unpremultiplied(src, dst);
-        // RGB should match src; alpha should be 1.0.
         assert!(approx_eq_pixel(out, [1.0, 0.0, 0.0, 1.0]));
     }
 
@@ -418,12 +474,6 @@ mod tests {
 
     #[test]
     fn over_unpremul_half_alpha_on_opaque() {
-        // Straight-alpha half-blue over opaque red.
-        // src=(0,0,1,0.5), dst=(1,0,0,1).
-        // a_out = 0.5 + 1*0.5 = 1.0.
-        // R = (0*0.5 + 1*1*0.5)/1.0 = 0.5
-        // G = 0
-        // B = (1*0.5 + 0*1*0.5)/1.0 = 0.5
         let src = [F16_ZERO, F16_ZERO, F16_ONE, F16_HALF];
         let dst = [F16_ONE, F16_ZERO, F16_ZERO, F16_ONE];
         let out = over_unpremultiplied(src, dst);
@@ -437,7 +487,6 @@ mod tests {
         let src = [F16_ONE, F16_ZERO, F16_ZERO, F16_ONE];
         let dst = [F16_ZERO, F16_ONE, F16_ZERO, F16_ONE];
         let out = masked_blend(src, dst, F16_ZERO);
-        // mask=0 scales src to all-zero, so the result is dst.
         assert_eq!(out, dst);
     }
 
@@ -452,11 +501,6 @@ mod tests {
 
     #[test]
     fn masked_blend_half_mask_dims_src() {
-        // mask=0.5 should put roughly half as much src on the canvas.
-        // src=(0,0,0.5,0.5) premultiplied, mask=0.5 → effective src
-        // (0, 0, 0.25, 0.25); dst opaque red (1,0,0,1).
-        // inv_a = 0.75 → RGB = (0+0.75, 0, 0.25+0) = (0.75, 0, 0.25);
-        // A = 0.25 + 1*0.75 = 1.0.
         let src = [F16_ZERO, F16_ZERO, F16_HALF, F16_HALF];
         let dst = [F16_ONE, F16_ZERO, F16_ZERO, F16_ONE];
         let out = masked_blend(src, dst, F16_HALF);
@@ -488,9 +532,6 @@ mod tests {
 
     #[test]
     fn flatten_two_layers_red_under_half_blue() {
-        // Bottom: opaque red (premultiplied = same).
-        // Top: half-alpha blue premultiplied = (0, 0, 0.5, 0.5).
-        // Expected per pixel: (0.5, 0, 0.5, 1.0).
         let red = [F16_ONE, F16_ZERO, F16_ZERO, F16_ONE];
         let blue_half_premul = [F16_ZERO, F16_ZERO, F16_HALF, F16_HALF];
 
@@ -512,16 +553,14 @@ mod tests {
 
     #[test]
     fn tile_composite_over_uniform_red_under_transparent_yields_red() {
-        // dst opaque red, src fully transparent — result should equal dst.
         let dst = match Tile::alloc(0, 0) {
             Some(t) => t,
-            None => return, // libpt unavailable in this environment
+            None => return,
         };
         let src = Tile::alloc(0, 0).expect("alloc src");
         if dst.fill_f32(1.0, 0.0, 0.0, 1.0).is_err() {
             return;
         }
-        // src is freshly allocated → all zeros → fully transparent.
         let composed = match dst.composite_over(&src) {
             Ok(t) => t,
             Err(_) => return,
@@ -535,13 +574,6 @@ mod tests {
 
     #[test]
     fn tile_composite_over_half_alpha_blue_on_opaque_red_blends() {
-        // dst = opaque red (1, 0, 0, 1).
-        // src = premultiplied half-alpha blue (0, 0, 0.5, 0.5).
-        // Expected per-pixel composite: (0.5, 0, 0.5, 1.0) for every pixel.
-        // This is the canonical non-uniform-friendly test — every pixel
-        // takes the same value because both inputs are uniform fills,
-        // but composite_over no longer requires uniformity and must
-        // still emit the right answer pixel by pixel via write_pixel_bits.
         let dst = match Tile::alloc(0, 0) {
             Some(t) => t,
             None => return,
@@ -554,9 +586,6 @@ mod tests {
             return;
         }
         let composed = dst.composite_over(&src).expect("composite_over");
-        // Sample (0, 0) and (63, 63): the result must be the blend, not
-        // the fallback "uniform fill of (0, 0, 0, 0)" the old impl would
-        // have refused outright.
         let p00 = composed.read_pixel_f32(0, 0).expect("read (0,0)");
         assert!(approx_eq(p00[0], 0.5), "R(0,0) = {}", p00[0]);
         assert!(approx_eq(p00[1], 0.0), "G(0,0) = {}", p00[1]);
@@ -574,14 +603,11 @@ mod tests {
 
     #[test]
     fn tile_composite_over_transparent_src_yields_dst_everywhere() {
-        // src fully transparent → composite_over must leave dst unchanged
-        // at every probed pixel.
         let dst = match Tile::alloc(0, 0) {
             Some(t) => t,
             None => return,
         };
         let src = Tile::alloc(0, 0).expect("alloc src");
-        // dst = opaque green; src stays at zero (fully transparent).
         if dst.fill_f32(0.0, 1.0, 0.0, 1.0).is_err() {
             return;
         }
@@ -606,7 +632,6 @@ mod tests {
 
     #[test]
     fn tile_composite_over_opaque_red_on_opaque_green_yields_red() {
-        // Opaque src must completely replace dst per Porter-Duff over.
         let dst = match Tile::alloc(0, 0) {
             Some(t) => t,
             None => return,
@@ -619,7 +644,6 @@ mod tests {
             return;
         }
         let composed = dst.composite_over(&src).expect("composite_over");
-        // Sample several pixels — every one should now read as red.
         let probes: [(u32, u32); 4] = [
             (0, 0),
             (17, 41),
@@ -657,7 +681,6 @@ mod tests {
 
     #[test]
     fn lerp_at_half_is_midpoint() {
-        // (1,0,0,1) ← 0.5 → (0,1,0,1)  →  (0.5, 0.5, 0, 1).
         let a = [F16_ONE, F16_ZERO, F16_ZERO, F16_ONE];
         let b = [F16_ZERO, F16_ONE, F16_ZERO, F16_ONE];
         let out = lerp(a, b, F16_HALF);
@@ -666,10 +689,9 @@ mod tests {
 
     #[test]
     fn lerp_clamps_overshoot() {
-        // Out-of-range t (2.0 → clamped to 1.0).
         let a = [F16_ONE, F16_ZERO, F16_ZERO, F16_ONE];
         let b = [F16_ZERO, F16_ONE, F16_ZERO, F16_ONE];
-        let t_two: u16 = 0x4000; // 2.0 in binary16
+        let t_two: u16 = 0x4000;
         let out = lerp(a, b, t_two);
         assert!(approx_eq_pixel(out, [0.0, 1.0, 0.0, 1.0]));
     }
@@ -678,11 +700,7 @@ mod tests {
 
     #[test]
     fn multiply_with_white_opaque_returns_src() {
-        // White opaque = (1, 1, 1, 1) premultiplied.
-        // multiply(src, white) = Sca*0 + 1*(1-Sa) + Sca*1 = Sca + (1-Sa)
-        // For premultiplied opaque src (Sa = 1): result = Sca. So opaque
-        // src against opaque white = src.
-        let src = [F16_HALF, F16_HALF, F16_HALF, F16_ONE]; // opaque grey
+        let src = [F16_HALF, F16_HALF, F16_HALF, F16_ONE];
         let white = [F16_ONE, F16_ONE, F16_ONE, F16_ONE];
         let out = multiply(src, white);
         assert!(approx_eq_pixel(out, [0.5, 0.5, 0.5, 1.0]));
@@ -690,9 +708,6 @@ mod tests {
 
     #[test]
     fn multiply_with_black_opaque_returns_black() {
-        // multiply(src, black_opaque) with src opaque:
-        //   co = Sca*0 + 0*(1-Sa) + Sca*0 = 0
-        //   ao = Sa + Da - Sa*Da = 1 + 1 - 1 = 1
         let src = [F16_ONE, F16_HALF, F16_ZERO, F16_ONE];
         let black = [F16_ZERO, F16_ZERO, F16_ZERO, F16_ONE];
         let out = multiply(src, black);
@@ -701,12 +716,10 @@ mod tests {
 
     #[test]
     fn multiply_alpha_is_over_alpha() {
-        // multiply preserves the standard over alpha formula.
         let src = [F16_HALF, F16_ZERO, F16_ZERO, F16_HALF];
         let dst = [F16_ZERO, F16_HALF, F16_ZERO, F16_HALF];
         let out = multiply(src, dst);
         let out_a = f16_bits_to_f32(out[3]);
-        // 0.5 + 0.5 - 0.25 = 0.75
         assert!(approx_eq(out_a, 0.75));
     }
 
@@ -714,7 +727,6 @@ mod tests {
 
     #[test]
     fn screen_with_black_opaque_returns_src() {
-        // screen(src, black) = Sca + 0 - 0 = Sca; alpha as over.
         let src = [F16_HALF, F16_HALF, F16_ZERO, F16_ONE];
         let black = [F16_ZERO, F16_ZERO, F16_ZERO, F16_ONE];
         let out = screen(src, black);
@@ -723,7 +735,6 @@ mod tests {
 
     #[test]
     fn screen_with_white_opaque_returns_white() {
-        // screen(src, white) = Sca + 1 - Sca = 1 channelwise; alpha = 1.
         let src = [F16_HALF, F16_HALF, F16_ZERO, F16_ONE];
         let white = [F16_ONE, F16_ONE, F16_ONE, F16_ONE];
         let out = screen(src, white);
@@ -735,7 +746,6 @@ mod tests {
         let src = [F16_ZERO, F16_ZERO, F16_HALF, F16_HALF];
         let dst = [F16_HALF, F16_ZERO, F16_ZERO, F16_HALF];
         let out = screen(src, dst);
-        // Same alpha formula as over: 0.75.
         assert!(approx_eq(f16_bits_to_f32(out[3]), 0.75));
     }
 
@@ -743,7 +753,6 @@ mod tests {
 
     #[test]
     fn in_op_against_transparent_dst_is_transparent() {
-        // src opaque, dst transparent → result all zero (Da = 0 wipes out).
         let src = [F16_ONE, F16_ZERO, F16_ZERO, F16_ONE];
         let dst = [F16_ZERO, F16_ZERO, F16_ZERO, F16_ZERO];
         let out = in_op(src, dst);
@@ -752,7 +761,6 @@ mod tests {
 
     #[test]
     fn in_op_against_opaque_dst_returns_src() {
-        // Da = 1 → result = src.
         let src = [F16_HALF, F16_ZERO, F16_HALF, F16_HALF];
         let dst = [F16_ZERO, F16_ONE, F16_ZERO, F16_ONE];
         let out = in_op(src, dst);
@@ -763,7 +771,6 @@ mod tests {
 
     #[test]
     fn out_op_against_transparent_dst_returns_src() {
-        // Da = 0 → result = src.
         let src = [F16_HALF, F16_ZERO, F16_HALF, F16_HALF];
         let dst = [F16_ZERO, F16_ZERO, F16_ZERO, F16_ZERO];
         let out = out_op(src, dst);
@@ -772,7 +779,6 @@ mod tests {
 
     #[test]
     fn out_op_against_opaque_dst_is_transparent() {
-        // Da = 1 → result all zero.
         let src = [F16_ONE, F16_ZERO, F16_ZERO, F16_ONE];
         let dst = [F16_ZERO, F16_ONE, F16_ZERO, F16_ONE];
         let out = out_op(src, dst);
@@ -786,13 +792,11 @@ mod tests {
         let src = [F16_HALF, F16_ZERO, F16_ZERO, F16_HALF];
         let dst = [F16_ZERO, F16_HALF, F16_ZERO, F16_HALF];
         let out = atop(src, dst);
-        // Output alpha must equal dst alpha exactly (modulo f16 round-trip).
         assert!(approx_eq(f16_bits_to_f32(out[3]), 0.5));
     }
 
     #[test]
     fn atop_against_transparent_dst_is_transparent() {
-        // Da = 0 → co = 0; ao = 0.
         let src = [F16_ONE, F16_ZERO, F16_ZERO, F16_ONE];
         let dst = [F16_ZERO, F16_ZERO, F16_ZERO, F16_ZERO];
         let out = atop(src, dst);
@@ -801,8 +805,6 @@ mod tests {
 
     #[test]
     fn atop_opaque_src_on_opaque_dst_is_src() {
-        // src opaque (Sa = 1) atop opaque dst (Da = 1):
-        // co = Sca*1 + Dca*0 = Sca; ao = 1.
         let src = [F16_ONE, F16_ZERO, F16_ZERO, F16_ONE];
         let dst = [F16_ZERO, F16_ONE, F16_ZERO, F16_ONE];
         let out = atop(src, dst);
@@ -813,7 +815,6 @@ mod tests {
 
     #[test]
     fn xor_opaque_with_opaque_is_transparent() {
-        // Sa = 1, Da = 1 → both (1-Da) and (1-Sa) are 0 → result all 0.
         let src = [F16_ONE, F16_ZERO, F16_ZERO, F16_ONE];
         let dst = [F16_ZERO, F16_ONE, F16_ZERO, F16_ONE];
         let out = xor(src, dst);

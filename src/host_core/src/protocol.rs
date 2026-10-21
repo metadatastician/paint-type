@@ -16,7 +16,18 @@ pub enum ToolKind {
     Fill,
 }
 
-/// Plugin information for listing
+/// Summary of a document layer exposed to the web UI.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct LayerInfo {
+    pub index: usize,
+    pub id: u32,
+    pub name: String,
+    pub visible: bool,
+    pub opacity: f32,
+    pub blend: String,
+}
+
+/// Plugin information for listing.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PluginInfo {
     pub id: String,
@@ -26,11 +37,12 @@ pub struct PluginInfo {
     pub version: String,
 }
 
-/// Plugin invocation request
+/// Plugin invocation request.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PluginInvocation {
     pub plugin_id: String,
     pub function: String,
+    #[serde(default)]
     pub args: HashMap<String, String>,
 }
 
@@ -50,23 +62,91 @@ pub struct DirtyRect {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "cmd", rename_all = "snake_case")]
 pub enum Command {
-    NewDoc { w: u32, h: u32 },
-    SetColour { r: f32, g: f32, b: f32, a: f32 },
-    SetBrush { diameter: u32, hardness: f32 },
-    OpenPng { path: String },
-    OpenPtype { path: String },
-    PointerDown { x: f32, y: f32 },
-    PointerMove { x: f32, y: f32 },
+    NewDoc {
+        w: u32,
+        h: u32,
+    },
+    SetColour {
+        r: f32,
+        g: f32,
+        b: f32,
+        a: f32,
+    },
+    SetBrush {
+        diameter: u32,
+        #[serde(default)]
+        hardness: f32,
+    },
+    OpenPng {
+        path: String,
+    },
+    OpenPtype {
+        path: String,
+    },
+    PointerDown {
+        x: f32,
+        y: f32,
+    },
+    PointerMove {
+        x: f32,
+        y: f32,
+    },
     PointerUp,
-    SelectTool { kind: ToolKind },
-    FillAt { x: f32, y: f32 },
-    SavePng { path: String },
-    SavePtype { path: String },
-    /// Plugin commands
-    LoadPlugin { path: String },
-    UnloadPlugin { plugin_id: String },
+    SelectTool {
+        kind: ToolKind,
+    },
+    FillAt {
+        x: f32,
+        y: f32,
+    },
+    SavePng {
+        path: String,
+    },
+    SavePtype {
+        path: String,
+    },
+    /// Undo/redo commands backed by `paint_core::undo::UndoGraph`.
+    Undo,
+    Redo,
+    /// Multi-layer document commands.
+    AddLayer {
+        #[serde(default)]
+        name: Option<String>,
+    },
+    DeleteLayer {
+        index: usize,
+    },
+    SelectLayer {
+        index: usize,
+    },
+    ReorderLayer {
+        from: usize,
+        to: usize,
+    },
+    SetLayerVisibility {
+        index: usize,
+        visible: bool,
+    },
+    SetLayerOpacity {
+        index: usize,
+        opacity: f32,
+    },
+    SetLayerBlend {
+        index: usize,
+        blend: String,
+    },
+    ListLayers,
+    /// Plugin commands.
+    LoadPlugin {
+        path: String,
+    },
+    UnloadPlugin {
+        plugin_id: String,
+    },
     ListPlugins,
-    InvokePlugin { invocation: PluginInvocation },
+    InvokePlugin {
+        invocation: PluginInvocation,
+    },
 }
 
 /// Outbound responses, serialised as the invoke result.
@@ -79,11 +159,17 @@ pub enum Response {
     Painted { dirty: DirtyRect },
     /// A file was written.
     Saved { path: String },
-    /// A PNG was opened; the dirty rect covers the full canvas.
+    /// A PNG or `.ptype` document (or history revision) was loaded; the dirty
+    /// rect covers the full canvas at its current `(w, h)` dimensions.
     Loaded { dirty: DirtyRect },
+    /// Layer stack metadata query result.
+    LayerList {
+        layers: Vec<LayerInfo>,
+        active_index: usize,
+    },
     /// Something failed; `message` is human-readable.
     Error { message: String },
-    /// Plugin responses
+    /// Plugin responses.
     PluginLoaded { plugin_id: String },
     PluginUnloaded { plugin_id: String },
     PluginList { plugins: Vec<PluginInfo> },

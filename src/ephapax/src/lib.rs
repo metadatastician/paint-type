@@ -171,7 +171,6 @@ pub fn f32_to_f16_bits(value: f32) -> u16 {
         new_mant += 1;
         if new_mant == 0x400 {
             // Mantissa overflowed back to 1.0 — bump the exponent.
-            new_mant = 0;
             let bumped_exp = new_exp + 1;
             if bumped_exp >= 0x1F {
                 return (sign << 15) | 0x7C00;
@@ -207,7 +206,8 @@ pub fn f16_bits_to_f32(bits: u16) -> f32 {
         // Inf or NaN.
         (sign << 31) | 0x7F80_0000 | (mant << 13)
     } else {
-        let new_exp = exp - 15 + 127;
+        // exp is in [1, 30], so exp - 15 + 127 == exp + 112 without u32 underflow.
+        let new_exp = exp + 112;
         (sign << 31) | (new_exp << 23) | (mant << 13)
     };
 

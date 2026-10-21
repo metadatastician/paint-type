@@ -15,7 +15,23 @@
 // concrete backend is named.
 
 const std = @import("std");
-const builtin = @import("builtin");
+
+/// Cross-version non-reentrant spin mutex built strictly on `std.atomic.Value`.
+/// Works identically across Zig 0.15.x, 0.16.x, and 0.17.x despite stdlib
+/// `Thread.Mutex` / `Io.Mutex` API churn.
+pub const SpinMutex = struct {
+    held: std.atomic.Value(bool) = std.atomic.Value(bool).init(false),
+
+    pub fn lock(self: *SpinMutex) void {
+        while (self.held.cmpxchgWeak(false, true, .acquire, .monotonic) != null) {
+            std.atomic.spinLoopHint();
+        }
+    }
+
+    pub fn unlock(self: *SpinMutex) void {
+        self.held.store(false, .release);
+    }
+};
 
 //==============================================================================
 // 1. C ABI mirror of Backends.Abstract (Idris2)
@@ -65,6 +81,15 @@ pub const ResultCode = enum(u32) {
     busy = 4,
     out_of_memory = 5,
     unsupported_precision = 6,
+
+    /// Safe conversion from an untrusted C `u32` return value. Any unknown code
+    /// maps to `.err` rather than triggering undefined `@enumFromInt` behaviour.
+    pub fn fromRaw(raw: u32) ResultCode {
+        if (raw <= @intFromEnum(ResultCode.unsupported_precision)) {
+            return @enumFromInt(raw);
+        }
+        return .err;
+    }
 };
 
 pub const CapabilityEntry = extern struct {
@@ -95,6 +120,7 @@ pub const BackendImpl = extern struct {
     // MVP-1
     canvas_new: ?*const fn (width: u32, height: u32, fmt: u32, bg_r: f32, bg_g: f32, bg_b: f32, bg_a: f32, out_canvas: *u64) callconv(.c) u32,
     canvas_resize: ?*const fn (canvas: u64, w: u32, h: u32, anchor_x: f64, anchor_y: f64) callconv(.c) u32,
+    canvas_free: ?*const fn (canvas: u64) callconv(.c) u32 = null,
 
     // MVP-2
     io_open: ?*const fn (path: [*:0]const u8, fmt: ?[*:0]const u8, out_canvas: *u64) callconv(.c) u32,
@@ -124,6 +150,7 @@ pub const BackendImpl = extern struct {
     selection_cut: ?*const fn (canvas: u64, layer: u64, mask: u64) callconv(.c) u32,
     selection_copy: ?*const fn (canvas: u64, layer: u64, mask: u64) callconv(.c) u32,
     selection_paste: ?*const fn (canvas: u64, layer: u64, dst_x: f64, dst_y: f64) callconv(.c) u32,
+    selection_free: ?*const fn (mask: u64) callconv(.c) u32 = null,
 
     // MVP-8
     shape_line: ?*const fn (canvas: u64, layer: u64, ax: f64, ay: f64, bx: f64, by: f64, width: f64, colour: *const [4]f32, aa_mode: u32) callconv(.c) u32,
@@ -202,7 +229,9 @@ const Registry = struct {
         }
     }
 
-    fn reference(self: *const Registry) *const BackendImpl {
+    fn reference(self: *const Registry) ?*const BackendImpl {
+        if (self.backends.items.len == 0) return null;
+        if (self.reference_index >= self.backends.items.len) return self.backends.items[0];
         return self.backends.items[self.reference_index];
     }
 
@@ -213,7 +242,7 @@ const Registry = struct {
     }
 };
 
-var global_registry_lock: std.Thread.Mutex = .{};
+var global_registry_lock: SpinMutex = .{};
 var global_registry: ?Registry = null;
 
 pub fn init(allocator: std.mem.Allocator) !void {
@@ -232,6 +261,16 @@ pub fn deinit() void {
     }
 }
 
+/// C-ABI lifecycle entry points for external FFI callers (Rust, C, Idris2).
+pub export fn pt_dispatcher_init() callconv(.c) u32 {
+    init(std.heap.c_allocator) catch return @intFromEnum(ResultCode.out_of_memory);
+    return @intFromEnum(ResultCode.ok);
+}
+
+pub export fn pt_dispatcher_deinit() callconv(.c) void {
+    deinit();
+}
+
 pub fn register(impl: *const BackendImpl) !void {
     global_registry_lock.lock();
     defer global_registry_lock.unlock();
@@ -241,31 +280,18 @@ pub fn register(impl: *const BackendImpl) !void {
 
 //==============================================================================
 // 3. Per-operation dispatch
-//
-//    Each operation has a tiny helper that picks a backend that implements it
-//    (i.e. its function pointer is non-null and it reports the required kernel
-//    class), invokes it, and on `not_implemented` falls back to the reference.
-//
-//    A single shared `dispatchOp` template would be cleaner with Zig comptime
-//    reflection on the BackendImpl struct; for now we keep one helper per
-//    operation so the call-site code generation from Idris2 has a one-to-one
-//    target.
 //==============================================================================
 
 fn pickFor(comptime field_name: []const u8) ?*const BackendImpl {
     global_registry_lock.lock();
     defer global_registry_lock.unlock();
-    var r = &global_registry.?;
-    // Forward sweep: pick the first non-reference backend that implements the op.
-    // (Selection-priority policy is a follow-up; for the MVP, registration
-    //  order suffices and the reference is the last-resort fallback.)
+    var r = &(global_registry orelse return null);
     var i: usize = 0;
     while (i < r.backends.items.len) : (i += 1) {
         if (i == r.reference_index) continue;
         const b = r.backends.items[i];
         if (@field(b, field_name) != null) return b;
     }
-    // Fall through to reference.
     return r.reference();
 }
 
@@ -279,29 +305,35 @@ fn invokeOrFallback(
         const rc: u32 = @call(.auto, fp, args);
         if (rc == @intFromEnum(ResultCode.not_implemented)) {
             global_registry_lock.lock();
-            defer global_registry_lock.unlock();
-            global_registry.?.recordFallback(field_name);
-            const ref = global_registry.?.reference();
-            const rfp = @field(ref, field_name).?;
-            return @enumFromInt(@as(u32, @call(.auto, rfp, args)));
+            const ref = blk: {
+                defer global_registry_lock.unlock();
+                if (global_registry) |*reg| {
+                    reg.recordFallback(field_name);
+                    break :blk reg.reference();
+                }
+                break :blk null;
+            } orelse return .err;
+            const rfp = @field(ref, field_name) orelse return .not_implemented;
+            return ResultCode.fromRaw(@call(.auto, rfp, args));
         }
-        return @enumFromInt(rc);
+        return ResultCode.fromRaw(rc);
     }
-    // Should not happen — pickFor either returns the reference or a backend
-    // whose field is non-null. Belt-and-braces.
+
     global_registry_lock.lock();
-    defer global_registry_lock.unlock();
-    global_registry.?.recordFallback(field_name);
-    const ref = global_registry.?.reference();
-    const rfp = @field(ref, field_name).?;
-    return @enumFromInt(@as(u32, @call(.auto, rfp, args)));
+    const ref = blk: {
+        defer global_registry_lock.unlock();
+        if (global_registry) |*reg| {
+            reg.recordFallback(field_name);
+            break :blk reg.reference();
+        }
+        break :blk null;
+    } orelse return .err;
+    const rfp = @field(ref, field_name) orelse return .not_implemented;
+    return ResultCode.fromRaw(@call(.auto, rfp, args));
 }
 
 //==============================================================================
 // 4. Public dispatch entry points
-//
-//    These are exported with a stable C ABI. The AffineScript runtime and the
-//    unified API server call into these. They never name a backend directly.
 //==============================================================================
 
 pub export fn pt_canvas_new(
@@ -314,162 +346,211 @@ pub export fn pt_canvas_new(
     bg_a: f32,
     out_canvas: *u64,
 ) callconv(.c) u32 {
-    const chosen = pickFor("canvas_new").?;
+    const chosen = pickFor("canvas_new") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("canvas_new", chosen, .{ width, height, fmt, bg_r, bg_g, bg_b, bg_a, out_canvas }));
 }
 
 pub export fn pt_canvas_resize(canvas: u64, w: u32, h: u32, ax: f64, ay: f64) callconv(.c) u32 {
-    const chosen = pickFor("canvas_resize").?;
+    const chosen = pickFor("canvas_resize") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("canvas_resize", chosen, .{ canvas, w, h, ax, ay }));
 }
 
+pub export fn pt_canvas_free(canvas: u64) callconv(.c) u32 {
+    const chosen = pickFor("canvas_free") orelse return @intFromEnum(ResultCode.err);
+    return @intFromEnum(invokeOrFallback("canvas_free", chosen, .{canvas}));
+}
+
 pub export fn pt_io_open(path: [*:0]const u8, fmt: ?[*:0]const u8, out_canvas: *u64) callconv(.c) u32 {
-    const chosen = pickFor("io_open").?;
+    const chosen = pickFor("io_open") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("io_open", chosen, .{ path, fmt, out_canvas }));
 }
 
 pub export fn pt_io_save(canvas: u64, path: [*:0]const u8, fmt: [*:0]const u8, opts: [*:0]const u8) callconv(.c) u32 {
-    const chosen = pickFor("io_save").?;
+    const chosen = pickFor("io_save") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("io_save", chosen, .{ canvas, path, fmt, opts }));
 }
 
 pub export fn pt_tool_stroke_pencil(canvas: u64, layer: u64, n: u32, points: [*]const f64, points_len: usize, colour: *const [4]f32) callconv(.c) u32 {
-    const chosen = pickFor("tool_stroke_pencil").?;
+    const chosen = pickFor("tool_stroke_pencil") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("tool_stroke_pencil", chosen, .{ canvas, layer, n, points, points_len, colour }));
 }
 
 pub export fn pt_tool_stroke_brush(canvas: u64, layer: u64, state: *const BrushStateC, n: u32, points: [*]const StrokePointC, points_len: usize, colour: *const [4]f32) callconv(.c) u32 {
-    const chosen = pickFor("tool_stroke_brush").?;
+    const chosen = pickFor("tool_stroke_brush") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("tool_stroke_brush", chosen, .{ canvas, layer, state, n, points, points_len, colour }));
 }
 
 pub export fn pt_tool_stroke_eraser(canvas: u64, layer: u64, state: *const BrushStateC, n: u32, points: [*]const StrokePointC, points_len: usize, mode: u32) callconv(.c) u32 {
-    const chosen = pickFor("tool_stroke_eraser").?;
+    const chosen = pickFor("tool_stroke_eraser") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("tool_stroke_eraser", chosen, .{ canvas, layer, state, n, points, points_len, mode }));
 }
 
 pub export fn pt_tool_sample_colour(canvas: u64, x: f64, y: f64, area: u32, out_colour: *[4]f32) callconv(.c) u32 {
-    const chosen = pickFor("tool_sample_colour").?;
+    const chosen = pickFor("tool_sample_colour") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("tool_sample_colour", chosen, .{ canvas, x, y, area, out_colour }));
 }
 
 pub export fn pt_tool_fill(canvas: u64, layer: u64, sx: f64, sy: f64, colour: *const [4]f32, tol: f64, contig: u32) callconv(.c) u32 {
-    const chosen = pickFor("tool_fill").?;
+    const chosen = pickFor("tool_fill") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("tool_fill", chosen, .{ canvas, layer, sx, sy, colour, tol, contig }));
 }
 
 pub export fn pt_selection_rect(canvas: u64, x0: u32, y0: u32, x1: u32, y1: u32, out_mask: *u64) callconv(.c) u32 {
-    const chosen = pickFor("selection_rect").?;
+    const chosen = pickFor("selection_rect") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("selection_rect", chosen, .{ canvas, x0, y0, x1, y1, out_mask }));
 }
 
 pub export fn pt_selection_lasso(canvas: u64, n: u32, pts: [*]const f64, out_mask: *u64) callconv(.c) u32 {
-    const chosen = pickFor("selection_lasso").?;
+    const chosen = pickFor("selection_lasso") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("selection_lasso", chosen, .{ canvas, n, pts, out_mask }));
 }
 
 pub export fn pt_selection_invert(canvas: u64, mask: u64, out_mask: *u64) callconv(.c) u32 {
-    const chosen = pickFor("selection_invert").?;
+    const chosen = pickFor("selection_invert") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("selection_invert", chosen, .{ canvas, mask, out_mask }));
 }
 
 pub export fn pt_selection_cut(canvas: u64, layer: u64, mask: u64) callconv(.c) u32 {
-    const chosen = pickFor("selection_cut").?;
+    const chosen = pickFor("selection_cut") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("selection_cut", chosen, .{ canvas, layer, mask }));
 }
 
 pub export fn pt_selection_copy(canvas: u64, layer: u64, mask: u64) callconv(.c) u32 {
-    const chosen = pickFor("selection_copy").?;
+    const chosen = pickFor("selection_copy") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("selection_copy", chosen, .{ canvas, layer, mask }));
 }
 
 pub export fn pt_selection_paste(canvas: u64, layer: u64, dx: f64, dy: f64) callconv(.c) u32 {
-    const chosen = pickFor("selection_paste").?;
+    const chosen = pickFor("selection_paste") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("selection_paste", chosen, .{ canvas, layer, dx, dy }));
 }
 
+pub export fn pt_selection_free(mask: u64) callconv(.c) u32 {
+    const chosen = pickFor("selection_free") orelse return @intFromEnum(ResultCode.err);
+    return @intFromEnum(invokeOrFallback("selection_free", chosen, .{mask}));
+}
+
 pub export fn pt_shape_line(canvas: u64, layer: u64, ax: f64, ay: f64, bx: f64, by: f64, w: f64, colour: *const [4]f32, aa: u32) callconv(.c) u32 {
-    const chosen = pickFor("shape_line").?;
+    const chosen = pickFor("shape_line") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("shape_line", chosen, .{ canvas, layer, ax, ay, bx, by, w, colour, aa }));
 }
 
 pub export fn pt_shape_rectangle(canvas: u64, layer: u64, ax: f64, ay: f64, bx: f64, by: f64, sw: f64, sc: *const [4]f32, fc: *const [4]f32, has_stroke: u32, has_fill: u32, aa: u32) callconv(.c) u32 {
-    const chosen = pickFor("shape_rectangle").?;
+    const chosen = pickFor("shape_rectangle") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("shape_rectangle", chosen, .{ canvas, layer, ax, ay, bx, by, sw, sc, fc, has_stroke, has_fill, aa }));
 }
 
 pub export fn pt_shape_ellipse(canvas: u64, layer: u64, cx: f64, cy: f64, rx: f64, ry: f64, sw: f64, sc: *const [4]f32, fc: *const [4]f32, has_stroke: u32, has_fill: u32, aa: u32) callconv(.c) u32 {
-    const chosen = pickFor("shape_ellipse").?;
+    const chosen = pickFor("shape_ellipse") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("shape_ellipse", chosen, .{ canvas, layer, cx, cy, rx, ry, sw, sc, fc, has_stroke, has_fill, aa }));
 }
 
 pub export fn pt_shape_polygon(canvas: u64, layer: u64, n: u32, verts: [*]const f64, sw: f64, sc: *const [4]f32, fc: *const [4]f32, has_stroke: u32, has_fill: u32, aa: u32) callconv(.c) u32 {
-    const chosen = pickFor("shape_polygon").?;
+    const chosen = pickFor("shape_polygon") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("shape_polygon", chosen, .{ canvas, layer, n, verts, sw, sc, fc, has_stroke, has_fill, aa }));
 }
 
 pub export fn pt_text_rasterise(canvas: u64, layer: u64, ox: f64, oy: f64, text: [*:0]const u8, family: [*:0]const u8, size_points: f64, weight: u32, italic: u32, colour: *const [4]f32) callconv(.c) u32 {
-    const chosen = pickFor("text_rasterise").?;
+    const chosen = pickFor("text_rasterise") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("text_rasterise", chosen, .{ canvas, layer, ox, oy, text, family, size_points, weight, italic, colour }));
 }
 
 pub export fn pt_history_record(canvas: u64, opcode: [*:0]const u8, payload_len: u32, payload: [*]const u8, redo_cost: u64) callconv(.c) u32 {
-    const chosen = pickFor("history_record").?;
+    const chosen = pickFor("history_record") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("history_record", chosen, .{ canvas, opcode, payload_len, payload, redo_cost }));
 }
 
 pub export fn pt_history_undo(canvas: u64) callconv(.c) u32 {
-    const chosen = pickFor("history_undo").?;
+    const chosen = pickFor("history_undo") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("history_undo", chosen, .{canvas}));
 }
 
 pub export fn pt_history_redo(canvas: u64) callconv(.c) u32 {
-    const chosen = pickFor("history_redo").?;
+    const chosen = pickFor("history_redo") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("history_redo", chosen, .{canvas}));
 }
 
 pub export fn pt_viewport_set(canvas: u64, zoom: f64, px: f64, py: f64, rot: f64) callconv(.c) u32 {
-    const chosen = pickFor("viewport_set").?;
+    const chosen = pickFor("viewport_set") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("viewport_set", chosen, .{ canvas, zoom, px, py, rot }));
 }
 
 pub export fn pt_viewport_fit(canvas: u64, oz: *f64, opx: *f64, opy: *f64) callconv(.c) u32 {
-    const chosen = pickFor("viewport_fit").?;
+    const chosen = pickFor("viewport_fit") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("viewport_fit", chosen, .{ canvas, oz, opx, opy }));
 }
 
-pub export fn pt_layer_new(canvas: u64, after: u64, has_after: u32, name: [*:0]const u8, out_layer: *u64) callconv(.c) u32 {
-    const chosen = pickFor("layer_new").?;
+//------------------------------------------------------------------------------
+// Disambiguated canvas layer exports (`pt_canvas_layer_*`).
+//
+// `libpt` (`src/interface/ffi/src/main.zig`) owns the standalone cross-language
+// `PtLayerStack` C symbols (`pt_layer_delete`, `pt_layer_set_visible`,
+// `pt_layer_set_opacity`), which take `(stack_ptr: u64, id: u32, ...)`.
+// Exporting identical linker symbols from `libpaint_type` with incompatible
+// signatures caused ODR / multiple-symbol link collisions whenever both native
+// archives were linked into one process.
+//
+// External C/FFI callers address canvas layers via `pt_canvas_layer_*`, while
+// in-tree Zig callers (`@import("dispatcher")`) keep full source compatibility
+// through the `pt_layer_*` inline forwarders below.
+//------------------------------------------------------------------------------
+
+pub export fn pt_canvas_layer_new(canvas: u64, after: u64, has_after: u32, name: [*:0]const u8, out_layer: *u64) callconv(.c) u32 {
+    const chosen = pickFor("layer_new") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("layer_new", chosen, .{ canvas, after, has_after, name, out_layer }));
 }
 
-pub export fn pt_layer_delete(canvas: u64, layer: u64) callconv(.c) u32 {
-    const chosen = pickFor("layer_delete").?;
+pub export fn pt_canvas_layer_delete(canvas: u64, layer: u64) callconv(.c) u32 {
+    const chosen = pickFor("layer_delete") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("layer_delete", chosen, .{ canvas, layer }));
 }
 
-pub export fn pt_layer_reorder(canvas: u64, layer: u64, new_index: u32) callconv(.c) u32 {
-    const chosen = pickFor("layer_reorder").?;
+pub export fn pt_canvas_layer_reorder(canvas: u64, layer: u64, new_index: u32) callconv(.c) u32 {
+    const chosen = pickFor("layer_reorder") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("layer_reorder", chosen, .{ canvas, layer, new_index }));
 }
 
-pub export fn pt_layer_set_visible(canvas: u64, layer: u64, visible: u32) callconv(.c) u32 {
-    const chosen = pickFor("layer_set_visible").?;
+pub export fn pt_canvas_layer_set_visible(canvas: u64, layer: u64, visible: u32) callconv(.c) u32 {
+    const chosen = pickFor("layer_set_visible") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("layer_set_visible", chosen, .{ canvas, layer, visible }));
 }
 
-pub export fn pt_layer_set_opacity(canvas: u64, layer: u64, opacity: f64) callconv(.c) u32 {
-    const chosen = pickFor("layer_set_opacity").?;
+pub export fn pt_canvas_layer_set_opacity(canvas: u64, layer: u64, opacity: f64) callconv(.c) u32 {
+    const chosen = pickFor("layer_set_opacity") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("layer_set_opacity", chosen, .{ canvas, layer, opacity }));
 }
 
-pub export fn pt_layer_set_blend(canvas: u64, layer: u64, mode: u32) callconv(.c) u32 {
-    const chosen = pickFor("layer_set_blend").?;
+pub export fn pt_canvas_layer_set_blend(canvas: u64, layer: u64, mode: u32) callconv(.c) u32 {
+    const chosen = pickFor("layer_set_blend") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("layer_set_blend", chosen, .{ canvas, layer, mode }));
 }
 
+pub inline fn pt_layer_new(canvas: u64, after: u64, has_after: u32, name: [*:0]const u8, out_layer: *u64) u32 {
+    return pt_canvas_layer_new(canvas, after, has_after, name, out_layer);
+}
+
+pub inline fn pt_layer_delete(canvas: u64, layer: u64) u32 {
+    return pt_canvas_layer_delete(canvas, layer);
+}
+
+pub inline fn pt_layer_reorder(canvas: u64, layer: u64, new_index: u32) u32 {
+    return pt_canvas_layer_reorder(canvas, layer, new_index);
+}
+
+pub inline fn pt_layer_set_visible(canvas: u64, layer: u64, visible: u32) u32 {
+    return pt_canvas_layer_set_visible(canvas, layer, visible);
+}
+
+pub inline fn pt_layer_set_opacity(canvas: u64, layer: u64, opacity: f64) u32 {
+    return pt_canvas_layer_set_opacity(canvas, layer, opacity);
+}
+
+pub inline fn pt_layer_set_blend(canvas: u64, layer: u64, mode: u32) u32 {
+    return pt_canvas_layer_set_blend(canvas, layer, mode);
+}
+
 pub export fn pt_canvas_render_rgba8(canvas: u64, x: u32, y: u32, w: u32, h: u32, out_buf: [*]u8, out_buf_len: usize) callconv(.c) u32 {
-    const chosen = pickFor("canvas_render_rgba8").?;
+    const chosen = pickFor("canvas_render_rgba8") orelse return @intFromEnum(ResultCode.err);
     return @intFromEnum(invokeOrFallback("canvas_render_rgba8", chosen, .{ canvas, x, y, w, h, out_buf, out_buf_len }));
 }
 
@@ -510,4 +591,19 @@ pub export fn pt_capability_report(out_buf: [*]u8, out_cap: usize) callconv(.c) 
     buf[pos] = ']';
     buf[pos + 1] = '}';
     return pos + 2;
+}
+
+test "ResultCode.fromRaw clamps unknown values to .err" {
+    try std.testing.expectEqual(ResultCode.ok, ResultCode.fromRaw(0));
+    try std.testing.expectEqual(ResultCode.unsupported_precision, ResultCode.fromRaw(6));
+    try std.testing.expectEqual(ResultCode.err, ResultCode.fromRaw(7));
+    try std.testing.expectEqual(ResultCode.err, ResultCode.fromRaw(std.math.maxInt(u32)));
+}
+
+test "uninitialised dispatcher fails safely without panicking" {
+    deinit();
+    var handle: u64 = 0;
+    try std.testing.expectEqual(@intFromEnum(ResultCode.err), pt_canvas_new(16, 16, 0, 0, 0, 0, 0, &handle));
+    try std.testing.expectEqual(@intFromEnum(ResultCode.ok), pt_dispatcher_init());
+    pt_dispatcher_deinit();
 }

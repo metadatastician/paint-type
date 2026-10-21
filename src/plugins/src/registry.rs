@@ -1,23 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Plugin registry - manages loaded plugins and their lifecycle.
-//!
-//! The registry:
-//! - Maintains a collection of loaded plugins
-//! - Handles plugin loading and unloading
-//! - Manages plugin capabilities
-//! - Provides lookup by ID
-//! - Tracks plugin state
 
 use std::collections::HashMap;
+use std::fmt;
 use std::path::Path;
 use std::sync::{Arc, RwLock};
 
+use crate::effect::{
+    BrightnessContrastEffect, EffectConfig, EffectPlugin, GrayscaleEffect, InvertColourEffect,
+    WasmEffectPlugin,
+};
 use crate::error::{PluginError, PluginResult};
 use crate::manifest::{PluginCapability, PluginId, PluginManifest, PluginType};
-use crate::effect::{EffectPlugin, WasmEffectPlugin, EffectConfig, BrightnessContrastEffect};
-use crate::tool::{ToolPlugin, WasmToolPlugin, ToolConfig, BrushTool};
-use std::fmt;
+use crate::tool::{BrushTool, ToolConfig, ToolPlugin, WasmToolPlugin};
 
 /// Plugin entry in the registry
 #[derive(Clone)]
@@ -89,13 +85,9 @@ impl PluginEntry {
 
 /// Plugin registry - manages all loaded plugins
 pub struct PluginRegistry {
-    /// Map from plugin ID to plugin entry
     plugins: HashMap<PluginId, PluginEntry>,
-    /// Map from plugin ID to manifest
     manifests: HashMap<PluginId, PluginManifest>,
-    /// Map from plugin ID to granted capabilities
     granted_caps: HashMap<PluginId, Vec<PluginCapability>>,
-    /// Next plugin ID counter (for generated IDs)
     next_id: u64,
 }
 
@@ -117,7 +109,7 @@ impl PluginRegistry {
         wasm_path: impl AsRef<Path>,
     ) -> PluginResult<PluginId> {
         let manifest = PluginManifest::from_json_file(&manifest_path)?;
-        
+
         if manifest.plugin_type != PluginType::Effect {
             return Err(PluginError::manifest_validation(
                 "Expected effect plugin type".to_string(),
@@ -125,28 +117,22 @@ impl PluginRegistry {
         }
 
         let id = manifest.id.clone();
-        
-        // Check if already loaded
         if self.plugins.contains_key(&id) {
             return Err(PluginError::PluginAlreadyLoaded(id));
         }
 
-        // Create the plugin
-        let mut plugin = WasmEffectPlugin::new(manifest.clone(), EffectConfig::new(crate::effect::EffectType::Custom))?;
+        let mut plugin = WasmEffectPlugin::new(
+            manifest.clone(),
+            EffectConfig::new(crate::effect::EffectType::Custom),
+        )?;
         plugin.load(&wasm_path)?;
-        
-        // Grant capabilities
-        let mut granted = Vec::new();
-        for cap in &manifest.capabilities {
-            // In production, check if capability is allowed
-            granted.push(*cap);
-        }
-        
-        // Store the plugin
+
+        let granted = manifest.capabilities.clone();
         self.manifests.insert(id.clone(), manifest);
         self.granted_caps.insert(id.clone(), granted);
-        self.plugins.insert(id.clone(), PluginEntry::Effect(Arc::new(plugin)));
-        
+        self.plugins
+            .insert(id.clone(), PluginEntry::Effect(Arc::new(plugin)));
+
         Ok(id)
     }
 
@@ -157,7 +143,7 @@ impl PluginRegistry {
         wasm_path: impl AsRef<Path>,
     ) -> PluginResult<PluginId> {
         let manifest = PluginManifest::from_json_file(&manifest_path)?;
-        
+
         if manifest.plugin_type != PluginType::Tool {
             return Err(PluginError::manifest_validation(
                 "Expected tool plugin type".to_string(),
@@ -165,50 +151,43 @@ impl PluginRegistry {
         }
 
         let id = manifest.id.clone();
-        
-        // Check if already loaded
         if self.plugins.contains_key(&id) {
             return Err(PluginError::PluginAlreadyLoaded(id));
         }
 
-        // Create the plugin
         let mut plugin = WasmToolPlugin::new(manifest.clone(), ToolConfig::new(&manifest.name))?;
         plugin.load(&wasm_path)?;
-        
-        // Grant capabilities
-        let mut granted = Vec::new();
-        for cap in &manifest.capabilities {
-            // In production, check if capability is allowed
-            granted.push(*cap);
-        }
-        
-        // Store the plugin
+
+        let granted = manifest.capabilities.clone();
         self.manifests.insert(id.clone(), manifest);
         self.granted_caps.insert(id.clone(), granted);
-        self.plugins.insert(id.clone(), PluginEntry::Tool(Arc::new(plugin)));
-        
+        self.plugins
+            .insert(id.clone(), PluginEntry::Tool(Arc::new(plugin)));
+
         Ok(id)
     }
 
     /// Register a built-in effect plugin
-    pub fn register_builtin_effect(&mut self, effect: impl EffectPlugin + Send + Sync + 'static) -> PluginId {
+    pub fn register_builtin_effect(
+        &mut self,
+        effect: impl EffectPlugin + Send + Sync + 'static,
+    ) -> PluginId {
         let id = PluginId::new(format!("builtin.effect.{}", self.next_id));
         self.next_id += 1;
-        
         let entry = PluginEntry::Effect(Arc::new(effect));
         self.plugins.insert(id.clone(), entry);
-        
         id
     }
 
     /// Register a built-in tool plugin
-    pub fn register_builtin_tool(&mut self, tool: impl ToolPlugin + Send + Sync + 'static) -> PluginId {
+    pub fn register_builtin_tool(
+        &mut self,
+        tool: impl ToolPlugin + Send + Sync + 'static,
+    ) -> PluginId {
         let id = PluginId::new(format!("builtin.tool.{}", self.next_id));
         self.next_id += 1;
-        
         let entry = PluginEntry::Tool(Arc::new(tool));
         self.plugins.insert(id.clone(), entry);
-        
         id
     }
 
@@ -265,7 +244,7 @@ impl PluginRegistry {
 
     /// Get granted capabilities for a plugin
     pub fn get_granted_capabilities(&self, id: &PluginId) -> Option<&[PluginCapability]> {
-        self.granted_caps.get(id).map(|v| v.as_slice())
+        self.granted_caps.get(id).map(Vec::as_slice)
     }
 
     /// Check if a plugin is loaded
@@ -274,11 +253,7 @@ impl PluginRegistry {
     }
 
     /// Grant a capability to a plugin
-    pub fn grant_capability(
-        &mut self,
-        id: &PluginId,
-        cap: PluginCapability,
-    ) -> PluginResult<()> {
+    pub fn grant_capability(&mut self, id: &PluginId, cap: PluginCapability) -> PluginResult<()> {
         if let Some(manifest) = self.manifests.get(id) {
             if !manifest.has_capability(cap) {
                 return Err(PluginError::manifest_validation(format!(
@@ -287,7 +262,7 @@ impl PluginRegistry {
                 )));
             }
         }
-        
+
         if let Some(caps) = self.granted_caps.get_mut(id) {
             if !caps.contains(&cap) {
                 caps.push(cap);
@@ -295,7 +270,7 @@ impl PluginRegistry {
         } else {
             self.granted_caps.insert(id.clone(), vec![cap]);
         }
-        
+
         Ok(())
     }
 
@@ -337,14 +312,12 @@ pub struct SafePluginRegistry {
 }
 
 impl SafePluginRegistry {
-    /// Create a new thread-safe registry
     pub fn new() -> Self {
         SafePluginRegistry {
             inner: Arc::new(RwLock::new(PluginRegistry::new())),
         }
     }
 
-    /// Load an effect plugin
     pub fn load_effect_plugin(
         &self,
         manifest_path: impl AsRef<Path>,
@@ -352,11 +325,10 @@ impl SafePluginRegistry {
     ) -> PluginResult<PluginId> {
         self.inner
             .write()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .load_effect_plugin(manifest_path, wasm_path)
     }
 
-    /// Load a tool plugin
     pub fn load_tool_plugin(
         &self,
         manifest_path: impl AsRef<Path>,
@@ -364,100 +336,97 @@ impl SafePluginRegistry {
     ) -> PluginResult<PluginId> {
         self.inner
             .write()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .load_tool_plugin(manifest_path, wasm_path)
     }
 
-    /// Register a built-in effect plugin
-    pub fn register_builtin_effect(&self, effect: impl EffectPlugin + Send + Sync + 'static) -> PluginId {
+    pub fn register_builtin_effect(
+        &self,
+        effect: impl EffectPlugin + Send + Sync + 'static,
+    ) -> PluginId {
         self.inner
             .write()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .register_builtin_effect(effect)
     }
 
-    /// Register a built-in tool plugin
     pub fn register_builtin_tool(&self, tool: impl ToolPlugin + Send + Sync + 'static) -> PluginId {
         self.inner
             .write()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .register_builtin_tool(tool)
     }
 
-    /// Unload a plugin
     pub fn unload(&self, id: &PluginId) -> PluginResult<()> {
-        self.inner.write().unwrap().unload(id)
+        self.inner
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .unload(id)
     }
 
-    /// Get a plugin
     pub fn get(&self, id: &PluginId) -> Option<PluginEntry> {
         self.inner
             .read()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .get(id)
             .cloned()
     }
 
-    /// Get all plugin IDs
     pub fn plugin_ids(&self) -> Vec<PluginId> {
         self.inner
             .read()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .plugin_ids()
             .into_iter()
             .cloned()
             .collect()
     }
 
-    /// Get effect plugins
     pub fn effect_plugins(&self) -> Vec<PluginEntry> {
         self.inner
             .read()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .effect_plugins()
             .into_iter()
             .cloned()
             .collect()
     }
 
-    /// Get tool plugins
     pub fn tool_plugins(&self) -> Vec<PluginEntry> {
         self.inner
             .read()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .tool_plugins()
             .into_iter()
             .cloned()
             .collect()
     }
 
-    /// Check if a plugin is loaded
     pub fn is_loaded(&self, id: &PluginId) -> bool {
-        self.inner.read().unwrap().is_loaded(id)
+        self.inner
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .is_loaded(id)
     }
 
-    /// Get the number of plugins
     pub fn len(&self) -> usize {
-        self.inner.read().unwrap().len()
+        self.inner.read().unwrap_or_else(|e| e.into_inner()).len()
     }
 
-    /// Check if empty
     pub fn is_empty(&self) -> bool {
-        self.inner.read().unwrap().is_empty()
+        self.inner
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .is_empty()
     }
-}
 
-impl SafePluginRegistry {
     /// Create a new registry with built-in plugins registered
     pub fn with_builtins() -> Self {
         let registry = SafePluginRegistry::new();
-        
-        // Register built-in effect plugins
         registry.register_builtin_effect(BrightnessContrastEffect::new(0.0, 1.0));
-        
-        // Register built-in tool plugins
+        registry.register_builtin_effect(InvertColourEffect::new());
+        registry.register_builtin_effect(GrayscaleEffect::new());
         registry.register_builtin_tool(BrushTool::new(10.0, 1.0, [255, 0, 0, 255]));
-        
         registry
     }
 }
@@ -465,7 +434,7 @@ impl SafePluginRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::manifest::{PluginType, PluginVersion};
+    use crate::manifest::PluginType;
 
     #[test]
     fn test_registry_creation() {
@@ -479,7 +448,6 @@ mod tests {
         let mut registry = PluginRegistry::new();
         let effect = BrightnessContrastEffect::new(0.0, 1.0);
         let id = registry.register_builtin_effect(effect);
-        
         assert!(registry.is_loaded(&id));
         assert_eq!(registry.len(), 1);
     }
@@ -489,7 +457,6 @@ mod tests {
         let mut registry = PluginRegistry::new();
         let tool = BrushTool::new(10.0, 1.0, [255, 0, 0, 255]);
         let id = registry.register_builtin_tool(tool);
-        
         assert!(registry.is_loaded(&id));
         assert_eq!(registry.len(), 1);
     }
@@ -499,7 +466,6 @@ mod tests {
         let mut registry = PluginRegistry::new();
         let effect = BrightnessContrastEffect::new(0.0, 1.0);
         let id = registry.register_builtin_effect(effect);
-        
         let plugin = registry.get(&id).unwrap();
         assert_eq!(plugin.name(), "Brightness/Contrast");
         assert_eq!(plugin.plugin_type(), PluginType::Effect);
@@ -510,9 +476,7 @@ mod tests {
         let mut registry = PluginRegistry::new();
         let effect = BrightnessContrastEffect::new(0.0, 1.0);
         let id = registry.register_builtin_effect(effect);
-        
         assert!(registry.is_loaded(&id));
-        
         registry.unload(&id).unwrap();
         assert!(!registry.is_loaded(&id));
         assert_eq!(registry.len(), 0);
@@ -521,9 +485,8 @@ mod tests {
     #[test]
     fn test_safe_registry() {
         let registry = SafePluginRegistry::with_builtins();
-        
         assert!(!registry.is_empty());
-        assert!(registry.effect_plugins().len() >= 1);
-        assert!(registry.tool_plugins().len() >= 1);
+        assert!(registry.effect_plugins().len() >= 3);
+        assert!(!registry.tool_plugins().is_empty());
     }
 }

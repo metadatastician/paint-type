@@ -1,148 +1,251 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
-// Paint Core -- region renderer: flatten the visible layer stack over a
-// rectangle into straight-alpha RGBA8 bytes for display and codecs.
+// Region renderer -- flatten the visible layer stack into straight-alpha
+// RGBA8 for display or PNG export.
+//
+// Reads each overlapped tile once via `Tile::read_buffer` rather than per
+// pixel; an f16 composite over a tile is ~a few microseconds in-process, vs.
+// 4096 FFI crossings. Output is straight-alpha because HTML5 ImageData and
+// PNG RGBA8 both carry unpremultiplied channels; tiles inside paint_core are
+// premultiplied throughout, so the unpremultiply happens once, right here at
+// the display boundary.
 
-use crate::composite::over_premultiplied;
+use crate::composite::{blend_premultiplied, scale_premultiplied};
 use crate::layer::{LayerStack, TileCoord};
-use crate::{f16_bits_to_f32, f32_to_f16_bits, TILE_SCALARS, TILE_SIZE};
-use std::collections::HashMap;
+use crate::{f16_bits_to_f32, TILE_SCALARS, TILE_SIZE};
 
-/// Render the rectangle `[ox, ox + w) x [oy, oy + h)` of the visible
-/// layer stack into straight-alpha RGBA8, row-major, length `w * h * 4`.
-/// Layers are composited bottom-to-top; hidden layers are skipped and
-/// each layer's opacity scales its premultiplied contribution.
-pub fn render_region(stack: &LayerStack, ox: u32, oy: u32, w: u32, h: u32) -> Vec<u8> {
-    let mut out = vec![0u8; (w as usize) * (h as usize) * 4];
-    // Cache each touched tile's full buffer so the FFI crossing happens once
-    // per tile per layer, not once per pixel (per-pixel reads cost ~13us each).
-    let mut cache: HashMap<(usize, TileCoord), Box<[u16; TILE_SCALARS]>> = HashMap::new();
+/// Maximum byte budget accepted by [`try_render_region`] / [`render_region`]
+/// (1 GiB, comfortably sufficient for 16384×16384 RGBA8 while preventing
+/// `u32` wraparound panics or hostile multi-terabyte allocation attempts).
+pub const MAX_RENDER_BYTES: usize = 1024 * 1024 * 1024;
 
-    for row in 0..h {
-        for col in 0..w {
-            let px = ox + col;
-            let py = oy + row;
-            let coord = TileCoord::new(px / TILE_SIZE, py / TILE_SIZE);
-            let lx = (px % TILE_SIZE) as usize;
-            let ly = (py % TILE_SIZE) as usize;
-            let pixel_idx = (ly * TILE_SIZE as usize + lx) * 4;
+/// Composite the rectangle `(x, y, width, height)` of `stack` bottom-to-top
+/// into a freshly allocated straight-alpha RGBA8 buffer (`width * height * 4`
+/// bytes, row-major).
+///
+/// Pixels covered by no visible tile come out `[0, 0, 0, 0]`. Returns an empty
+/// `Vec` if `width == 0`, `height == 0`, or `width * height * 4` overflows /
+/// exceeds [`MAX_RENDER_BYTES`].
+pub fn render_region(stack: &LayerStack, x: u32, y: u32, width: u32, height: u32) -> Vec<u8> {
+    try_render_region(stack, x, y, width, height).unwrap_or_default()
+}
 
-            // Composite visible layers bottom-to-top, keeping the
-            // accumulator in premultiplied f16 bits so over_premultiplied
-            // (which works in f16) is called without a needless f32 detour.
-            let mut acc = [0u16; 4];
-            for (li, (_id, layer)) in stack.iter().enumerate() {
+/// Fallible counterpart to [`render_region`]. Returns `None` if
+/// `width * height * 4` overflows `usize` or exceeds [`MAX_RENDER_BYTES`].
+pub fn try_render_region(
+    stack: &LayerStack,
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+) -> Option<Vec<u8>> {
+    let buf_len = (width as usize)
+        .checked_mul(height as usize)
+        .and_then(|px| px.checked_mul(4))?;
+    if buf_len > MAX_RENDER_BYTES {
+        return None;
+    }
+    if buf_len == 0 {
+        return Some(Vec::new());
+    }
+
+    let mut acc = vec![[0u16; 4]; width as usize * height as usize];
+
+    let x_end = (x as u64).saturating_add(width as u64);
+    let y_end = (y as u64).saturating_add(height as u64);
+    let tile_size_u64 = TILE_SIZE as u64;
+
+    let tile_x0 = (x as u64 / tile_size_u64) as u32;
+    let tile_y0 = (y as u64 / tile_size_u64) as u32;
+    let tile_x1 = ((x_end - 1) / tile_size_u64) as u32;
+    let tile_y1 = ((y_end - 1) / tile_size_u64) as u32;
+
+    let mut tile_buf = [0u16; TILE_SCALARS];
+
+    for ty in tile_y0..=tile_y1 {
+        let tile_origin_y = (ty as u64) * tile_size_u64;
+        let py_start = (x_or_max(y as u64, tile_origin_y)) as u64;
+        let py_end = y_end.min(tile_origin_y + tile_size_u64);
+
+        for tx in tile_x0..=tile_x1 {
+            let tile_origin_x = (tx as u64) * tile_size_u64;
+            let px_start = x_or_max(x as u64, tile_origin_x);
+            let px_end = x_end.min(tile_origin_x + tile_size_u64);
+            let coord = TileCoord::new(tx, ty);
+
+            for (_, layer) in stack.iter() {
                 if !layer.visible {
+                    continue;
+                }
+                let opacity = layer.opacity();
+                if opacity <= 0.0 {
                     continue;
                 }
                 let Some(tile) = layer.tile(coord) else {
                     continue;
                 };
-                // Read this tile's buffer once; reuse it for every pixel.
-                let buf = cache.entry((li, coord)).or_insert_with(|| {
-                    let mut b = Box::new([0u16; TILE_SCALARS]);
-                    let _ = tile.read_buffer(&mut b);
-                    b
-                });
-                let bits = [
-                    buf[pixel_idx],
-                    buf[pixel_idx + 1],
-                    buf[pixel_idx + 2],
-                    buf[pixel_idx + 3],
-                ];
-                let opacity = layer.opacity();
-                // Scale the premultiplied source by the layer opacity.
-                let src = [
-                    f32_to_f16_bits(f16_bits_to_f32(bits[0]) * opacity),
-                    f32_to_f16_bits(f16_bits_to_f32(bits[1]) * opacity),
-                    f32_to_f16_bits(f16_bits_to_f32(bits[2]) * opacity),
-                    f32_to_f16_bits(f16_bits_to_f32(bits[3]) * opacity),
-                ];
-                acc = over_premultiplied(src, acc);
-            }
+                if tile.read_buffer(&mut tile_buf).is_err() {
+                    continue;
+                }
 
-            // Un-premultiply the f16 accumulator to straight alpha, clamp,
-            // and quantise to u8.
-            let a = f16_bits_to_f32(acc[3]).clamp(0.0, 1.0);
-            let (r, g, b) = if a > 0.0 {
-                (
-                    (f16_bits_to_f32(acc[0]) / a).clamp(0.0, 1.0),
-                    (f16_bits_to_f32(acc[1]) / a).clamp(0.0, 1.0),
-                    (f16_bits_to_f32(acc[2]) / a).clamp(0.0, 1.0),
-                )
-            } else {
-                (0.0, 0.0, 0.0)
-            };
-            let base = ((row as usize) * (w as usize) + (col as usize)) * 4;
-            out[base] = (r * 255.0 + 0.5) as u8;
-            out[base + 1] = (g * 255.0 + 0.5) as u8;
-            out[base + 2] = (b * 255.0 + 0.5) as u8;
-            out[base + 3] = (a * 255.0 + 0.5) as u8;
+                for py in py_start..py_end {
+                    let ly = (py - tile_origin_y) as usize;
+                    let dst_row = ((py - y as u64) as usize) * width as usize;
+                    for px in px_start..px_end {
+                        let lx = (px - tile_origin_x) as usize;
+                        let src_i = (ly * TILE_SIZE as usize + lx) * 4;
+                        let src = scale_premultiplied(
+                            [
+                                tile_buf[src_i],
+                                tile_buf[src_i + 1],
+                                tile_buf[src_i + 2],
+                                tile_buf[src_i + 3],
+                            ],
+                            opacity,
+                        );
+                        let dst_i = dst_row + (px - x as u64) as usize;
+                        acc[dst_i] = blend_premultiplied(src, acc[dst_i], layer.blend);
+                    }
+                }
+            }
         }
     }
-    out
+
+    let mut out = vec![0u8; buf_len];
+    for (px_i, &p) in acc.iter().enumerate() {
+        let r = f16_bits_to_f32(p[0]);
+        let g = f16_bits_to_f32(p[1]);
+        let b = f16_bits_to_f32(p[2]);
+        let a = f16_bits_to_f32(p[3]).clamp(0.0, 1.0);
+        let o = px_i * 4;
+        if a <= 0.0 {
+            out[o..o + 4].copy_from_slice(&[0, 0, 0, 0]);
+        } else {
+            let inv = 1.0 / a;
+            out[o] = to_u8(r * inv);
+            out[o + 1] = to_u8(g * inv);
+            out[o + 2] = to_u8(b * inv);
+            out[o + 3] = to_u8(a);
+        }
+    }
+    Some(out)
+}
+
+#[inline]
+fn x_or_max(a: u64, b: u64) -> u64 {
+    if a > b {
+        a
+    } else {
+        b
+    }
+}
+
+#[inline]
+fn to_u8(v: f32) -> u8 {
+    (v.clamp(0.0, 1.0) * 255.0).round() as u8
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layer::Layer;
+    use crate::layer::{BlendMode, Layer};
     use crate::Tile;
+
+    fn solid_tile(x: u32, y: u32, rgba: [f32; 4]) -> Tile {
+        let t = Tile::alloc(x, y).expect("tile alloc");
+        t.fill_f32(rgba[0], rgba[1], rgba[2], rgba[3])
+            .expect("fill");
+        t
+    }
 
     #[test]
     fn empty_stack_renders_transparent() {
         let stack = LayerStack::new();
+        let out = render_region(&stack, 0, 0, 4, 4);
+        assert_eq!(out, vec![0u8; 64]);
+    }
+
+    #[test]
+    fn zero_sized_region_is_empty() {
+        let stack = LayerStack::new();
+        assert!(render_region(&stack, 10, 10, 0, 5).is_empty());
+        assert!(render_region(&stack, 10, 10, 5, 0).is_empty());
+    }
+
+    #[test]
+    fn overflow_dimensions_do_not_panic() {
+        let stack = LayerStack::new();
+        assert_eq!(try_render_region(&stack, 0, 0, u32::MAX, 2), None);
+        assert!(render_region(&stack, 0, 0, u32::MAX, 2).is_empty());
+    }
+
+    #[test]
+    fn opaque_red_over_nothing_round_trips_to_straight_rgba8() {
+        let mut stack = LayerStack::new();
+        let mut layer = Layer::new("bg");
+        layer.put_tile(TileCoord::new(0, 0), solid_tile(0, 0, [1.0, 0.0, 0.0, 1.0]));
+        stack.push(layer);
+
         let out = render_region(&stack, 0, 0, 2, 2);
-        assert_eq!(out, vec![0u8; 2 * 2 * 4]);
+        assert_eq!(out, [255, 0, 0, 255].repeat(4));
     }
 
     #[test]
-    fn single_opaque_pixel_round_trips_to_rgba8() {
-        let tile = match Tile::alloc(0, 0) {
-            Some(t) => t,
-            None => return,
-        };
-        tile.write_pixel_bits(
-            0,
-            0,
-            f32_to_f16_bits(1.0),
-            f32_to_f16_bits(0.0),
-            f32_to_f16_bits(0.0),
-            f32_to_f16_bits(1.0),
-        )
-        .expect("write");
-
-        let mut layer = Layer::new("L1");
-        layer.put_tile(TileCoord::new(0, 0), tile);
+    fn unpremultiplies_at_display_boundary() {
         let mut stack = LayerStack::new();
+        let mut layer = Layer::new("fg");
+        layer.put_tile(TileCoord::new(0, 0), solid_tile(0, 0, [0.5, 0.0, 0.0, 0.5]));
         stack.push(layer);
 
         let out = render_region(&stack, 0, 0, 1, 1);
-        assert_eq!(out, vec![255, 0, 0, 255]);
+        assert_eq!(&out[..3], &[255, 0, 0]);
+        assert!((out[3] as i16 - 128).abs() <= 1, "alpha was {}", out[3]);
     }
 
     #[test]
-    fn hidden_layer_is_skipped() {
-        let tile = match Tile::alloc(0, 0) {
-            Some(t) => t,
-            None => return,
-        };
-        tile.write_pixel_bits(
-            0,
-            0,
-            f32_to_f16_bits(1.0),
-            f32_to_f16_bits(1.0),
-            f32_to_f16_bits(1.0),
-            f32_to_f16_bits(1.0),
-        )
-        .expect("write");
-        let mut layer = Layer::new("hidden");
-        layer.visible = false;
-        layer.put_tile(TileCoord::new(0, 0), tile);
+    fn respects_layer_opacity_visibility_and_blend() {
         let mut stack = LayerStack::new();
-        stack.push(layer);
+
+        let mut base = Layer::new("base");
+        base.put_tile(TileCoord::new(0, 0), solid_tile(0, 0, [1.0, 0.0, 0.0, 1.0]));
+        stack.push(base);
+
+        let mut hidden = Layer::new("hidden");
+        hidden.visible = false;
+        hidden.put_tile(TileCoord::new(0, 0), solid_tile(0, 0, [0.0, 1.0, 0.0, 1.0]));
+        stack.push(hidden);
+
+        let mut top = Layer::new("top");
+        top.set_opacity(0.5);
+        top.blend = BlendMode::Normal;
+        top.put_tile(TileCoord::new(0, 0), solid_tile(0, 0, [0.0, 0.0, 1.0, 1.0]));
+        stack.push(top);
 
         let out = render_region(&stack, 0, 0, 1, 1);
-        assert_eq!(out, vec![0, 0, 0, 0]);
+        assert!((out[0] as i16 - 128).abs() <= 2, "R was {}", out[0]);
+        assert_eq!(out[1], 0);
+        assert!((out[2] as i16 - 128).abs() <= 2, "B was {}", out[2]);
+        assert_eq!(out[3], 255);
+    }
+
+    #[test]
+    fn region_straddling_four_tiles_stitches_cleanly() {
+        let mut stack = LayerStack::new();
+        let mut layer = Layer::new("grid");
+        layer.put_tile(TileCoord::new(0, 0), solid_tile(0, 0, [1.0, 0.0, 0.0, 1.0]));
+        layer.put_tile(TileCoord::new(1, 0), solid_tile(1, 0, [0.0, 1.0, 0.0, 1.0]));
+        layer.put_tile(TileCoord::new(0, 1), solid_tile(0, 1, [0.0, 0.0, 1.0, 1.0]));
+        stack.push(layer);
+
+        let out = render_region(&stack, 63, 63, 2, 2);
+        assert_eq!(
+            out,
+            vec![
+                255, 0, 0, 255, // (63, 63) -> tile (0, 0)
+                0, 255, 0, 255, // (64, 63) -> tile (1, 0)
+                0, 0, 255, 255, // (63, 64) -> tile (0, 1)
+                0, 0, 0, 0, // (64, 64) -> tile (1, 1), unallocated
+            ]
+        );
     }
 }

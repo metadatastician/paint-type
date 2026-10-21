@@ -567,10 +567,11 @@ verify:
     check_file "LICENSE"
     check_either "CONTRIBUTING.md" "CONTRIBUTING.adoc"
     check_either "README.adoc" "README.md"
-    check_file ".machine_readable/STATE.a2ml"
-    check_file ".machine_readable/META.a2ml"
-    check_file ".machine_readable/ECOSYSTEM.a2ml"
+    check_either ".machine_readable/descriptiles/STATE.a2ml" ".machine_readable/STATE.a2ml"
+    check_either ".machine_readable/descriptiles/META.a2ml" ".machine_readable/META.a2ml"
+    check_either ".machine_readable/descriptiles/ECOSYSTEM.a2ml" ".machine_readable/ECOSYSTEM.a2ml"
     check_either "CHANGELOG.md" "CHANGELOG.adoc"
+    check_file ".well-known/security.txt"
 
     # Check at least 1 workflow exists
     WORKFLOW_COUNT=$(find .github/workflows -name '*.yml' -o -name '*.yaml' 2>/dev/null | wc -l)
@@ -592,20 +593,55 @@ verify:
 # BUILD & COMPILE
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Build the project (debug mode): Zig FFI library + Rust crate
+# Build the project (debug mode): Zig root + FFI libraries + standalone Rust crates
 build *args:
-    @echo "Building {{project}} (debug)..."
-    cd src/interface/ffi && zig build {{args}}
-    cargo build --manifest-path src/paint_core/Cargo.toml {{args}}
-    cargo build --manifest-path src/host_core/Cargo.toml {{args}}
-    @echo "Build complete"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Building {{project}} (debug)..."
+    zig build {{args}}
+    (cd src/interface/ffi && zig build {{args}})
+    for crate in \
+        src/ephapax \
+        src/ptype_format \
+        src/paint_core \
+        src/paint_collab \
+        src/plugins \
+        src/host_core \
+        tools/abi-codegen \
+        tools/plugin-wizard \
+        tools/plugin-minter \
+        tools/plugin-harness \
+        tools/plugin-configurator \
+        tools/plugin-provisioner
+    do
+        cargo build --manifest-path "$crate/Cargo.toml" {{args}}
+    done
+    echo "Build complete"
 
 # Build in release mode with optimizations
 build-release *args:
-    @echo "Building {{project}} (release)..."
-    cd src/interface/ffi && zig build -Doptimize=ReleaseFast {{args}}
-    cargo build --release --manifest-path src/paint_core/Cargo.toml {{args}}
-    @echo "Release build complete"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Building {{project}} (release)..."
+    zig build -Doptimize=ReleaseSafe {{args}}
+    (cd src/interface/ffi && zig build -Doptimize=ReleaseFast {{args}})
+    for crate in \
+        src/ephapax \
+        src/ptype_format \
+        src/paint_core \
+        src/paint_collab \
+        src/plugins \
+        src/host_core \
+        tools/abi-codegen \
+        tools/plugin-wizard \
+        tools/plugin-minter \
+        tools/plugin-harness \
+        tools/plugin-configurator \
+        tools/plugin-provisioner
+    do
+        cargo build --release --manifest-path "$crate/Cargo.toml" {{args}}
+    done
+    echo "Release build complete"
 
 # Generate bridge schemas from Idris2 ABI.
 # Requires Idris2 and Rust.
@@ -666,13 +702,30 @@ clean-all: clean
 # TEST & QUALITY
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Run all tests (Zig unit + integration tests, then Rust tests)
+# Run all tests (Zig unit + integration tests, then all standalone Rust crates)
 test *args:
-    @echo "Running tests..."
-    cd src/interface/ffi && zig build test {{args}}
-    cargo test --manifest-path src/paint_core/Cargo.toml {{args}}
-    cargo test --manifest-path src/host_core/Cargo.toml {{args}}
-    @echo "Tests passed!"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Running tests..."
+    zig build test {{args}}
+    (cd src/interface/ffi && zig build test {{args}})
+    for crate in \
+        src/ephapax \
+        src/ptype_format \
+        src/paint_core \
+        src/paint_collab \
+        src/plugins \
+        src/host_core \
+        tools/abi-codegen \
+        tools/plugin-wizard \
+        tools/plugin-minter \
+        tools/plugin-harness \
+        tools/plugin-configurator \
+        tools/plugin-provisioner
+    do
+        cargo test --manifest-path "$crate/Cargo.toml" {{args}}
+    done
+    echo "Tests passed!"
 
 # Run benchmarks
 bench:
@@ -751,10 +804,15 @@ fmt:
 fmt-check:
     cargo fmt --manifest-path src/paint_core/Cargo.toml --check
 
-# Run linter (Rust clippy; zig fmt check on FFI source)
+# Run linter (Rust clippy across crates; zig fmt check on FFI source; lock sync)
 lint:
-    cargo clippy --manifest-path src/paint_core/Cargo.toml -- -D warnings
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for crate in src/ephapax src/ptype_format src/paint_core src/paint_collab src/plugins src/host_core tools/abi-codegen; do
+        cargo clippy --manifest-path "$crate/Cargo.toml" -- -D warnings
+    done
     zig fmt --check src/interface/ffi/src/main.zig src/interface/ffi/test/integration_test.zig
+    bash scripts/check-lock-sync.sh
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # RUN & EXECUTE
@@ -1524,15 +1582,19 @@ proof-scan-dangerous:
     set -euo pipefail
     echo "=== Scanning for dangerous patterns in proofs ==="
     DANGEROUS=0
-    PATTERNS="believe_me|assert_total|postulate|sorry|Admitted|unsafeCoerce|Obj\.magic"
-    for f in $(find verification/proofs -name '*.idr' -o -name '*.lean' -o -name '*.agda' -o -name '*.v' 2>/dev/null); do
-        MATCHES=$(grep -nE "$PATTERNS" "$f" 2>/dev/null || true)
+    PATTERNS="\bbelieve_me\b|\bassert_total\b|\bpostulate\b|\bsorry\b|\bAdmitted\b|\bunsafeCoerce\b|\bObj\.magic\b"
+    while IFS= read -r f; do
+        [ -n "$f" ] || continue
+        MATCHES=$(grep -nE "$PATTERNS" "$f" 2>/dev/null \
+            | grep -vE '^[0-9]+:[[:space:]]*(--|//|\*|\(\*|\{-)' \
+            | grep -viE '\b(no|without|not use)[[:space:]`]+(believe_me|assert_total|postulate|sorry|Admitted)' \
+            || true)
         if [ -n "$MATCHES" ]; then
             echo "  DANGEROUS: $f"
             echo "$MATCHES" | sed 's/^/    /'
             DANGEROUS=$((DANGEROUS + 1))
         fi
-    done
+    done < <(find verification/proofs -name '*.idr' -o -name '*.lean' -o -name '*.agda' -o -name '*.v' 2>/dev/null | sort)
     if [ "$DANGEROUS" -gt 0 ]; then
         echo "FAIL: $DANGEROUS file(s) contain dangerous patterns"
         exit 1

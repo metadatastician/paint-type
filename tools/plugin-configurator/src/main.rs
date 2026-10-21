@@ -68,7 +68,7 @@ enum Command {
         #[arg(short, long, value_enum, default_value = "toml")]
         format: ConfigFormat,
     },
-    
+
     /// Validate a configuration file
     Validate {
         path: PathBuf,
@@ -77,7 +77,7 @@ enum Command {
         #[arg(short, long, default_value = "false")]
         strict: bool,
     },
-    
+
     /// Merge configuration files
     Merge {
         inputs: Vec<PathBuf>,
@@ -88,7 +88,7 @@ enum Command {
         #[arg(short, long, value_enum, default_value = "deep-merge")]
         strategy: MergeStrategy,
     },
-    
+
     /// List configuration layers
     List {
         plugin: String,
@@ -103,7 +103,7 @@ fn main() -> Result<()> {
         .init();
 
     let cli = Cli::parse();
-    
+
     match cli.command {
         Command::Generate { plugin_id, output, format } => {
             cmd_generate(&plugin_id, &output, format)?;
@@ -122,9 +122,33 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+fn validate_plugin_id(id: &str) -> Result<()> {
+    if id.is_empty()
+        || id.contains("..")
+        || id.contains('/')
+        || id.contains('\\')
+        || id.contains('\0')
+    {
+        bail!("Unsafe or invalid plugin ID: {}", id);
+    }
+    Ok(())
+}
+
+fn validate_safe_path(path: &Path) -> Result<()> {
+    if path
+        .components()
+        .any(|c| matches!(c, std::path::Component::ParentDir))
+    {
+        bail!("Path must not contain '..': {}", path.display());
+    }
+    Ok(())
+}
+
 fn cmd_generate(plugin_id: &str, output: &Path, format: ConfigFormat) -> Result<()> {
+    validate_plugin_id(plugin_id)?;
+    validate_safe_path(output)?;
     info!("Generating configuration for plugin: {}", plugin_id);
-    
+
     let config = json!({
         "plugin_id": plugin_id,
         "version": "1.0.0",
@@ -133,7 +157,7 @@ fn cmd_generate(plugin_id: &str, output: &Path, format: ConfigFormat) -> Result<
         "capabilities": ["CanvasRead", "CanvasWrite"],
         "settings": {}
     });
-    
+
     let content = match format {
         ConfigFormat::Json => serde_json::to_string_pretty(&config)?,
         ConfigFormat::Yaml => serde_yaml::to_string(&config)?,
@@ -143,22 +167,36 @@ fn cmd_generate(plugin_id: &str, output: &Path, format: ConfigFormat) -> Result<
             toml::to_string(&value).context("Failed to convert to TOML")?
         }
     };
-    
+
     fs::write(output, content)
         .with_context(|| format!("Failed to write to {}", output.display()))?;
-    
+
     info!("Configuration generated: {}", output.display());
     Ok(())
 }
 
+fn read_bounded_utf8(path: &Path) -> Result<String> {
+    use std::io::Read;
+    const MAX_BYTES: u64 = 4 * 1024 * 1024;
+    let file = fs::File::open(path)
+        .with_context(|| format!("Failed to open {}", path.display()))?;
+    let mut content = String::new();
+    file.take(MAX_BYTES + 1)
+        .read_to_string(&mut content)
+        .with_context(|| format!("Failed to read {}", path.display()))?;
+    if content.len() as u64 > MAX_BYTES {
+        bail!("Configuration file exceeds 4 MiB limit: {}", path.display());
+    }
+    Ok(content)
+}
+
 fn cmd_validate(path: &Path, format: Option<ConfigFormat>, strict: bool) -> Result<()> {
     info!("Validating configuration: {}", path.display());
-    
-    let content = fs::read_to_string(path)
-        .with_context(|| format!("Failed to read {}", path.display()))?;
-    
+
+    let content = read_bounded_utf8(path)?;
+
     let format = format.unwrap_or_else(|| ConfigFormat::from_path(path));
-    
+
     match format {
         ConfigFormat::Json => {
             let _: serde_json::Value = serde_json::from_str(&content)?;
@@ -170,29 +208,28 @@ fn cmd_validate(path: &Path, format: Option<ConfigFormat>, strict: bool) -> Resu
             let _: toml::Value = toml::from_str(&content)?;
         }
     }
-    
+
     if strict {
         // Additional strict validation would go here
         // For now, just check that it parses
     }
-    
+
     info!("Configuration is valid: {}", path.display());
     Ok(())
 }
 
 fn cmd_merge(inputs: &[PathBuf], output: &Path, format: ConfigFormat, strategy: MergeStrategy) -> Result<()> {
     info!("Merging {} configuration files", inputs.len());
-    
+
     if inputs.is_empty() {
         bail!("At least one input file is required");
     }
-    
+
     let mut merged = Map::new();
-    
+
     for input in inputs {
-        let content = fs::read_to_string(input)
-            .with_context(|| format!("Failed to read {}", input.display()))?;
-        
+        let content = read_bounded_utf8(input)?;
+
         let fmt = ConfigFormat::from_path(input);
         let parsed: Value = match fmt {
             ConfigFormat::Json => serde_json::from_str(&content)?,
@@ -202,7 +239,7 @@ fn cmd_merge(inputs: &[PathBuf], output: &Path, format: ConfigFormat, strategy: 
                 serde_json::to_value(v)?
             }
         };
-        
+
         match strategy {
             MergeStrategy::Override => {
                 // Replace entire config with this one
@@ -215,7 +252,7 @@ fn cmd_merge(inputs: &[PathBuf], output: &Path, format: ConfigFormat, strategy: 
             }
         }
     }
-    
+
     let merged_value = Value::Object(merged);
     let content = match format {
         ConfigFormat::Json => serde_json::to_string_pretty(&merged_value)?,
@@ -224,10 +261,10 @@ fn cmd_merge(inputs: &[PathBuf], output: &Path, format: ConfigFormat, strategy: 
             toml::to_string(&merged_value).context("Failed to convert to TOML")?
         }
     };
-    
+
     fs::write(output, content)
         .with_context(|| format!("Failed to write to {}", output.display()))?;
-    
+
     info!("Merged configuration written: {}", output.display());
     Ok(())
 }
@@ -264,17 +301,18 @@ fn deep_merge_json(target: &mut Map<String, Value>, source: Value) {
 }
 
 fn cmd_list(plugin: &str, verbose: bool) -> Result<()> {
+    validate_plugin_id(plugin)?;
     info!("Listing configuration layers for plugin: {}", plugin);
-    
+
     println!("Configuration layers for plugin '{}':", plugin);
     println!();
     println!("1. Plugin ({}/config.toml) - Plugin default configuration", plugin);
     println!("2. User (~/.paint-type/plugins/{}/config.toml) - User overrides", plugin);
     println!("3. Project (project/plugins/{}/config.toml) - Project-specific", plugin);
-    
+
     if verbose {
         println!("\nNote: Verbose mode would show actual values from each layer");
     }
-    
+
     Ok(())
 }

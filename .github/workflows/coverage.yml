@@ -39,7 +39,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7.0.1
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable # stable
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
         with:
           components: llvm-tools-preview
       - name: Cache cargo registry and build
@@ -162,10 +162,13 @@ jobs:
       # is present. Forks and unconfigured repos must not be gated by a
       # missing token, so we guard explicitly and never fail.
       - name: Publish to Codecov (optional)
-        if: ${{ env.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@v7.1.1
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        with:
-          files: src/paint_core/lcov.info
-          fail_ci_if_error: false
+        run: |
+          if [ -z "${CODECOV_TOKEN:-}" ] || [ ! -f src/paint_core/lcov.info ]; then
+            echo "CODECOV_TOKEN not configured or lcov.info missing — skipping Codecov upload."
+            exit 0
+          fi
+          curl -fsSL https://cli.codecov.io/latest/linux/codecov -o "$RUNNER_TEMP/codecov" || exit 0
+          chmod +x "$RUNNER_TEMP/codecov"
+          "$RUNNER_TEMP/codecov" upload-process -t "$CODECOV_TOKEN" -f src/paint_core/lcov.info || true

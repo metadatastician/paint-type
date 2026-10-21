@@ -2,23 +2,7 @@
 //
 // paint.type — VeriSimDB storage backend.
 //
-// Talks to a hyperpolymath/verisimdb instance over HTTP/8080 (or gRPC/50051
-// once the tonic-Zig client is in shape). Implements StorageImpl for the
-// octad operations paint.type needs:
-//
-//   * createOctad      — POST /api/v1/octads
-//   * getOctad         — GET  /api/v1/octads/{id}
-//   * updateOctad      — PATCH /api/v1/octads/{id}
-//   * temporalRecord   — POST /api/v1/octads/{id}/temporal
-//   * temporalWalk     — GET  /api/v1/octads/{id}/temporal?at=<node_id>
-//   * queryVQL         — POST /api/v1/query
-//   * health           — GET  /api/v1/health
-//
-// Governed by ADR-0003. This file is intentionally light right now: the HTTP
-// transport sits behind a `Transport` interface so the real implementation
-// can land later without changing call sites. The default `Transport` logs
-// what it would have sent (debug build) and returns `Unavailable`, which is
-// the dispatcher's signal to fall back to `InMemoryStorage`.
+// Governed by ADR-0003.
 
 const std = @import("std");
 
@@ -54,8 +38,6 @@ pub const StorageCapability = struct {
     consistency: Consistency,
 };
 
-// VeriSimDB's full reach: all eight modalities, durable, eventually consistent
-// at the federation layer (strong inside a single instance).
 pub const verisimdb_capability = StorageCapability{
     .modalities = &.{ .graph, .vector, .tensor, .semantic, .document, .temporal, .provenance, .spatial },
     .persistence = .durable,
@@ -63,7 +45,7 @@ pub const verisimdb_capability = StorageCapability{
 };
 
 //==============================================================================
-// 2. Result type
+// 2. Result type & Input Sanitisation (B-23)
 //==============================================================================
 
 pub const StorageResult = enum(u32) {
@@ -71,16 +53,97 @@ pub const StorageResult = enum(u32) {
     not_found = 1,
     invalid = 2,
     conflict = 3,
-    unavailable = 4, // → dispatcher falls back to InMemoryStorage
+    unavailable = 4,
     err = 5,
 };
 
+/// Accept only bounded URL-safe identifier tokens `[A-Za-z0-9._:-]`, rejecting
+/// empty identifiers, dot-segments (`..`), slashes, query/fragment delimiters,
+/// and control/whitespace bytes that could alter HTTP request targets.
+pub fn isSafePathSegment(seg: []const u8) bool {
+    if (seg.len == 0 or seg.len > 128) return false;
+    if (std.mem.eql(u8, seg, ".") or std.mem.eql(u8, seg, "..")) return false;
+    for (seg) |ch| {
+        const ok = std.ascii.isAlphanumeric(ch) or ch == '-' or ch == '_' or ch == '.' or ch == ':';
+        if (!ok) return false;
+    }
+    return true;
+}
+
+/// Escape an untrusted UTF-8 slice as a RFC 8259 JSON string body (without
+/// outer quotes) into `out`, returning the slice written or `error.NoSpaceLeft`.
+pub fn escapeJsonContent(out: []u8, input: []const u8) error{NoSpaceLeft}![]const u8 {
+    var pos: usize = 0;
+    for (input) |ch| {
+        switch (ch) {
+            '"' => {
+                if (pos + 2 > out.len) return error.NoSpaceLeft;
+                out[pos] = '\\';
+                out[pos + 1] = '"';
+                pos += 2;
+            },
+            '\\' => {
+                if (pos + 2 > out.len) return error.NoSpaceLeft;
+                out[pos] = '\\';
+                out[pos + 1] = '\\';
+                pos += 2;
+            },
+            '\n' => {
+                if (pos + 2 > out.len) return error.NoSpaceLeft;
+                out[pos] = '\\';
+                out[pos + 1] = 'n';
+                pos += 2;
+            },
+            '\r' => {
+                if (pos + 2 > out.len) return error.NoSpaceLeft;
+                out[pos] = '\\';
+                out[pos + 1] = 'r';
+                pos += 2;
+            },
+            '\t' => {
+                if (pos + 2 > out.len) return error.NoSpaceLeft;
+                out[pos] = '\\';
+                out[pos + 1] = 't';
+                pos += 2;
+            },
+            0x08 => {
+                if (pos + 2 > out.len) return error.NoSpaceLeft;
+                out[pos] = '\\';
+                out[pos + 1] = 'b';
+                pos += 2;
+            },
+            0x0C => {
+                if (pos + 2 > out.len) return error.NoSpaceLeft;
+                out[pos] = '\\';
+                out[pos + 1] = 'f';
+                pos += 2;
+            },
+            else => {
+                if (ch < 0x20) {
+                    if (pos + 6 > out.len) return error.NoSpaceLeft;
+                    _ = std.fmt.bufPrint(out[pos .. pos + 6], "\\u00{x:0>2}", .{ch}) catch return error.NoSpaceLeft;
+                    pos += 6;
+                } else {
+                    if (pos + 1 > out.len) return error.NoSpaceLeft;
+                    out[pos] = ch;
+                    pos += 1;
+                }
+            },
+        }
+    }
+    return out[0..pos];
+}
+
+fn isValidJsonPayload(raw: []const u8) bool {
+    const trimmed = std.mem.trim(u8, raw, " \t\r\n");
+    if (trimmed.len == 0) return false;
+    var parsed = std.json.parseFromSlice(std.json.Value, std.heap.page_allocator, trimmed, .{}) catch return false;
+    defer parsed.deinit();
+    return true;
+}
+
 //==============================================================================
 // 3. Transport abstraction
-//
-//    The transport layer is left open so the real implementation (tcp +
-//    HTTP/1.1, or std.http once Zig 0.16's API stabilises, or libcurl, or
-//    tonic-grpc) can plug in without rewriting call sites.
 //==============================================================================
 
 pub const Transport = struct {
@@ -102,11 +165,9 @@ pub const Transport = struct {
     }
 };
 
-/// Default transport — logs the would-be request and returns Unavailable.
-/// Used when no real HTTP transport has been plugged in.
 pub const StubTransport = struct {
     pub fn make() Transport {
-        return .{ .ctx = @constCast(@ptrCast(&dummy)), .vtable = &vt };
+        return .{ .ctx = @ptrCast(@constCast(&dummy)), .vtable = &vt };
     }
     var dummy: u8 = 0;
     const vt = Transport.VTable{ .request = stubRequest };
@@ -136,62 +197,62 @@ pub const Client = struct {
         return .ok;
     }
 
-    /// Create an octad with the supplied JSON payload. Returns the octad ID
-    /// via out_id on success.
     pub fn createOctad(self: *Client, payload_json: []const u8, out_id: *[64]u8) StorageResult {
+        if (!isValidJsonPayload(payload_json)) return .invalid;
         var buf: [4096]u8 = undefined;
         const n = self.transport.request("POST", "/api/v1/octads", payload_json, buf[0..]) catch return .unavailable;
         if (n == 0) return .err;
+        @memset(out_id, 0);
         const max_copy: usize = if (n > out_id.len) out_id.len else n;
         @memcpy(out_id[0..max_copy], buf[0..max_copy]);
         return .ok;
     }
 
     pub fn getOctad(self: *Client, id: []const u8, out_buf: []u8) struct { rc: StorageResult, n: usize } {
+        if (!isSafePathSegment(id)) return .{ .rc = .invalid, .n = 0 };
         var path_buf: [256]u8 = undefined;
         const path = std.fmt.bufPrint(&path_buf, "/api/v1/octads/{s}", .{id}) catch return .{ .rc = .invalid, .n = 0 };
         const n = self.transport.request("GET", path, "", out_buf) catch return .{ .rc = .unavailable, .n = 0 };
         return .{ .rc = .ok, .n = n };
     }
 
-    /// Record one entry in the Temporal modality of the given canvas octad.
-    /// Maps to MVP-10 history_record when the storage axis is wired.
     pub fn temporalRecord(self: *Client, canvas_id: []const u8, op_name: []const u8, payload_json: []const u8) StorageResult {
+        if (!isSafePathSegment(canvas_id)) return .invalid;
+        if (!isValidJsonPayload(payload_json)) return .invalid;
         var path_buf: [256]u8 = undefined;
         const path = std.fmt.bufPrint(&path_buf, "/api/v1/octads/{s}/temporal", .{canvas_id}) catch return .invalid;
 
-        // Wrap the op_name and the payload into a Temporal-modality entry.
+        var escaped_op_buf: [2048]u8 = undefined;
+        const escaped_op = escapeJsonContent(&escaped_op_buf, op_name) catch return .invalid;
+
         var body_buf: [8192]u8 = undefined;
         const body = std.fmt.bufPrint(&body_buf,
             \\{{"op_name":"{s}","payload":{s}}}
-        , .{ op_name, payload_json }) catch return .invalid;
+        , .{ escaped_op, payload_json }) catch return .invalid;
 
         var resp_buf: [512]u8 = undefined;
         _ = self.transport.request("POST", path, body, resp_buf[0..]) catch return .unavailable;
         return .ok;
     }
 
-    /// Walk to a specific temporal node. The canonical "undo" / "redo" walk
-    /// is expressed in VQL via:
-    ///     SELECT TEMPORAL.* FROM HEXAD '{canvas_id}' WHERE TEMPORAL.NODE = '{at}'
-    /// and the canvas state is reconstructed from the snapshot stored at
-    /// that node.
     pub fn temporalWalk(self: *Client, canvas_id: []const u8, at_node: []const u8, out_buf: []u8) struct { rc: StorageResult, n: usize } {
+        if (!isSafePathSegment(canvas_id) or !isSafePathSegment(at_node)) {
+            return .{ .rc = .invalid, .n = 0 };
+        }
         var path_buf: [256]u8 = undefined;
         const path = std.fmt.bufPrint(&path_buf, "/api/v1/octads/{s}/temporal?at={s}", .{ canvas_id, at_node }) catch return .{ .rc = .invalid, .n = 0 };
         const n = self.transport.request("GET", path, "", out_buf) catch return .{ .rc = .unavailable, .n = 0 };
         return .{ .rc = .ok, .n = n };
     }
 
-    /// Issue a VQL or VQL-DT query. paint.type uses VQL for cross-modal
-    /// reads (e.g. "find every layer named 'background' across every canvas
-    /// in this session") and VQL-DT when the result must carry a proof
-    /// certificate (collaborative editing, plugin permission grants).
     pub fn queryVQL(self: *Client, vql: []const u8, out_buf: []u8) struct { rc: StorageResult, n: usize } {
+        if (vql.len == 0) return .{ .rc = .invalid, .n = 0 };
+        var escaped_vql_buf: [7936]u8 = undefined;
+        const escaped_vql = escapeJsonContent(&escaped_vql_buf, vql) catch return .{ .rc = .invalid, .n = 0 };
         var body_buf: [8192]u8 = undefined;
         const body = std.fmt.bufPrint(&body_buf,
             \\{{"query":"{s}"}}
-        , .{vql}) catch return .{ .rc = .invalid, .n = 0 };
+        , .{escaped_vql}) catch return .{ .rc = .invalid, .n = 0 };
         const n = self.transport.request("POST", "/api/v1/query", body, out_buf) catch return .{ .rc = .unavailable, .n = 0 };
         return .{ .rc = .ok, .n = n };
     }
@@ -209,7 +270,7 @@ pub fn newStubClient(allocator: std.mem.Allocator) Client {
 // 6. Tests
 //==============================================================================
 
-test "stub transport returns Unavailable for every endpoint" {
+test "stub transport returns Unavailable for every valid endpoint" {
     var client = newStubClient(std.testing.allocator);
     try std.testing.expectEqual(StorageResult.unavailable, client.health());
 
@@ -227,4 +288,34 @@ test "stub transport returns Unavailable for every endpoint" {
 
     const queried = client.queryVQL("SELECT * FROM octads LIMIT 1", buf[0..]);
     try std.testing.expectEqual(StorageResult.unavailable, queried.rc);
+}
+
+test "path injection and JSON breakout inputs are rejected or escaped safely (B-23)" {
+    const Capture = struct {
+        last_body: [512]u8 = undefined,
+        last_len: usize = 0,
+
+        fn req(ctx: *anyopaque, _: []const u8, _: []const u8, body: []const u8, out: []u8) !usize {
+            const self: *@This() = @ptrCast(@alignCast(ctx));
+            @memcpy(self.last_body[0..body.len], body);
+            self.last_len = body.len;
+            out[0] = 'o';
+            return 1;
+        }
+    };
+
+    var cap = Capture{};
+    const vt = Transport.VTable{ .request = Capture.req };
+    var client = Client.init(std.testing.allocator, "http://localhost:8080", .{ .ctx = &cap, .vtable = &vt });
+
+    var buf: [256]u8 = undefined;
+    try std.testing.expectEqual(StorageResult.invalid, client.getOctad("../admin", &buf).rc);
+    try std.testing.expectEqual(StorageResult.invalid, client.getOctad("id?admin=1", &buf).rc);
+    try std.testing.expectEqual(StorageResult.invalid, client.temporalWalk("c1", "n1&raw=true", &buf).rc);
+    try std.testing.expectEqual(StorageResult.invalid, client.temporalRecord("c1", "op", "not-json"));
+
+    try std.testing.expectEqual(StorageResult.ok, client.temporalRecord("c1", "quote\"inject\nline", "{\"x\":1}"));
+    const parsed = try std.json.parseFromSlice(std.json.Value, std.testing.allocator, cap.last_body[0..cap.last_len], .{});
+    defer parsed.deinit();
+    try std.testing.expectEqualStrings("quote\"inject\nline", parsed.value.object.get("op_name").?.string);
 }

@@ -92,6 +92,13 @@ pub enum SessionError {
     Denied(CapabilityError),
     /// Pixel index out of range / coord mismatch.
     Tile(crate::crdt::TileMergeError),
+    /// Transport sender identity did not match `op.originator()`.
+    SpoofedOriginator {
+        envelope_sender: PeerId,
+        claimed_originator: PeerId,
+    },
+    /// Logical Lamport clock reached `u64::MAX` and cannot advance safely.
+    ClockOverflow,
 }
 
 impl From<CapabilityError> for SessionError {
@@ -163,7 +170,10 @@ impl Session {
                 crate::crdt::TileMergeError::IndexOutOfRange,
             ));
         }
-        self.lamport += 1;
+        self.lamport = self
+            .lamport
+            .checked_add(1)
+            .ok_or(SessionError::ClockOverflow)?;
         let write = VPixel::write(self.lamport, self.peer, value);
         self.tile_mut(coord).apply(index, write)?;
         let op = Op::Paint {
@@ -182,7 +192,10 @@ impl Session {
         transport: &mut dyn Transport,
     ) -> Result<Op, SessionError> {
         self.perms.check(self.peer, Capability::LayerMutate)?;
-        self.layer_seq += 1;
+        self.layer_seq = self
+            .layer_seq
+            .checked_add(1)
+            .ok_or(SessionError::ClockOverflow)?;
         let op = Op::LayerMutate {
             by: self.peer,
             seq: self.layer_seq,
@@ -191,10 +204,26 @@ impl Session {
         Ok(op)
     }
 
-    /// Apply a REMOTE op. Re-checks the *originator's* capability (defence in
-    /// depth: a peer that loses `Paint` cannot have queued ops applied), then
-    /// merges. Lamport clock advances past observed remote dots so subsequent
-    /// local writes dominate — standard Lamport receive rule.
+    /// Apply a REMOTE op authenticated as coming from `envelope_sender`.
+    /// Rejects sender-spoofed ops before mutating Lamport clocks or tiles.
+    pub fn receive_authenticated(
+        &mut self,
+        envelope_sender: PeerId,
+        op: Op,
+    ) -> Result<(), SessionError> {
+        let claimed = op.originator();
+        if envelope_sender != claimed {
+            return Err(SessionError::SpoofedOriginator {
+                envelope_sender,
+                claimed_originator: claimed,
+            });
+        }
+        self.receive(op)
+    }
+
+    /// Apply a REMOTE op. Re-checks the *originator's* capability and
+    /// bounds-checks pixel indices BEFORE advancing `self.lamport` so a
+    /// malformed remote op cannot inflate the local Lamport clock to `u64::MAX`.
     pub fn receive(&mut self, op: Op) -> Result<(), SessionError> {
         self.perms.check(op.originator(), op.required_capability())?;
         match op {
@@ -203,12 +232,23 @@ impl Session {
                 index,
                 write,
             } => {
+                if index >= crate::crdt::TILE_PIXEL_COUNT {
+                    return Err(SessionError::Tile(
+                        crate::crdt::TileMergeError::IndexOutOfRange,
+                    ));
+                }
+                if write.dot.lamport == u64::MAX {
+                    return Err(SessionError::ClockOverflow);
+                }
+                self.tile_mut(coord).apply(index, write)?;
                 if write.dot.lamport > self.lamport {
                     self.lamport = write.dot.lamport;
                 }
-                self.tile_mut(coord).apply(index, write)?;
             }
             Op::LayerMutate { seq, .. } => {
+                if seq == u64::MAX {
+                    return Err(SessionError::ClockOverflow);
+                }
                 if seq > self.layer_seq {
                     self.layer_seq = seq;
                 }
@@ -390,7 +430,37 @@ mod tests {
         let rejected = b.pump(&mut tb);
         assert_eq!(rejected.len(), 1);
         assert!(matches!(rejected[0].1, SessionError::Denied(_)));
-        // peer 2's replica stayed blank — the op was not silently applied.
         assert!(b.canvas_digest().is_empty());
+    }
+
+    #[test]
+    fn rejects_spoofed_originator_and_clock_poisoning() {
+        let net = Network::new();
+        let mut b = Session::new(PeerId(2), editor_table(&[1, 2]));
+        let mut tb = SimTransport::new(2, vec![1, 2], net);
+
+        // Envelope says PeerId(3) sent an op claiming to originate from PeerId(1).
+        let forged = Op::Paint {
+            coord: (0, 0),
+            index: 0,
+            write: VPixel::write(5, PeerId(1), [7, 7, 7, 7]),
+        };
+        assert_eq!(
+            b.receive_authenticated(PeerId(3), forged),
+            Err(SessionError::SpoofedOriginator {
+                envelope_sender: PeerId(3),
+                claimed_originator: PeerId(1),
+            })
+        );
+
+        // Remote op with `lamport == u64::MAX` must be rejected so subsequent
+        // local edits cannot overflow `self.lamport`.
+        let poison = Op::Paint {
+            coord: (0, 0),
+            index: 0,
+            write: VPixel::write(u64::MAX, PeerId(1), [1, 2, 3, 4]),
+        };
+        assert_eq!(b.receive(poison), Err(SessionError::ClockOverflow));
+        assert!(b.local_paint((0, 0), 0, [5, 6, 7, 8], &mut tb).is_ok());
     }
 }

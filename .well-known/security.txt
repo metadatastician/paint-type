@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# RFC 9116 - security.txt
+# https://securitytxt.org/
+
+Contact: mailto:j.d.a.jewell@open.ac.uk
+Expires: 2027-10-21T23:59:59.000Z
+Preferred-Languages: en
+Canonical: https://github.com/metadatastician/paint-type/blob/main/.well-known/security.txt
+Policy: https://github.com/metadatastician/paint-type/blob/main/SECURITY.md

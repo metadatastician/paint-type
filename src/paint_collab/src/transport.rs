@@ -74,13 +74,15 @@ impl core::fmt::Display for TransportError {
 
 impl std::error::Error for TransportError {}
 
-/// The live WebRTC-over-Burble transport. Holds config and a local out/in
-/// staging buffer; the actual data-channel wiring is the unimplemented part.
+/// Maximum staged outgoing ops retained while disconnected before dropping
+/// oldest items (bounds memory under prolonged offline painting).
+pub const MAX_PENDING_OPS: usize = 65_536;
+
+/// The live WebRTC-over-Burble transport. Holds config and a bounded local
+/// out/in staging buffer; the actual data-channel wiring is the unimplemented
+/// part.
 pub struct BurbleTransport {
     config: BurbleConfig,
-    /// Ops the session asked us to broadcast but that we could not ship
-    /// because the channel is not wired. Retained (not dropped) so a future
-    /// `flush()` after the channel is established can drain them.
     pending_out: Vec<Op>,
 }
 
@@ -122,13 +124,13 @@ impl BurbleTransport {
 
 impl Transport for BurbleTransport {
     fn broadcast(&mut self, op: Op) {
-        // Not connected: stage the op rather than drop it, so semantics are
-        // honest (no silent loss) and a future flush can ship it.
+        if self.pending_out.len() >= MAX_PENDING_OPS {
+            self.pending_out.remove(0);
+        }
         self.pending_out.push(op);
     }
 
     fn drain_inbox(&mut self) -> Vec<Op> {
-        // No live channel ⇒ nothing ever arrives in this build.
         Vec::new()
     }
 }

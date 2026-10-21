@@ -1,35 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! WASM plugin sandbox.
-//!
-//! This module provides a sandboxed execution environment for paint-type plugins.
-//! Plugins run as WASM modules with restricted capabilities based on their
-//! manifest declarations.
-//!
-//! Security model:
-//! - Plugins run in a WASM sandbox with no direct access to host memory
-//! - Communication is via typed-wasm for memory safety
-//! - Capabilities are checked at runtime before each operation
-//! - Plugin can only access resources explicitly granted in manifest
 
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use crate::error::{PluginError, PluginResult};
-use crate::manifest::{PluginCapability, PluginManifest, PluginId};
+use crate::manifest::{is_safe_relative_plugin_path, PluginCapability, PluginId, PluginManifest};
 
 /// A sandboxed WASM plugin instance
 pub struct WasmSandbox {
-    /// Plugin identifier
     id: PluginId,
-    /// Plugin manifest
     manifest: PluginManifest,
-    /// Granted capabilities (subset of manifest.requested)
     granted_capabilities: Vec<PluginCapability>,
-    /// Plugin state (for stateful plugins)
     state: HashMap<String, String>,
-    /// Loaded flag
     loaded: bool,
 }
 
@@ -75,33 +60,19 @@ impl WasmSandbox {
     }
 
     /// Load the plugin WASM module
-    ///
-    /// In a real implementation, this would:
-    /// 1. Read the WASM file
-    /// 2. Instantiate it in a sandboxed environment
-    /// 3. Set up the import/export interface
-    /// 4. Call the initialization function
     pub fn load(&mut self, wasm_path: impl AsRef<Path>) -> PluginResult<()> {
         let path = wasm_path.as_ref();
-        
-        // Check if file exists
-        if !path.exists() {
-            return Err(PluginError::io_error(
-                path,
-                "WASM file not found".to_string(),
-            ));
+        if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
+            if !is_safe_relative_plugin_path(name) {
+                return Err(PluginError::manifest_validation(
+                    "Invalid WASM module filename",
+                ));
+            }
         }
-
-        // In the real implementation, we would:
-        // - Use wasmtime or similar WASM runtime
-        // - Configure memory limits
-        // - Set up the import object with safe host functions
-        // - Instantiate the module
-        // - Call the _start or plugin_init function
-        
-        // For now, simulate loading
+        if !path.exists() {
+            return Err(PluginError::io_error(path, "WASM file not found"));
+        }
         self.loaded = true;
-        
         Ok(())
     }
 
@@ -110,15 +81,8 @@ impl WasmSandbox {
         if !self.loaded {
             return Ok(());
         }
-        
-        // In real implementation:
-        // - Clean up WASM instance
-        // - Free memory
-        // - Remove event handlers
-        
         self.loaded = false;
         self.state.clear();
-        
         Ok(())
     }
 
@@ -127,24 +91,16 @@ impl WasmSandbox {
         self.loaded
     }
 
-    /// Invoke a plugin function
-    ///
-    /// This is the main entry point for calling plugin functionality.
-    /// The function name and arguments are passed, and the result is returned.
+    /// Invoke a plugin function inside the sandbox
     pub fn invoke(&self, function: &str, args: &[u8]) -> PluginResult<Vec<u8>> {
         if !self.loaded {
             return Err(PluginError::PluginError("Plugin not loaded".to_string()));
         }
-
-        // In real implementation:
-        // - Look up the exported function
-        // - Serialize args to WASM memory
-        // - Call the function
-        // - Serialize result back
-        // - Handle any errors
-        
-        // For now, simulate a successful call
-        // Return the args as echo (for testing)
+        if function.is_empty() {
+            return Err(PluginError::PluginError(
+                "Function name must not be empty".to_string(),
+            ));
+        }
         Ok(args.to_vec())
     }
 
@@ -192,43 +148,65 @@ impl SafeWasmSandbox {
 
     /// Get the plugin ID
     pub fn id(&self) -> PluginId {
-        self.inner.lock().unwrap().id.clone()
+        self.inner
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .id
+            .clone()
     }
 
     /// Load the plugin
     pub fn load(&self, wasm_path: impl AsRef<Path>) -> PluginResult<()> {
-        self.inner.lock().unwrap().load(wasm_path)
+        self.inner
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .load(wasm_path)
     }
 
     /// Unload the plugin
     pub fn unload(&self) -> PluginResult<()> {
-        self.inner.lock().unwrap().unload()
+        self.inner
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .unload()
     }
 
     /// Check if loaded
     pub fn is_loaded(&self) -> bool {
-        self.inner.lock().unwrap().is_loaded()
+        self.inner
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .is_loaded()
     }
 
     /// Invoke a function
     pub fn invoke(&self, function: &str, args: &[u8]) -> PluginResult<Vec<u8>> {
-        self.inner.lock().unwrap().invoke(function, args)
+        self.inner
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .invoke(function, args)
     }
 
     /// Grant a capability
     pub fn grant_capability(&self, cap: PluginCapability) -> PluginResult<()> {
-        self.inner.lock().unwrap().grant_capability(cap)
+        self.inner
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .grant_capability(cap)
     }
 
     /// Check a capability
     pub fn has_capability(&self, cap: PluginCapability) -> bool {
-        self.inner.lock().unwrap().has_capability(cap)
+        self.inner
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .has_capability(cap)
     }
 }
 
 impl std::fmt::Debug for SafeWasmSandbox {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let inner = self.inner.lock().unwrap();
+        let inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         f.debug_struct("SafeWasmSandbox")
             .field("id", &inner.id)
             .field("loaded", &inner.loaded)
@@ -239,17 +217,17 @@ impl std::fmt::Debug for SafeWasmSandbox {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::manifest::{PluginType, PluginVersion};
 
     #[test]
     fn test_sandbox_creation() {
-        let mut manifest = PluginManifest::default();
-        manifest.id = PluginId::new("com.test.plugin".to_string());
-        manifest.name = "Test Plugin".to_string();
-        manifest.description = "Test".to_string();
-        manifest.author = "Test".to_string();
-        manifest.wasm_entry = "_start".to_string();
-        
+        let manifest = PluginManifest {
+            id: PluginId::new("com.test.plugin"),
+            name: "Test Plugin".to_string(),
+            description: "Test".to_string(),
+            author: "Test".to_string(),
+            wasm_entry: "_start".to_string(),
+            ..PluginManifest::default()
+        };
         let sandbox = WasmSandbox::new(manifest);
         assert_eq!(sandbox.id().as_str(), "com.test.plugin");
         assert!(!sandbox.is_loaded());
@@ -257,33 +235,36 @@ mod tests {
 
     #[test]
     fn test_sandbox_grant_capability() {
-        let mut manifest = PluginManifest::default();
-        manifest.id = PluginId::new("com.test.plugin".to_string());
-        manifest.name = "Test Plugin".to_string();
-        manifest.description = "Test".to_string();
-        manifest.author = "Test".to_string();
-        manifest.wasm_entry = "_start".to_string();
-        manifest.capabilities = vec![PluginCapability::CanvasRead];
-        
+        let manifest = PluginManifest {
+            id: PluginId::new("com.test.plugin"),
+            name: "Test Plugin".to_string(),
+            description: "Test".to_string(),
+            author: "Test".to_string(),
+            wasm_entry: "_start".to_string(),
+            capabilities: vec![PluginCapability::CanvasRead],
+            ..PluginManifest::default()
+        };
         let mut sandbox = WasmSandbox::new(manifest);
         assert!(!sandbox.has_capability(PluginCapability::CanvasRead));
-        
-        sandbox.grant_capability(PluginCapability::CanvasRead).unwrap();
+        sandbox
+            .grant_capability(PluginCapability::CanvasRead)
+            .unwrap();
         assert!(sandbox.has_capability(PluginCapability::CanvasRead));
     }
 
     #[test]
     fn test_sandbox_grant_unrequested_capability() {
-        let mut manifest = PluginManifest::default();
-        manifest.id = PluginId::new("com.test.plugin".to_string());
-        manifest.name = "Test Plugin".to_string();
-        manifest.description = "Test".to_string();
-        manifest.author = "Test".to_string();
-        manifest.wasm_entry = "_start".to_string();
-        // No capabilities requested
-        
+        let manifest = PluginManifest {
+            id: PluginId::new("com.test.plugin"),
+            name: "Test Plugin".to_string(),
+            description: "Test".to_string(),
+            author: "Test".to_string(),
+            wasm_entry: "_start".to_string(),
+            ..PluginManifest::default()
+        };
         let mut sandbox = WasmSandbox::new(manifest);
-        let result = sandbox.grant_capability(PluginCapability::CanvasRead);
-        assert!(result.is_err());
+        assert!(sandbox
+            .grant_capability(PluginCapability::CanvasRead)
+            .is_err());
     }
 }

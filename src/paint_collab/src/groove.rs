@@ -111,25 +111,25 @@ impl GrooveManifest {
             self.groove_version.len() + self.service_id.len() + self.service_version.len() +
             self.health.len() + self.consumes.len() * 16 + self.applicability.len() * 16 +
             self.capabilities.len() * 128 + self.endpoints.len() * 64;
-        
+
         let mut s = String::with_capacity(estimated_capacity);
         s.push_str("{\n");
-        
+
         // groove_version
         s.push_str("  \"groove_version\": ");
         s.push_str(&jstr(&self.groove_version));
         s.push_str(",\n");
-        
+
         // service_id
         s.push_str("  \"service_id\": ");
         s.push_str(&jstr(&self.service_id));
         s.push_str(",\n");
-        
+
         // service_version
         s.push_str("  \"service_version\": ");
         s.push_str(&jstr(&self.service_version));
         s.push_str(",\n");
-        
+
         // capabilities
         s.push_str("  \"capabilities\": {\n");
         let caps: Vec<_> = self.capabilities.iter().collect();
@@ -137,40 +137,40 @@ impl GrooveManifest {
             s.push_str("    ");
             s.push_str(&jstr(name));
             s.push_str(": {\n");
-            
+
             s.push_str("      \"type\": ");
             s.push_str(&jstr(&cap.cap_type));
             s.push_str(",\n");
-            
+
             s.push_str("      \"description\": ");
             s.push_str(&jstr(&cap.description));
             s.push_str(",\n");
-            
+
             s.push_str("      \"protocol\": ");
             s.push_str(&jstr(&cap.protocol));
             s.push_str(",\n");
-            
+
             s.push_str("      \"endpoint\": ");
             s.push_str(&jstr(&cap.endpoint));
             s.push_str(",\n");
-            
+
             s.push_str("      \"requires_auth\": ");
             s.push_str(&cap.requires_auth.to_string());
             s.push_str(",\n");
-            
+
             s.push_str("      \"panel_compatible\": ");
             s.push_str(&cap.panel_compatible.to_string());
             s.push_str("\n");
-            
+
             s.push_str(if i + 1 == caps.len() { "    }\n" } else { "    },\n" });
         }
         s.push_str("  },\n");
-        
+
         // consumes
         s.push_str("  \"consumes\": ");
         s.push_str(&jarr(&self.consumes));
         s.push_str(",\n");
-        
+
         // endpoints
         s.push_str("  \"endpoints\": {\n");
         let eps: Vec<_> = self.endpoints.iter().collect();
@@ -184,29 +184,38 @@ impl GrooveManifest {
             s.push_str("\n");
         }
         s.push_str("  },\n");
-        
+
         // health
         s.push_str("  \"health\": ");
         s.push_str(&jstr(&self.health));
         s.push_str(",\n");
-        
+
         // applicability
         s.push_str("  \"applicability\": ");
         s.push_str(&jarr(&self.applicability));
         s.push_str("\n");
-        
+
         s.push_str("}\n");
         s
     }
 }
 
 fn jstr(s: &str) -> String {
-    let mut out = String::from("\"");
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('"');
     for c in s.chars() {
         match c {
             '"' => out.push_str("\\\""),
             '\\' => out.push_str("\\\\"),
+            '\u{0008}' => out.push_str("\\b"),
+            '\u{000c}' => out.push_str("\\f"),
             '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if (c as u32) < 0x20 => {
+                use core::fmt::Write as _;
+                let _ = write!(&mut out, "\\u{:04x}", c as u32);
+            }
             _ => out.push(c),
         }
     }
@@ -409,5 +418,11 @@ mod tests {
         assert_eq!(found[0].service_id, "paint-type");
         assert_eq!(found[0].room, "room-xyz");
         assert!(found[0].manifest.validate().is_ok());
+    }
+
+    #[test]
+    fn jstr_escapes_rfc8259_control_characters() {
+        let escaped = jstr("a\rb\tc\u{0000}d\u{001f}");
+        assert_eq!(escaped, "\"a\\rb\\tc\\u0000d\\u001f\"");
     }
 }

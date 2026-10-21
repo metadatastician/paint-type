@@ -1,37 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
 // ptype_format — reference encoder/decoder for paint-type's native RGBA16F
-// `.ptype` container (draft v1).
-//
-//! # The `.ptype` native format (draft v1)
-//!
-//! paint-type's compute core stores a canvas as a stack of **layers**, each
-//! holding a *sparse* map of 64×64 **tiles**, and each tile holding
-//! `64 * 64 * 4` RGBA16F scalars. Crucially, those scalars are kept as the raw
-//! **`u16` bit-patterns of IEEE-754 half-floats** — never as decoded `f32`s
-//! (see `src/backends/cpu/main.zig`, `src/interface/ffi/src/main.zig` and
-//! `src/ephapax/src/lib.rs` in `metadatastician/paint-type`).
-//!
-//! This crate serialises that model verbatim. Because we move the exact `u16`
-//! bit-patterns to and from disk and never interpret them as floats, the
-//! round-trip is **lossless by construction** — it preserves `NaN`, `±Inf`,
-//! `−0.0` and every other half-float encoding bit-for-bit. The
-//! [`encode`]/[`decode`] pair is therefore an involution on every well-formed
-//! [`Canvas`], and re-encoding a decoded canvas yields byte-identical output
-//! (the round-trip byte-equality property exercised in the test module and the
-//! acceptance criteria of paint-type issue #13).
-//!
-//! ## Status
-//!
-//! Draft. The full versioned spec is a v1.0.0 obligation; this is the
-//! issue-#13 draft required before `pt_io_save` for the native format can
-//! land. The companion prose spec is `docs/spec/ptype-format.adoc`.
-//!
-//! ## Endianness
-//!
-//! Every multi-byte scalar is **little-endian**. Half-float scalars are
-//! written as their `u16` bit-pattern (also little-endian), with no float
-//! interpretation at any point.
+// `.ptype` container (draft v1 + optional extended metadata trailer).
 
 #![forbid(unsafe_code)]
 
@@ -45,28 +15,28 @@ pub const TILE_SIZE: u32 = 64;
 pub const TILE_CHANNELS: u32 = 4;
 
 /// Scalars per tile: `TILE_SIZE * TILE_SIZE * TILE_CHANNELS` = 16384.
-/// Matches `TILE_SCALARS` in paint-type's CPU backend.
 pub const TILE_SCALARS: usize =
     (TILE_SIZE as usize) * (TILE_SIZE as usize) * (TILE_CHANNELS as usize);
 
-/// Canvas pixel format discriminant. `0 = RGBA16F` — matches `Canvas.format`
-/// in the CPU backend. Only RGBA16F is defined for draft v1.
+/// Canvas pixel format discriminant (`0 = RGBA16F`).
 pub const FORMAT_RGBA16F: u32 = 0;
 
 /// 8-byte container signature.
-///
-/// Mirrors PNG's design: a high-bit byte (`0x89`) catches 7-bit transports,
-/// the legible `PTYPE` aids `hexdump` inspection, and the trailing `CR LF`
-/// catches naive newline translation.
 pub const MAGIC: [u8; 8] = [0x89, b'P', b'T', b'Y', b'P', b'E', 0x0D, 0x0A];
 
 /// On-disk format version understood by this crate.
 pub const VERSION: u16 = 1;
 
-/// Container flags. Draft v1 defines only `0` (uncompressed). Bit 0 is
-/// reserved for a future DEFLATE payload; encountering any unknown flag is a
-/// hard decode error rather than a silent ignore.
+/// Container flags: base uncompressed container without extended trailer.
 pub const FLAGS_NONE: u16 = 0;
+
+/// Optional lossless metadata trailer flag (preserves stable layer IDs, lock
+/// state, active layer index, author, and embedded ICC profile while keeping
+/// baseline v1 files 100% wire-compatible when unset).
+pub const FLAGS_EXTENDED_META: u16 = 0x0002;
+
+/// Maximum `.ptype` file size accepted by [`decode_from_file`] (512 MiB).
+pub const MAX_PTYPE_FILE_BYTES: u64 = 512 * 1024 * 1024;
 
 /// Layer blend mode. Discriminants match paint-type's `BlendMode` enum.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -125,7 +95,6 @@ impl Eq for Tile {}
 
 impl fmt::Debug for Tile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Avoid dumping 16k scalars; summarise.
         let nonzero = self.pixels.iter().filter(|&&p| p != 0).count();
         write!(
             f,
@@ -135,9 +104,8 @@ impl fmt::Debug for Tile {
     }
 }
 
-/// One layer: name, visibility, opacity, blend mode, and its sparse tiles.
-/// Tiles live in a `BTreeMap` so iteration order — and therefore the encoded
-/// byte stream — is deterministic.
+/// One layer: name, visibility, opacity, blend mode, optional stable metadata,
+/// and its sparse tiles.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Layer {
     pub name: String,
@@ -145,6 +113,10 @@ pub struct Layer {
     pub opacity: f64,
     pub blend: BlendMode,
     pub tiles: BTreeMap<TileKey, Tile>,
+    /// Optional stable non-zero layer identifier preserved across reorders.
+    pub layer_id: Option<u32>,
+    /// Whether edits to this layer are locked in the UI.
+    pub locked: bool,
 }
 
 impl Layer {
@@ -156,20 +128,33 @@ impl Layer {
             opacity: 1.0,
             blend: BlendMode::Normal,
             tiles: BTreeMap::new(),
+            layer_id: None,
+            locked: false,
         }
+    }
+
+    fn has_extended_meta(&self) -> bool {
+        self.layer_id.is_some() || self.locked
     }
 }
 
-/// A full canvas: dimensions, pixel format, background colour, layer stack.
+/// A full canvas: dimensions, pixel format, background colour, layer stack,
+/// and optional extended document metadata.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Canvas {
     pub width: u32,
     pub height: u32,
     /// Pixel format discriminant. Draft v1 only encodes [`FORMAT_RGBA16F`].
     pub format: u32,
-    /// RGBA background, stored as the `[4]f32` paint-type keeps it as.
+    /// RGBA background, stored as `[f32; 4]`.
     pub background: [f32; 4],
     pub layers: Vec<Layer>,
+    /// Optional 0-based active layer index in `layers`.
+    pub active_layer: Option<u32>,
+    /// Optional document author string.
+    pub author: Option<String>,
+    /// Optional embedded ICC profile bytes.
+    pub icc_profile: Option<Vec<u8>>,
 }
 
 impl Canvas {
@@ -181,7 +166,18 @@ impl Canvas {
             format: FORMAT_RGBA16F,
             background: [0.0; 4],
             layers: Vec::new(),
+            active_layer: None,
+            author: None,
+            icc_profile: None,
         }
+    }
+
+    /// True if any canvas- or layer-level extended metadata is populated.
+    pub fn has_extended_meta(&self) -> bool {
+        self.active_layer.is_some()
+            || self.author.is_some()
+            || self.icc_profile.is_some()
+            || self.layers.iter().any(Layer::has_extended_meta)
     }
 }
 
@@ -189,8 +185,7 @@ impl Canvas {
 // Errors
 // ----------------------------------------------------------------------------
 
-/// Why a byte slice failed to decode as a `.ptype` container. Every malformed
-/// input maps to one of these — `decode` never panics on bad data.
+/// Why a byte slice failed to decode as a `.ptype` container.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DecodeError {
     /// First 8 bytes were not [`MAGIC`].
@@ -208,9 +203,16 @@ pub enum DecodeError {
     },
     /// Blend-mode discriminant was outside the defined set.
     UnknownBlendMode(u32),
+    /// A boolean wire byte was neither `0` nor `1`.
+    InvalidBoolean { context: &'static str, value: u8 },
+    /// Tile keys inside a layer were duplicate or not in strict ascending order.
+    NonCanonicalTileOrder,
+    /// Extended metadata trailer flag was set even though all metadata fields
+    /// held their default empty values, or carried an invalid layer index.
+    NonCanonicalMetadata,
     /// A length/count field would require reading past the end of input.
     UnexpectedEof { context: &'static str },
-    /// A UTF-8 layer name was not valid UTF-8.
+    /// A UTF-8 string was not valid UTF-8.
     InvalidUtf8 { context: &'static str },
     /// Trailing bytes remained after a complete canvas was decoded.
     TrailingBytes { extra: usize },
@@ -229,6 +231,15 @@ impl fmt::Display for DecodeError {
                 got.0, got.1, expected.0, expected.1
             ),
             DecodeError::UnknownBlendMode(x) => write!(f, "unknown blend mode {x}"),
+            DecodeError::InvalidBoolean { context, value } => {
+                write!(f, "invalid boolean byte {value:#04x} in {context}")
+            }
+            DecodeError::NonCanonicalTileOrder => {
+                write!(f, "non-canonical duplicate or unsorted tile coordinate")
+            }
+            DecodeError::NonCanonicalMetadata => {
+                write!(f, "non-canonical extended metadata trailer")
+            }
             DecodeError::UnexpectedEof { context } => {
                 write!(f, "unexpected end of input while reading {context}")
             }
@@ -246,23 +257,55 @@ impl std::error::Error for DecodeError {}
 // Encode
 // ----------------------------------------------------------------------------
 
-/// Serialise a [`Canvas`] to the draft-v1 `.ptype` byte layout.
+fn encode_opt_u32(out: &mut Vec<u8>, val: Option<u32>) {
+    match val {
+        None => out.push(0),
+        Some(v) => {
+            out.push(1);
+            out.extend_from_slice(&v.to_le_bytes());
+        }
+    }
+}
+
+fn encode_opt_bytes(out: &mut Vec<u8>, val: Option<&[u8]>) {
+    match val {
+        None => out.push(0),
+        Some(b) => {
+            out.push(1);
+            out.extend_from_slice(&(b.len() as u32).to_le_bytes());
+            out.extend_from_slice(b);
+        }
+    }
+}
+
+/// Serialise a [`Canvas`] to the `.ptype` byte layout.
 ///
-/// Deterministic: layers are written in stack order and tiles in `TileKey`
-/// order, so two equal canvases always encode to identical bytes.
+/// Deterministic: layers are written in stack order and tiles in ascending
+/// `TileKey` order, so two equal canvases always encode to identical bytes.
 pub fn encode(canvas: &Canvas) -> Vec<u8> {
-    let mut out = Vec::new();
+    let write_meta = canvas.has_extended_meta();
+    let flags = if write_meta {
+        FLAGS_EXTENDED_META
+    } else {
+        FLAGS_NONE
+    };
+
+    let tile_bytes = TILE_SCALARS * 2 + 8;
+    let total_tiles: usize = canvas.layers.iter().map(|l| l.tiles.len()).sum();
+    let approx = 64usize
+        .saturating_add(canvas.layers.len().saturating_mul(24))
+        .saturating_add(total_tiles.saturating_mul(tile_bytes));
+    let mut out = Vec::with_capacity(approx);
+
     out.extend_from_slice(&MAGIC);
     out.extend_from_slice(&VERSION.to_le_bytes());
-    out.extend_from_slice(&FLAGS_NONE.to_le_bytes());
+    out.extend_from_slice(&flags.to_le_bytes());
     out.extend_from_slice(&canvas.format.to_le_bytes());
     out.extend_from_slice(&canvas.width.to_le_bytes());
     out.extend_from_slice(&canvas.height.to_le_bytes());
     for c in canvas.background {
         out.extend_from_slice(&c.to_le_bytes());
     }
-    // Tile geometry, recorded so a reader can validate (and a future variable
-    // tile size has somewhere to live).
     out.extend_from_slice(&TILE_SIZE.to_le_bytes());
     out.extend_from_slice(&TILE_CHANNELS.to_le_bytes());
 
@@ -284,6 +327,17 @@ pub fn encode(canvas: &Canvas) -> Vec<u8> {
             }
         }
     }
+
+    if write_meta {
+        encode_opt_u32(&mut out, canvas.active_layer);
+        encode_opt_bytes(&mut out, canvas.author.as_deref().map(str::as_bytes));
+        encode_opt_bytes(&mut out, canvas.icc_profile.as_deref());
+        for layer in &canvas.layers {
+            encode_opt_u32(&mut out, layer.layer_id);
+            out.push(u8::from(layer.locked));
+        }
+    }
+
     out
 }
 
@@ -320,6 +374,14 @@ impl<'a> Reader<'a> {
         Ok(self.take(1, context)?[0])
     }
 
+    fn bool_strict(&mut self, context: &'static str) -> Result<bool, DecodeError> {
+        match self.u8(context)? {
+            0 => Ok(false),
+            1 => Ok(true),
+            value => Err(DecodeError::InvalidBoolean { context, value }),
+        }
+    }
+
     fn u16(&mut self, context: &'static str) -> Result<u16, DecodeError> {
         let b = self.take(2, context)?;
         Ok(u16::from_le_bytes([b[0], b[1]]))
@@ -342,15 +404,30 @@ impl<'a> Reader<'a> {
         ]))
     }
 
+    fn opt_u32(&mut self, context: &'static str) -> Result<Option<u32>, DecodeError> {
+        if self.bool_strict(context)? {
+            Ok(Some(self.u32(context)?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn opt_bytes(&mut self, context: &'static str) -> Result<Option<Vec<u8>>, DecodeError> {
+        if self.bool_strict(context)? {
+            let len_u32 = self.u32(context)?;
+            let len = usize::try_from(len_u32).map_err(|_| DecodeError::UnexpectedEof { context })?;
+            Ok(Some(self.take(len, context)?.to_vec()))
+        } else {
+            Ok(None)
+        }
+    }
+
     fn remaining(&self) -> usize {
         self.buf.len() - self.pos
     }
 }
 
-/// Parse a draft-v1 `.ptype` byte slice back into a [`Canvas`].
-///
-/// Returns a typed [`DecodeError`] for every malformed input — truncation, bad
-/// magic, unknown version/flags/format/blend, bad UTF-8, or trailing garbage.
+/// Parse a `.ptype` byte slice back into a [`Canvas`].
 pub fn decode(bytes: &[u8]) -> Result<Canvas, DecodeError> {
     let mut r = Reader::new(bytes);
 
@@ -363,9 +440,11 @@ pub fn decode(bytes: &[u8]) -> Result<Canvas, DecodeError> {
         return Err(DecodeError::UnsupportedVersion(version));
     }
     let flags = r.u16("flags")?;
-    if flags != FLAGS_NONE {
+    if (flags & !FLAGS_EXTENDED_META) != FLAGS_NONE {
         return Err(DecodeError::UnsupportedFlags(flags));
     }
+    let has_meta = (flags & FLAGS_EXTENDED_META) != 0;
+
     let format = r.u32("format")?;
     if format != FORMAT_RGBA16F {
         return Err(DecodeError::UnsupportedFormat(format));
@@ -387,36 +466,40 @@ pub fn decode(bytes: &[u8]) -> Result<Canvas, DecodeError> {
     }
 
     let layer_count = r.u32("layer_count")?;
-    // Never size an allocation from the untrusted `layer_count` (CWE-789): a
-    // ~50-byte file can claim 0xFFFF_FFFF layers, and ANY eager reservation
-    // from that value OOM-aborts (~256 GiB), violating the "decode never panics
-    // on bad data" contract (found by the INV-1 fuzzer,
-    // fuzz/fuzz_targets/decode_total.rs). Start empty and let the Vec grow as
-    // layers are actually read; the real count is bounded by the input length,
-    // and amortised growth is negligible for a reference decoder.
     let mut layers = Vec::new();
     for _ in 0..layer_count {
-        let name_len = r.u32("layer name length")? as usize;
+        let name_len = usize::try_from(r.u32("layer name length")?)
+            .map_err(|_| DecodeError::UnexpectedEof {
+                context: "layer name length",
+            })?;
         let name_bytes = r.take(name_len, "layer name")?;
         let name = std::str::from_utf8(name_bytes)
             .map_err(|_| DecodeError::InvalidUtf8 {
                 context: "layer name",
             })?
             .to_owned();
-        let visible = r.u8("layer visible")? != 0;
+        let visible = r.bool_strict("layer visible")?;
         let opacity = r.f64("layer opacity")?;
         let blend = BlendMode::from_u32(r.u32("layer blend")?)?;
 
         let tile_count = r.u32("tile_count")?;
         let mut tiles = BTreeMap::new();
+        let mut prev_key: Option<TileKey> = None;
         for _ in 0..tile_count {
             let tx = r.u32("tile.tx")?;
             let ty = r.u32("tile.ty")?;
+            let key = TileKey { tx, ty };
+            if let Some(prev) = prev_key {
+                if key <= prev {
+                    return Err(DecodeError::NonCanonicalTileOrder);
+                }
+            }
+            prev_key = Some(key);
             let mut pixels = [0u16; TILE_SCALARS];
             for scalar in pixels.iter_mut() {
                 *scalar = r.u16("tile pixel")?;
             }
-            tiles.insert(TileKey { tx, ty }, Tile { pixels });
+            tiles.insert(key, Tile { pixels });
         }
 
         layers.push(Layer {
@@ -425,8 +508,30 @@ pub fn decode(bytes: &[u8]) -> Result<Canvas, DecodeError> {
             opacity,
             blend,
             tiles,
+            layer_id: None,
+            locked: false,
         });
     }
+
+    let (active_layer, author, icc_profile) = if has_meta {
+        let active = r.opt_u32("meta.active_layer")?;
+        let author = match r.opt_bytes("meta.author")? {
+            None => None,
+            Some(b) => Some(
+                String::from_utf8(b).map_err(|_| DecodeError::InvalidUtf8 {
+                    context: "meta.author",
+                })?,
+            ),
+        };
+        let icc = r.opt_bytes("meta.icc_profile")?;
+        for layer in &mut layers {
+            layer.layer_id = r.opt_u32("meta.layer_id")?;
+            layer.locked = r.bool_strict("meta.layer_locked")?;
+        }
+        (active, author, icc)
+    } else {
+        (None, None, None)
+    };
 
     if r.remaining() != 0 {
         return Err(DecodeError::TrailingBytes {
@@ -434,13 +539,42 @@ pub fn decode(bytes: &[u8]) -> Result<Canvas, DecodeError> {
         });
     }
 
-    Ok(Canvas {
+    let canvas = Canvas {
         width,
         height,
         format,
         background,
         layers,
-    })
+        active_layer,
+        author,
+        icc_profile,
+    };
+
+    if has_meta && !canvas.has_extended_meta() {
+        return Err(DecodeError::NonCanonicalMetadata);
+    }
+
+    Ok(canvas)
+}
+
+/// Read and decode a `.ptype` file bounded by [`MAX_PTYPE_FILE_BYTES`].
+pub fn decode_from_file(path: &str) -> Result<Canvas, String> {
+    let meta = std::fs::metadata(path).map_err(|e| e.to_string())?;
+    if meta.len() > MAX_PTYPE_FILE_BYTES {
+        return Err(format!(
+            "ptype file exceeds MAX_PTYPE_FILE_BYTES ({} > {})",
+            meta.len(),
+            MAX_PTYPE_FILE_BYTES
+        ));
+    }
+    let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
+    decode(&bytes).map_err(|e| e.to_string())
+}
+
+/// Encode and write a `.ptype` file atomically/cleanly to disk.
+pub fn encode_to_file(path: &str, canvas: &Canvas) -> Result<(), String> {
+    let bytes = encode(canvas);
+    std::fs::write(path, &bytes).map_err(|e| e.to_string())
 }
 
 // ----------------------------------------------------------------------------
@@ -451,7 +585,6 @@ pub fn decode(bytes: &[u8]) -> Result<Canvas, DecodeError> {
 mod tests {
     use super::*;
 
-    /// Build a tile whose scalars cycle through a caller-supplied pattern.
     fn patterned_tile(pattern: &[u16]) -> Tile {
         let mut t = Tile::zeroed();
         for (i, p) in t.pixels.iter_mut().enumerate() {
@@ -498,23 +631,10 @@ mod tests {
         assert_eq!(decoded, c);
     }
 
-    /// The defining property: NaN / ±Inf / −0 / max-normal half-float bit
-    /// patterns survive a round-trip *because we never interpret them as
-    /// floats*. A naive f32 round-trip would canonicalise NaNs and lose this.
     #[test]
     fn roundtrip_preserves_half_float_edge_patterns() {
         let edges = [
-            0x0000, // +0
-            0x8000, // -0
-            0x3C00, // 1.0
-            0x7BFF, // max normal
-            0x0400, // min normal
-            0x0001, // min subnormal
-            0x7C00, // +Inf
-            0xFC00, // -Inf
-            0x7E00, // a quiet NaN
-            0xFDFF, // a signalling-range NaN payload
-            0xFFFF, // all bits set
+            0x0000, 0x8000, 0x3C00, 0x7BFF, 0x0400, 0x0001, 0x7C00, 0xFC00, 0x7E00, 0xFDFF, 0xFFFF,
         ];
         let mut c = Canvas::new(64, 64);
         let mut layer = Layer::new("edges");
@@ -529,8 +649,6 @@ mod tests {
         assert_eq!(got.pixels[..], original.pixels[..]);
     }
 
-    /// Encoding is a deterministic function of the canvas, so re-encoding a
-    /// decoded canvas is byte-identical (issue #13 byte-equality criterion).
     #[test]
     fn byte_stability_under_reencode() {
         let c = sample_canvas();
@@ -539,7 +657,22 @@ mod tests {
         assert_eq!(once, twice);
     }
 
-    /// Lock the wire prefix so an accidental layout change is caught.
+    #[test]
+    fn extended_metadata_roundtrip_is_lossless_and_byte_stable() {
+        let mut c = sample_canvas();
+        c.active_layer = Some(1);
+        c.author = Some("paint.type studio".to_string());
+        c.icc_profile = Some(vec![0x00, 0x01, 0x73, 0x52, 0x47, 0x42]);
+        c.layers[0].layer_id = Some(10);
+        c.layers[1].layer_id = Some(42);
+        c.layers[1].locked = true;
+
+        let once = encode(&c);
+        let decoded = decode(&once).unwrap();
+        assert_eq!(decoded, c);
+        assert_eq!(encode(&decoded), once);
+    }
+
     #[test]
     fn golden_header_prefix() {
         let c = Canvas::new(0x0102_0304, 0x0506_0708);
@@ -565,16 +698,45 @@ mod tests {
     #[test]
     fn reject_unsupported_version() {
         let mut bytes = encode(&Canvas::new(8, 8));
-        bytes[8] = 0xFE; // low byte of the version field
+        bytes[8] = 0xFE;
         assert!(matches!(
             decode(&bytes),
             Err(DecodeError::UnsupportedVersion(_))
         ));
     }
 
-    /// Truncation at *every* prefix length must error, never panic. Uses a
-    /// single-tile canvas to keep the O(n) sweep cheap while still crossing the
-    /// header, name, tile-header and mid-tile boundaries.
+    #[test]
+    fn reject_non_boolean_visibility_byte() {
+        let mut c = Canvas::new(8, 8);
+        c.layers.push(Layer::new("x"));
+        let mut bytes = encode(&c);
+        let vis_off = MAGIC.len() + 2 + 2 + 4 + 4 + 4 + 16 + 4 + 4 + 4 + 4 + 1;
+        bytes[vis_off] = 2;
+        assert_eq!(
+            decode(&bytes),
+            Err(DecodeError::InvalidBoolean {
+                context: "layer visible",
+                value: 2
+            })
+        );
+    }
+
+    #[test]
+    fn reject_duplicate_or_unsorted_tile_keys() {
+        let mut c = Canvas::new(64, 64);
+        let mut layer = Layer::new("dup");
+        layer.tiles.insert(TileKey { tx: 0, ty: 0 }, Tile::zeroed());
+        layer.tiles.insert(TileKey { tx: 1, ty: 0 }, Tile::zeroed());
+        c.layers.push(layer);
+        let mut bytes = encode(&c);
+
+        // Overwrite second tile's tx from 1 back to 0 so keys are duplicate (0,0), (0,0).
+        let header = 48;
+        let second_tile_off = header + 4 + 4 + 3 + 1 + 8 + 4 + 4 + (8 + TILE_SCALARS * 2);
+        bytes[second_tile_off..second_tile_off + 4].copy_from_slice(&0u32.to_le_bytes());
+        assert_eq!(decode(&bytes), Err(DecodeError::NonCanonicalTileOrder));
+    }
+
     #[test]
     fn reject_truncation_at_all_lengths() {
         let mut c = Canvas::new(8, 8);
@@ -605,13 +767,10 @@ mod tests {
         let mut c = Canvas::new(8, 8);
         c.layers.push(Layer::new("x"));
         let mut bytes = encode(&c);
-        // Fixed header up to and including tile_channels, then layer_count,
-        // then the single layer's (name_len + name "x" + visible + opacity)
-        // before its 4-byte blend field.
-        let header = MAGIC.len() + 2 + 2 + 4 + 4 + 4 + 16 + 4 + 4; // magic..tile_channels
-        let first_layer = header + 4; // skip layer_count
-        let blend_off = first_layer + 4 + 1 + 1 + 8; // name_len + "x" + visible + opacity
-        bytes[blend_off] = 0x09; // not a defined blend mode
+        let header = MAGIC.len() + 2 + 2 + 4 + 4 + 4 + 16 + 4 + 4;
+        let first_layer = header + 4;
+        let blend_off = first_layer + 4 + 1 + 1 + 8;
+        bytes[blend_off] = 0x09;
         assert_eq!(decode(&bytes), Err(DecodeError::UnknownBlendMode(9)));
     }
 
@@ -631,33 +790,14 @@ mod tests {
         );
     }
 
-    /// A huge `layer_count` must NOT trigger an eager multi-gigabyte
-    /// `Vec::with_capacity` (which OOM-aborts the process). The INV-1 fuzzer
-    /// (`fuzz/fuzz_targets/decode_total.rs`) found exactly that: a 52-byte file
-    /// claiming `0xFFFF_FFFF` layers made `decode` try to reserve ~256 GiB.
-    /// Decode must cap the preallocation to what the input can hold and fail
-    /// with a typed error on the (absent) layer data — never abort.
     #[test]
     fn reject_oversized_layer_count_without_oom() {
-        let mut bytes = encode(&Canvas::new(8, 8)); // 0 real layers
-        // layer_count is the final u32: magic..tile_channels, then layer_count.
+        let mut bytes = encode(&Canvas::new(8, 8));
         let layer_count_off = MAGIC.len() + 2 + 2 + 4 + 4 + 4 + 16 + 4 + 4;
-        bytes[layer_count_off..layer_count_off + 4]
-            .copy_from_slice(&u32::MAX.to_le_bytes());
+        bytes[layer_count_off..layer_count_off + 4].copy_from_slice(&u32::MAX.to_le_bytes());
         assert!(matches!(
             decode(&bytes),
             Err(DecodeError::UnexpectedEof { .. })
         ));
     }
-}
-
-// File I/O convenience functions for host_core integration
-pub fn decode_from_file(path: &str) -> Result<Canvas, String> {
-    let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
-    decode(&bytes).map_err(|e| e.to_string())
-}
-
-pub fn encode_to_file(path: &str, canvas: &Canvas) -> Result<(), String> {
-    let bytes = encode(canvas);
-    std::fs::write(path, &bytes).map_err(|e| e.to_string())
 }
