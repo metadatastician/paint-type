@@ -44,7 +44,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .dynamic,
         .root_module = root_module,
     });
-    b.installArtifact(shared);
+    const install_shared = b.addInstallArtifact(shared, .{});
 
     //--------------------------------------------------------------------------
     // Static library: libpt.a (for the Rust crate)
@@ -98,15 +98,22 @@ pub fn build(b: *std.Build) void {
     // so nothing is left undefined. Bundle where the gap is real, not
     // everywhere.
     static.bundle_compiler_rt = target.result.os.tag != .windows;
-    b.installArtifact(static);
+    const install_static = b.addInstallArtifact(static, .{});
+    // On Windows MSVC, both `.dynamic` (DLL import library) and `.static` emit
+    // `zig-out/lib/pt.lib`. Serialize `install_static` strictly after
+    // `install_shared` so parallel `zig build` never races two concurrent
+    // writers onto `zig-out/lib/pt.lib`, `pt.dll` still lands in
+    // `zig-out/bin/pt.dll`, and the static archive deterministically wins
+    // `zig-out/lib/pt.lib` for `paint_core` (`rustc-link-lib=static=pt`).
+    install_static.step.dependOn(&install_shared.step);
+    b.getInstallStep().dependOn(&install_static.step);
 
     //--------------------------------------------------------------------------
     // `zig build lib` step: builds both libraries explicitly.
     //--------------------------------------------------------------------------
 
     const lib_step = b.step("lib", "Build libpt as both shared and static libraries");
-    lib_step.dependOn(&b.addInstallArtifact(shared, .{}).step);
-    lib_step.dependOn(&b.addInstallArtifact(static, .{}).step);
+    lib_step.dependOn(&install_static.step);
 
     //--------------------------------------------------------------------------
     // Unit tests (in src/main.zig)
