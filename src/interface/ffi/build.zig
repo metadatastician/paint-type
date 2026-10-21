@@ -99,21 +99,29 @@ pub fn build(b: *std.Build) void {
     // everywhere.
     static.bundle_compiler_rt = target.result.os.tag != .windows;
     const install_static = b.addInstallArtifact(static, .{});
-    // On Windows MSVC, both `.dynamic` (DLL import library) and `.static` emit
-    // `zig-out/lib/pt.lib`. Serialize `install_static` strictly after
-    // `install_shared` so parallel `zig build` never races two concurrent
-    // writers onto `zig-out/lib/pt.lib`, `pt.dll` still lands in
-    // `zig-out/bin/pt.dll`, and the static archive deterministically wins
-    // `zig-out/lib/pt.lib` for `paint_core` (`rustc-link-lib=static=pt`).
-    install_static.step.dependOn(&install_shared.step);
-    b.getInstallStep().dependOn(&install_static.step);
 
     //--------------------------------------------------------------------------
     // `zig build lib` step: builds both libraries explicitly.
     //--------------------------------------------------------------------------
 
     const lib_step = b.step("lib", "Build libpt as both shared and static libraries");
-    lib_step.dependOn(&install_static.step);
+    if (target.result.os.tag == .windows) {
+        // On Windows MSVC, both `.dynamic` (DLL import library) and `.static`
+        // emit `zig-out/lib/pt.lib`. Zig's raw static COFF archive breaks
+        // rustc/MSVC `link.exe`, whereas Zig links `pt.dll` cleanly and CI puts
+        // `zig-out/bin` on `PATH`. Serialize `install_shared` strictly AFTER
+        // `install_static` so `zig-out/lib/pt.lib` is deterministically the
+        // clean MSVC import library on 100% of Windows builds instead of a
+        // non-deterministic 50/50 parallel install race.
+        install_shared.step.dependOn(&install_static.step);
+        b.getInstallStep().dependOn(&install_shared.step);
+        lib_step.dependOn(&install_shared.step);
+    } else {
+        b.getInstallStep().dependOn(&install_shared.step);
+        b.getInstallStep().dependOn(&install_static.step);
+        lib_step.dependOn(&install_shared.step);
+        lib_step.dependOn(&install_static.step);
+    }
 
     //--------------------------------------------------------------------------
     // Unit tests (in src/main.zig)
