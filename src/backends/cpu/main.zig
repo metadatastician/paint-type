@@ -19,8 +19,8 @@ const TILE_SCALARS: usize = @as(usize, TILE_SIZE) * TILE_SIZE * TILE_CHANNELS;
 const MAX_CANVAS_DIM: u32 = 16384;
 const MAX_STROKE_STAMPS: u32 = 1 << 20;
 
-/// Normalise a unit interval parameter from an untrusted `f64`:
-/// `NaN` normalises to `default_on_nan`, then clamps to `[0.0, 1.0]`.
+/// Normalize a unit interval parameter from an untrusted `f64`:
+/// NaN returns `default_on_nan` unchanged; other values clamp to `[0, 1]`.
 fn sanitizeUnitF64(v: f64, default_on_nan: f64) f64 {
     if (std.math.isNan(v)) return default_on_nan;
     if (v < 0.0) return 0.0;
@@ -97,6 +97,7 @@ const Canvas = struct {
     history: History = .{},
     viewport: Viewport = .{},
 
+    /// Find a stable layer ID in stack order; zero and unknown IDs return null.
     fn findLayerIndex(self: *const Canvas, layer_id: u64) ?usize {
         if (layer_id == 0) return null;
         for (self.layers.items, 0..) |l, idx| {
@@ -261,6 +262,8 @@ fn pruneHistory(alloc: std.mem.Allocator, c: *Canvas) void {
     }
 }
 
+/// Deep-copy a tile map using `alloc`; the caller owns the map and tile copies.
+/// Allocation errors propagate after releasing partial copies.
 fn cloneTileMap(alloc: std.mem.Allocator, src: *const TileMap) !TileMap {
     var out: TileMap = .empty;
     errdefer {
@@ -278,6 +281,8 @@ fn cloneTileMap(alloc: std.mem.Allocator, src: *const TileMap) !TileMap {
     return out;
 }
 
+/// Deep-copy canvas geometry, appearance, viewport, and layers for history.
+/// The caller owns the snapshot; allocation errors propagate after cleanup.
 fn snapshotCanvas(alloc: std.mem.Allocator, c: *const Canvas) !CanvasSnapshot {
     var snap = CanvasSnapshot{
         .width = c.width,
@@ -318,6 +323,8 @@ fn snapshotByteCost(snap: *const CanvasSnapshot) u64 {
     return bytes;
 }
 
+/// Restore snapshot contents while keeping layer ID allocation monotonic.
+/// Allocation errors propagate and leave the current canvas unchanged.
 fn restoreCanvas(alloc: std.mem.Allocator, c: *Canvas, snap: *const CanvasSnapshot) !void {
     // Build the replacement layer list completely before dropping existing
     // layers so an out-of-memory error leaves `c` untouched.
@@ -365,6 +372,7 @@ fn restoreCanvas(alloc: std.mem.Allocator, c: *Canvas, snap: *const CanvasSnapsh
     c.next_layer_id = @max(c.next_layer_id, snap.next_layer_id);
 }
 
+/// Create the initial history snapshot if absent. Allocation errors propagate.
 fn ensureHistoryInit(alloc: std.mem.Allocator, c: *Canvas) !void {
     if (c.history.nodes.count() != 0) return;
     const root = try alloc.create(HistoryNode);
@@ -406,6 +414,8 @@ const SelectionMask = struct {
     sel: []u8,
 };
 
+/// Decrement a canvas reference count and destroy its layers, history, and
+/// struct when the final reference drops.
 fn releaseCanvas(alloc: std.mem.Allocator, c: *Canvas) void {
     if (c.refs.fetchSub(1, .acq_rel) == 1) {
         c.deinit(alloc);
@@ -413,6 +423,8 @@ fn releaseCanvas(alloc: std.mem.Allocator, c: *Canvas) void {
     }
 }
 
+/// Decrement a selection mask reference count and poison/free its storage when
+/// the final reference drops.
 fn releaseMask(alloc: std.mem.Allocator, m: *SelectionMask) void {
     if (m.refs.fetchSub(1, .acq_rel) == 1) {
         m.magic = PT_MASK_DEAD;
@@ -440,6 +452,8 @@ const Clipboard = struct {
     has: []u8,
 };
 
+/// Decrement a clipboard reference count and free its buffers and struct when
+/// the final reference drops.
 fn releaseClipboard(alloc: std.mem.Allocator, cb: *Clipboard) void {
     if (cb.refs.fetchSub(1, .acq_rel) == 1) {
         alloc.free(cb.px);
@@ -457,6 +471,8 @@ const State = struct {
     clipboard: ?*Clipboard = null,
     lock: dispatcher.SpinMutex = .{},
 
+    /// Replace the active clipboard pointer under the state lock and drop the
+    /// previous clipboard reference once unlocked.
     fn replaceClipboard(self: *State, cb: *Clipboard) void {
         self.lock.lock();
         const old = self.clipboard;
@@ -465,6 +481,7 @@ const State = struct {
         if (old) |prev| releaseClipboard(self.alloc, prev);
     }
 
+    /// Return the active clipboard with an incremented reference count, or null if empty.
     fn acquireClipboard(self: *State) ?*Clipboard {
         self.lock.lock();
         defer self.lock.unlock();
@@ -473,6 +490,7 @@ const State = struct {
         return cb;
     }
 
+    /// Drop registry references to all tracked canvases, masks, and clipboard storage.
     fn deinit(self: *State) void {
         self.lock.lock();
         defer self.lock.unlock();
@@ -494,6 +512,7 @@ const State = struct {
         }
     }
 
+    /// Register a canvas under a monotonic handle ID; allocation errors propagate.
     fn put(self: *State, c: *Canvas) !u64 {
         self.lock.lock();
         defer self.lock.unlock();
@@ -503,6 +522,7 @@ const State = struct {
         return id;
     }
 
+    /// Look up a registered canvas and increment its reference count, or return null.
     fn acquire(self: *State, id: u64) ?*Canvas {
         self.lock.lock();
         defer self.lock.unlock();
@@ -511,6 +531,7 @@ const State = struct {
         return c;
     }
 
+    /// Remove a canvas from the registry, returning its registry reference or null if absent.
     fn removeCanvas(self: *State, id: u64) ?*Canvas {
         self.lock.lock();
         defer self.lock.unlock();
@@ -518,6 +539,8 @@ const State = struct {
         return null;
     }
 
+    /// Register a mask under an opaque monotonic handle ID. Allocation errors
+    /// propagate; the caller retains ownership if registration fails.
     fn trackMask(self: *State, m: *SelectionMask) !u64 {
         self.lock.lock();
         defer self.lock.unlock();
@@ -527,6 +550,8 @@ const State = struct {
         return handle;
     }
 
+    /// Look up a live registered mask handle and increment its reference count,
+    /// returning null for zero, unknown, or poisoned handles.
     fn acquireMask(self: *State, handle: u64) ?*SelectionMask {
         if (handle == 0) return null;
         self.lock.lock();
@@ -537,6 +562,7 @@ const State = struct {
         return m;
     }
 
+    /// Remove a tracked mask, returning its registry reference or null for an unknown handle.
     fn removeMask(self: *State, handle: u64) ?*SelectionMask {
         self.lock.lock();
         defer self.lock.unlock();
@@ -547,6 +573,7 @@ const State = struct {
 
 var state: ?State = null;
 
+/// Return global backend state, lazily initializing it with the C allocator.
 fn requireState() *State {
     if (state == null) {
         state = .{ .alloc = std.heap.c_allocator };
@@ -645,6 +672,9 @@ fn readPixelF32(layer: *const Layer, x: u32, y: u32) [4]f32 {
     return .{ 0, 0, 0, 0 };
 }
 
+/// Composite straight RGBA `above` over `below` with layer opacity and RGB blend mode.
+/// Non-finite opacity/source alpha or nonpositive effective alpha leaves
+/// `below` unchanged; nonpositive or non-finite output alpha returns transparent.
 fn blend(below: [4]f32, above: [4]f32, opacity: f32, mode: BlendMode) [4]f32 {
     if (!std.math.isFinite(opacity) or !std.math.isFinite(above[3])) return below;
     const a_eff: f32 = above[3] * opacity;
@@ -686,6 +716,8 @@ fn quantizeU8(v: f32) u8 {
     return @intFromFloat(std.math.clamp(v, 0.0, 1.0) * 255.0 + 0.5);
 }
 
+/// Write sanitized straight RGBA as half-float channels at canvas-pixel coordinates.
+/// Allocates missing tiles; allocation errors propagate.
 fn writePixelF16(layer: *Layer, alloc: std.mem.Allocator, x: u32, y: u32, c: [4]f32) !void {
     const clean = sanitizeColour(c);
     const tx = x / TILE_SIZE;
@@ -711,6 +743,9 @@ fn writePixelF16(layer: *Layer, alloc: std.mem.Allocator, x: u32, y: u32, c: [4]
 // 3. MVP-1 — Canvas (real implementation)
 //==============================================================================
 
+/// Create a canvas with a Background layer (ID 1) and initial history snapshot.
+/// Writes `out_canvas` on success. Dimensions outside `1..=MAX_CANVAS_DIM`
+/// return `invalid_param`; allocation failures return `out_of_memory`.
 fn cpu_canvas_new(width: u32, height: u32, fmt: u32, bg_r: f32, bg_g: f32, bg_b: f32, bg_a: f32, out_canvas: *u64) callconv(.c) u32 {
     const s = requireState();
     if (width == 0 or height == 0 or width > MAX_CANVAS_DIM or height > MAX_CANVAS_DIM)
@@ -754,6 +789,8 @@ fn cpu_canvas_new(width: u32, height: u32, fmt: u32, bg_r: f32, bg_g: f32, bg_b:
     return @intFromEnum(dispatcher.ResultCode.ok);
 }
 
+/// Change canvas dimensions without moving or removing stored pixels; anchors are ignored.
+/// Unknown canvases or dimensions outside `1..=MAX_CANVAS_DIM` return `invalid_param`.
 fn cpu_canvas_resize(canvas: u64, w: u32, h: u32, _ax: f64, _ay: f64) callconv(.c) u32 {
     _ = _ax;
     _ = _ay;
@@ -769,6 +806,7 @@ fn cpu_canvas_resize(canvas: u64, w: u32, h: u32, _ax: f64, _ay: f64) callconv(.
     return @intFromEnum(dispatcher.ResultCode.ok);
 }
 
+/// Release a canvas and its layers/history. Unknown canvas IDs return `invalid_param`.
 fn cpu_canvas_free(canvas: u64) callconv(.c) u32 {
     const s = requireState();
     const c = s.removeCanvas(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
@@ -780,6 +818,10 @@ fn cpu_canvas_free(canvas: u64) callconv(.c) u32 {
 // 4. MVP-12 — Layers (real implementation, immutable layer IDs)
 //==============================================================================
 
+/// Create an empty layer and write its stable ID to `out_layer`.
+/// A nonzero `has_after` inserts above `after`; otherwise appends at the top.
+/// Unknown canvas/anchor IDs return `invalid_param`; allocations can return
+/// `out_of_memory`.
 fn cpu_layer_new(canvas: u64, after: u64, has_after: u32, name: [*:0]const u8, out_layer: *u64) callconv(.c) u32 {
     const s = requireState();
     const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
@@ -809,6 +851,8 @@ fn cpu_layer_new(canvas: u64, after: u64, has_after: u32, name: [*:0]const u8, o
     return @intFromEnum(dispatcher.ResultCode.ok);
 }
 
+/// Delete a layer and its tiles, allowing the stack to become empty.
+/// Unknown canvas or layer IDs return `invalid_param`.
 fn cpu_layer_delete(canvas: u64, layer: u64) callconv(.c) u32 {
     const s = requireState();
     const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
@@ -822,6 +866,9 @@ fn cpu_layer_delete(canvas: u64, layer: u64) callconv(.c) u32 {
     return @intFromEnum(dispatcher.ResultCode.ok);
 }
 
+/// Move a stable layer ID to a zero-based position from the bottom.
+/// Unknown IDs or out-of-range indices return `invalid_param`; insertion
+/// failure returns `out_of_memory` after attempting to append the layer.
 fn cpu_layer_reorder(canvas: u64, layer: u64, new_index: u32) callconv(.c) u32 {
     const s = requireState();
     const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
@@ -841,6 +888,8 @@ fn cpu_layer_reorder(canvas: u64, layer: u64, new_index: u32) callconv(.c) u32 {
     return @intFromEnum(dispatcher.ResultCode.ok);
 }
 
+/// Set a layer visible for any nonzero flag, hidden for zero.
+/// Unknown canvas or layer IDs return `invalid_param`.
 fn cpu_layer_set_visible(canvas: u64, layer: u64, visible: u32) callconv(.c) u32 {
     const s = requireState();
     const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
@@ -852,6 +901,8 @@ fn cpu_layer_set_visible(canvas: u64, layer: u64, visible: u32) callconv(.c) u32
     return @intFromEnum(dispatcher.ResultCode.ok);
 }
 
+/// Set layer opacity clamped to `[0, 1]`, with NaN treated as full opacity.
+/// Unknown canvas or layer IDs return `invalid_param`.
 fn cpu_layer_set_opacity(canvas: u64, layer: u64, opacity: f64) callconv(.c) u32 {
     const s = requireState();
     const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
@@ -865,6 +916,8 @@ fn cpu_layer_set_opacity(canvas: u64, layer: u64, opacity: f64) callconv(.c) u32
     return @intFromEnum(dispatcher.ResultCode.ok);
 }
 
+/// Set layer blending: 0 = normal, 1 = multiply, 2 = screen.
+/// Unknown IDs or unsupported modes return `invalid_param`.
 fn cpu_layer_set_blend(canvas: u64, layer: u64, mode: u32) callconv(.c) u32 {
     const s = requireState();
     const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
@@ -877,6 +930,9 @@ fn cpu_layer_set_blend(canvas: u64, layer: u64, mode: u32) callconv(.c) u32 {
     return @intFromEnum(dispatcher.ResultCode.ok);
 }
 
+/// Render an in-canvas rectangle as row-major straight-alpha RGBA8 over the background.
+/// Returns `invalid_param` if the rectangle exceeds the canvas, byte-size
+/// arithmetic overflows, or `out_buf_len` is less than `w * h * 4`.
 fn cpu_canvas_render_rgba8_internal(c: *const Canvas, x: u32, y: u32, w: u32, h: u32, out_buf: [*]u8, out_buf_len: usize) u32 {
     if (@as(u64, x) + @as(u64, w) > @as(u64, c.width)) return @intFromEnum(dispatcher.ResultCode.invalid_param);
     if (@as(u64, y) + @as(u64, h) > @as(u64, c.height)) return @intFromEnum(dispatcher.ResultCode.invalid_param);
@@ -922,6 +978,8 @@ fn cpu_canvas_render_rgba8(canvas: u64, x: u32, y: u32, w: u32, h: u32, out_buf:
 // 5. MVP-11 — Viewport (real implementation)
 //==============================================================================
 
+/// Store viewport settings. Unknown canvases, non-finite values, or
+/// nonpositive zoom return `invalid_param`.
 fn cpu_viewport_set(canvas: u64, zoom: f64, px: f64, py: f64, rot: f64) callconv(.c) u32 {
     if (!std.math.isFinite(zoom) or zoom <= 0.0 or
         !std.math.isFinite(px) or !std.math.isFinite(py) or !std.math.isFinite(rot))
@@ -953,6 +1011,10 @@ fn cpu_viewport_fit(canvas: u64, oz: *f64, opx: *f64, opy: *f64) callconv(.c) u3
 // 6. MVP-3 — Pencil & Brush & Eraser & Fill & Selection
 //==============================================================================
 
+/// Write one pixel per finite, in-canvas XY pair without interpolation.
+/// `points_len` counts scalar values and must be at least `2 * n`; invalid
+/// lengths/IDs return `invalid_param`. Allocation failure returns
+/// `out_of_memory` and may leave earlier pixels written.
 fn cpu_tool_stroke_pencil(canvas: u64, layer: u64, n: u32, points: [*]const f64, points_len: usize, colour: *const [4]f32) callconv(.c) u32 {
     const s = requireState();
     const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
@@ -975,6 +1037,9 @@ fn cpu_tool_stroke_pencil(canvas: u64, layer: u64, n: u32, points: [*]const f64,
     return @intFromEnum(dispatcher.ResultCode.ok);
 }
 
+/// Return round-tip coverage for distance measured in radii.
+/// Non-finite distances or distances at least one return zero. Hardness is
+/// clamped to `[0, 1]` (NaN becomes one), with smooth falloff outside the core.
 fn brushAlphaProfile(norm_dist: f64, hardness: f64) f64 {
     if (!std.math.isFinite(norm_dist) or norm_dist >= 1.0) return 0;
     const h = sanitizeUnitF64(hardness, 1.0);
@@ -985,6 +1050,10 @@ fn brushAlphaProfile(norm_dist: f64, hardness: f64) f64 {
     return 1.0 - ss;
 }
 
+/// Blend a round brush dab at canvas-pixel coordinates, clipping to the canvas.
+/// Radius is in pixels. Non-finite coordinates, invalid radius, or nonpositive/
+/// non-finite opacity produce no dab. Tile allocation errors propagate and
+/// may leave a partially painted dab.
 fn stampBrush(
     layer: *Layer,
     alloc: std.mem.Allocator,
@@ -1055,6 +1124,9 @@ inline fn rcode(code: dispatcher.ResultCode) u32 {
     return @intFromEnum(code);
 }
 
+/// Reduce alpha under a round dab while retaining straight RGB, clipped to the canvas.
+/// Radius is in pixels. Invalid radius/strength or non-finite coordinates
+/// produce no dab. Allocation errors propagate after any earlier pixel edits.
 fn stampEraser(
     layer: *Layer,
     alloc: std.mem.Allocator,
@@ -1368,6 +1440,10 @@ fn cpu_io_open(_path: [*:0]const u8, _fmt: ?[*:0]const u8, _out: *u64) callconv(
     return @intFromEnum(dispatcher.ResultCode.not_implemented);
 }
 
+/// Render and overwrite `path` as PNG or PPM; options are ignored.
+/// Unknown canvases/empty paths return `invalid_param`; allocation/encoding
+/// failures return `out_of_memory`, file-write failures return `err`, and
+/// unsupported formats return `not_implemented`. Rendering errors propagate.
 fn cpu_io_save(canvas: u64, path: [*:0]const u8, fmt: [*:0]const u8, _opts: [*:0]const u8) callconv(.c) u32 {
     _ = _opts;
     if (std.mem.span(path).len == 0) return @intFromEnum(dispatcher.ResultCode.invalid_param);
@@ -1402,6 +1478,14 @@ fn cpu_io_save(canvas: u64, path: [*:0]const u8, fmt: [*:0]const u8, _opts: [*:0
     return @intFromEnum(dispatcher.ResultCode.not_implemented);
 }
 
+/// Paint a round stroke through `n` points, with radius in pixels and spacing
+/// as a fraction of diameter (nonpositive spacing defaults to 0.25).
+/// Color is sanitized before painting.
+///
+/// `points_len` counts points. Invalid IDs, lengths, non-finite brush settings,
+/// or invalid radius/derived spacing return `invalid_param`. Non-finite point
+/// segments are skipped; each segment emits at most `MAX_STROKE_STAMPS` dabs.
+/// Allocation failures return `out_of_memory` and may leave partial edits.
 fn cpu_tool_stroke_brush(
     canvas: u64,
     layer: u64,
@@ -1467,6 +1551,14 @@ fn cpu_tool_stroke_brush(
     return @intFromEnum(dispatcher.ResultCode.ok);
 }
 
+/// Erase a round stroke through `n` points, with radius in pixels and spacing
+/// as a fraction of diameter (nonpositive spacing defaults to 0.25).
+/// Only mode 0 is accepted; RGB is retained while alpha decreases.
+///
+/// `points_len` counts points. Invalid IDs, lengths, non-finite brush settings,
+/// or invalid radius/derived spacing return `invalid_param`. Non-finite point
+/// segments are skipped; each segment emits at most `MAX_STROKE_STAMPS` dabs.
+/// Allocation failures return `out_of_memory` and may leave partial edits.
 fn cpu_tool_stroke_eraser(
     canvas: u64,
     layer: u64,
@@ -1541,6 +1633,12 @@ fn cpu_tool_sample_colour(_c: u64, _x: f64, _y: f64, _a: u32, _out: *[4]f32) cal
     return @intFromEnum(dispatcher.ResultCode.not_implemented);
 }
 
+/// Replace pixels matching the seed color, using four-way connectivity when
+/// `contig` is nonzero and the whole layer otherwise. Tolerance is per channel,
+/// clamped to `[0, 16]`; negative or non-finite tolerance becomes zero.
+///
+/// Invalid IDs or a non-finite/out-of-canvas seed return `invalid_param`.
+/// Allocation failures return `out_of_memory` and may leave partial edits.
 fn cpu_tool_fill(canvas: u64, layer: u64, sx: f64, sy: f64, colour: *const [4]f32, tol: f64, contig: u32) callconv(.c) u32 {
     const s = requireState();
     const c = s.acquire(canvas) orelse return rcode(.invalid_param);
@@ -1607,6 +1705,10 @@ fn cpu_tool_fill(canvas: u64, layer: u64, sx: f64, sy: f64, colour: *const [4]f3
     return rcode(.ok);
 }
 
+/// Create a canvas-sized mask for the half-open rectangle between the corners,
+/// clipped to the canvas, and write an owned handle to `out_mask`. Free it via
+/// `cpu_selection_free`. Unknown canvases return `invalid_param`; allocations
+/// can return `out_of_memory`.
 fn cpu_selection_rect(canvas: u64, x0: u32, y0: u32, x1: u32, y1: u32, out_mask: *u64) callconv(.c) u32 {
     const s = requireState();
     const c = s.acquire(canvas) orelse return rcode(.invalid_param);
@@ -1634,6 +1736,10 @@ fn cpu_selection_rect(canvas: u64, x0: u32, y0: u32, x1: u32, y1: u32, out_mask:
     return rcode(.ok);
 }
 
+/// Create a canvas-clipped polygon mask using pixel-center inclusion and write
+/// an owned handle to `out_mask`; free it via `cpu_selection_free`. `pts` must
+/// contain `2 * n` XY scalars. Unknown canvases, fewer than three vertices, or
+/// non-finite vertices return `invalid_param`; allocations can return `out_of_memory`.
 fn cpu_selection_lasso(canvas: u64, n: u32, pts: [*]const f64, out_mask: *u64) callconv(.c) u32 {
     const s = requireState();
     const c = s.acquire(canvas) orelse return rcode(.invalid_param);
@@ -1685,6 +1791,10 @@ fn cpu_selection_lasso(canvas: u64, n: u32, pts: [*]const f64, out_mask: *u64) c
     return rcode(.ok);
 }
 
+/// Create an inverted copy of a live mask and write an owned handle to `out_mask`.
+/// Free it via `cpu_selection_free`. Unknown canvases, unknown/freed mask
+/// handles, or dimension mismatches return `invalid_param`; allocations can
+/// return `out_of_memory`.
 fn cpu_selection_invert(canvas: u64, mask: u64, out_mask: *u64) callconv(.c) u32 {
     const s = requireState();
     const c = s.acquire(canvas) orelse return rcode(.invalid_param);
@@ -1708,6 +1818,7 @@ fn cpu_selection_invert(canvas: u64, mask: u64, out_mask: *u64) callconv(.c) u32
     return rcode(.ok);
 }
 
+/// Free a tracked selection mask. Unknown or already freed handles return `invalid_param`.
 fn cpu_selection_free(mask: u64) callconv(.c) u32 {
     const s = requireState();
     const m = s.removeMask(mask) orelse return rcode(.invalid_param);
@@ -1715,6 +1826,11 @@ fn cpu_selection_free(mask: u64) callconv(.c) u32 {
     return rcode(.ok);
 }
 
+/// Replace the clipboard with selected layer pixels, then clear those pixels.
+/// Requires a live registered mask handle matching the canvas dimensions.
+/// Invalid IDs/masks, dimension mismatches, or empty selections return
+/// `invalid_param`; allocation failure returns `out_of_memory` and may leave a
+/// partial cut.
 fn cpu_selection_cut(canvas: u64, layer: u64, mask: u64) callconv(.c) u32 {
     const s = requireState();
     const c = s.acquire(canvas) orelse return rcode(.invalid_param);
@@ -1746,6 +1862,10 @@ fn cpu_selection_cut(canvas: u64, layer: u64, mask: u64) callconv(.c) u32 {
     return rcode(.ok);
 }
 
+/// Replace the clipboard with selected pixels and their original canvas origin.
+/// Requires a live registered mask handle matching the canvas dimensions.
+/// Invalid IDs/masks, dimension mismatches, or empty selections return
+/// `invalid_param`; allocation failure returns `out_of_memory`.
 fn cpu_selection_copy(canvas: u64, layer: u64, mask: u64) callconv(.c) u32 {
     const s = requireState();
     const c = s.acquire(canvas) orelse return rcode(.invalid_param);
@@ -1765,6 +1885,10 @@ fn cpu_selection_copy(canvas: u64, layer: u64, mask: u64) callconv(.c) u32 {
     return rcode(.ok);
 }
 
+/// Overwrite selected clipboard pixels at their original origin plus rounded
+/// pixel offsets `(dx, dy)`, clipping to the canvas. Invalid IDs, missing
+/// clipboard, or non-finite offsets return `invalid_param`; allocation failure
+/// returns `out_of_memory` and may leave a partial paste.
 fn cpu_selection_paste(canvas: u64, layer: u64, dx: f64, dy: f64) callconv(.c) u32 {
     const s = requireState();
     const c = s.acquire(canvas) orelse return rcode(.invalid_param);
@@ -1866,6 +1990,10 @@ fn cpu_text_rasterise(_c: u64, _l: u64, _ox: f64, _oy: f64, _t: [*:0]const u8, _
     return @intFromEnum(dispatcher.ResultCode.not_implemented);
 }
 
+/// Record a full canvas snapshot as a child of the current history node.
+/// Existing branches are retained until budget pruning removes them. `opcode`
+/// is copied; payload and redo cost are ignored. Unknown canvases return
+/// `invalid_param`; allocation failures return `out_of_memory`.
 fn cpu_history_record(canvas: u64, opcode: [*:0]const u8, _n: u32, _p: [*]const u8, _rc: u64) callconv(.c) u32 {
     _ = _n;
     _ = _p;

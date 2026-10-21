@@ -49,6 +49,8 @@ fn pack(p: [f32; 4]) -> [u16; 4] {
 }
 
 /// Scale a premultiplied pixel uniformly by a clamped layer opacity in `[0, 1]`.
+///
+/// NaN opacity is treated as full opacity.
 #[inline]
 pub(crate) fn scale_premultiplied(px: [u16; 4], opacity: f32) -> [u16; 4] {
     let op = if opacity.is_nan() {
@@ -322,6 +324,10 @@ pub fn xor(src: [u16; 4], dst: [u16; 4]) -> [u16; 4] {
 impl Tile {
     /// Composite `src` over `self` using bulk buffer reads/writes and return
     /// a freshly allocated tile holding the result.
+    ///
+    /// The output grid position is `(0, 0)`; neither input is modified.
+    /// Returns `TileError::LibError` on allocation failure and propagates tile I/O
+    /// errors.
     pub fn composite_over(&self, src: &Tile) -> Result<Tile, TileError> {
         self.composite_over_with_mode(src, 0, 0, 1.0_f32, BlendMode::Normal)
     }
@@ -330,6 +336,10 @@ impl Tile {
     /// `src_opacity` (`[0, 1]`) and `mode`, using single-crossing bulk
     /// `read_buffer` / `write_buffer` operations rather than 12,288 per-pixel
     /// FFI calls.
+    ///
+    /// Returns a new tile without modifying either input. Opacity is clamped to
+    /// `[0, 1]`, with NaN treated as `1`. Allocation failure returns
+    /// `TileError::LibError`; tile read and write errors propagate.
     pub fn composite_over_with_mode(
         &self,
         src: &Tile,

@@ -6,6 +6,9 @@ use crate::error::{PluginError, PluginResult};
 use crate::manifest::{PluginCapability, PluginId, PluginManifest, PluginType};
 use crate::sandbox::WasmSandbox;
 
+/// Require exactly `width * height * 4` RGBA8 bytes, allowing empty regions.
+///
+/// Returns `PluginError::PluginError` for size overflow or a length mismatch.
 fn check_rgba8_dimensions(input: &[u8], width: u32, height: u32) -> PluginResult<()> {
     let expected = (width as usize)
         .checked_mul(height as usize)
@@ -134,6 +137,11 @@ impl EffectPlugin for WasmEffectPlugin {
         self.sandbox.id()
     }
 
+    /// Invert RGB channels while preserving alpha, including RGB of transparent pixels.
+    ///
+    /// Returns `PluginError::PluginError` if not loaded, if dimensions overflow,
+    /// or if the input length differs from `width * height * 4`. This placeholder
+    /// returns transformed bytes without executing WASM.
     fn apply(&self, input: &[u8], width: u32, height: u32) -> PluginResult<Vec<u8>> {
         if !self.sandbox.is_loaded() {
             return Err(PluginError::PluginError("Plugin not loaded".to_string()));
@@ -179,6 +187,11 @@ impl BrightnessContrastEffect {
 }
 
 impl EffectPlugin for BrightnessContrastEffect {
+    /// Adjust RGB contrast around midgray and add brightness in 8-bit channel units.
+    ///
+    /// Clamps the result to RGBA8 and preserves alpha. Returns
+    /// `PluginError::PluginError` if dimensions overflow or the input length
+    /// differs from `width * height * 4`; empty regions are accepted.
     fn apply(&self, input: &[u8], width: u32, height: u32) -> PluginResult<Vec<u8>> {
         check_rgba8_dimensions(input, width, height)?;
         let mut output = Vec::with_capacity(input.len());
@@ -232,6 +245,7 @@ pub struct InvertColourEffect {
 }
 
 impl InvertColourEffect {
+    /// Create the built-in RGB inversion effect with its stable plugin identifier.
     pub fn new() -> Self {
         Self {
             id: PluginId::new("com.paint-type.effects.invert"),
@@ -246,6 +260,10 @@ impl Default for InvertColourEffect {
 }
 
 impl EffectPlugin for InvertColourEffect {
+    /// Invert RGB, preserving alpha and clearing RGB of fully transparent pixels.
+    ///
+    /// Returns `PluginError::PluginError` if dimensions overflow or the input
+    /// length differs from `width * height * 4`; empty regions are accepted.
     fn apply(&self, input: &[u8], width: u32, height: u32) -> PluginResult<Vec<u8>> {
         check_rgba8_dimensions(input, width, height)?;
         let mut output = Vec::with_capacity(input.len());
@@ -283,6 +301,7 @@ pub struct GrayscaleEffect {
 }
 
 impl GrayscaleEffect {
+    /// Create the built-in Rec.709 grayscale effect with its stable plugin identifier.
     pub fn new() -> Self {
         Self {
             id: PluginId::new("com.paint-type.effects.grayscale"),
@@ -297,6 +316,10 @@ impl Default for GrayscaleEffect {
 }
 
 impl EffectPlugin for GrayscaleEffect {
+    /// Replace RGB with rounded Rec.709 luminance, preserving alpha.
+    ///
+    /// Returns `PluginError::PluginError` if dimensions overflow or the input
+    /// length differs from `width * height * 4`; empty regions are accepted.
     fn apply(&self, input: &[u8], width: u32, height: u32) -> PluginResult<Vec<u8>> {
         check_rgba8_dimensions(input, width, height)?;
         let mut output = Vec::with_capacity(input.len());

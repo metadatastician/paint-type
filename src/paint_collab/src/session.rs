@@ -156,6 +156,10 @@ impl Session {
     /// Apply a LOCAL paint: gate on `Paint`, stamp a fresh dot, apply locally,
     /// and return the `Op` to broadcast. Returns `Denied` without mutating
     /// anything if this peer may not paint.
+    ///
+    /// Broadcasts the returned operation before returning. Invalid pixel indices
+    /// return `Tile(IndexOutOfRange)`; an exhausted Lamport clock returns
+    /// `ClockOverflow`. Both checks precede tile mutation and broadcast.
     pub fn local_paint(
         &mut self,
         coord: (i32, i32),
@@ -187,6 +191,9 @@ impl Session {
 
     /// Apply a LOCAL layer mutation: gate on `LayerMutate`, bump the local
     /// sequence, broadcast.
+    ///
+    /// Returns the broadcast operation, or `Denied` / `ClockOverflow` before
+    /// changing the sequence or broadcasting.
     pub fn local_layer_mutate(
         &mut self,
         transport: &mut dyn Transport,
@@ -206,6 +213,10 @@ impl Session {
 
     /// Apply a REMOTE op authenticated as coming from `envelope_sender`.
     /// Rejects sender-spoofed ops before mutating Lamport clocks or tiles.
+    ///
+    /// The caller must authenticate `envelope_sender`. Returns `SpoofedOriginator`
+    /// for a mismatch and otherwise propagates permission, bounds, and clock
+    /// errors from [`Session::receive`].
     pub fn receive_authenticated(
         &mut self,
         envelope_sender: PeerId,
@@ -224,6 +235,12 @@ impl Session {
     /// Apply a REMOTE op. Re-checks the *originator's* capability and
     /// bounds-checks pixel indices BEFORE advancing `self.lamport` so a
     /// malformed remote op cannot inflate the local Lamport clock to `u64::MAX`.
+    ///
+    /// The caller must trust or separately authenticate the claimed originator.
+    /// Returns `Denied` for missing capability, `Tile(IndexOutOfRange)` for an
+    /// invalid pixel index, or `ClockOverflow` for a timestamp or sequence equal
+    /// to `u64::MAX`. Accepted paint updates the Lamport clock to the maximum
+    /// seen value; layer mutations update the layer sequence. Nothing is broadcast.
     pub fn receive(&mut self, op: Op) -> Result<(), SessionError> {
         self.perms.check(op.originator(), op.required_capability())?;
         match op {

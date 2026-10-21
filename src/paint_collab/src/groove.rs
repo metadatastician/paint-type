@@ -200,6 +200,7 @@ impl GrooveManifest {
     }
 }
 
+/// Encode a quoted JSON string, escaping quotes, backslashes, and control characters.
 fn jstr(s: &str) -> String {
     let mut out = String::with_capacity(s.len() + 2);
     out.push('"');

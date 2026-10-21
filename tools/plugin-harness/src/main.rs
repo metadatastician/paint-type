@@ -226,6 +226,9 @@ struct TestResult {
 }
 
 /// Validate a plugin manifest
+///
+/// Returns one aggregated error for missing required fields, an unsafe ID, or
+/// a plugin type other than `effect`/`tool`. Does not check WASM file existence.
 fn validate_manifest(manifest: &PluginManifest) -> Result<()> {
     let mut errors = Vec::new();
 
@@ -273,6 +276,9 @@ fn validate_manifest(manifest: &PluginManifest) -> Result<()> {
 }
 
 /// Load a plugin manifest from a TOML file
+///
+/// Limited to 1 MiB. File I/O, UTF-8, size, TOML parse, and manifest validation
+/// errors propagate.
 fn load_plugin_manifest(path: &Path) -> Result<PluginManifest> {
     use std::io::Read;
     const MAX_BYTES: u64 = 1024 * 1024;

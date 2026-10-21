@@ -59,7 +59,9 @@ impl WasmSandbox {
         self.granted_capabilities.contains(&cap)
     }
 
-    /// Load the plugin WASM module
+    /// Mark the plugin loaded after checking path existence and validating the
+    /// filename when it is UTF-8. Returns `ManifestValidation` for an invalid
+    /// filename or `IoError` for a missing path. Does not read or execute WASM.
     pub fn load(&mut self, wasm_path: impl AsRef<Path>) -> PluginResult<()> {
         let path = wasm_path.as_ref();
         if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
@@ -91,7 +93,10 @@ impl WasmSandbox {
         self.loaded
     }
 
-    /// Invoke a plugin function inside the sandbox
+    /// Return a copy of `args` as a placeholder invocation result.
+    ///
+    /// Returns `PluginError::PluginError` if not loaded or `function` is empty.
+    /// No WASM function is executed.
     pub fn invoke(&self, function: &str, args: &[u8]) -> PluginResult<Vec<u8>> {
         if !self.loaded {
             return Err(PluginError::PluginError("Plugin not loaded".to_string()));
@@ -156,6 +161,8 @@ impl SafeWasmSandbox {
     }
 
     /// Load the plugin
+    ///
+    /// Delegates to [`WasmSandbox::load`], propagating its path errors.
     pub fn load(&self, wasm_path: impl AsRef<Path>) -> PluginResult<()> {
         self.inner
             .lock()
@@ -180,6 +187,9 @@ impl SafeWasmSandbox {
     }
 
     /// Invoke a function
+    ///
+    /// Returns the placeholder byte echo from [`WasmSandbox::invoke`], including
+    /// its unloaded-plugin and empty-function errors.
     pub fn invoke(&self, function: &str, args: &[u8]) -> PluginResult<Vec<u8>> {
         self.inner
             .lock()
@@ -188,6 +198,9 @@ impl SafeWasmSandbox {
     }
 
     /// Grant a capability
+    ///
+    /// Returns `ManifestValidation` if the capability was not requested in the
+    /// manifest; repeated grants succeed without adding duplicates.
     pub fn grant_capability(&self, cap: PluginCapability) -> PluginResult<()> {
         self.inner
             .lock()
