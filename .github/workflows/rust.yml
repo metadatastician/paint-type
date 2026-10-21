@@ -2,10 +2,8 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
-# rust-ci.yml — Cargo build, test, clippy, and fmt for paint-type.
-# paint-type's Cargo.toml lives at src/paint_core/Cargo.toml; the workflow
-# builds libpt (Zig static library) first so cargo can link it, then
-# runs check / fmt / clippy / test against the paint_core crate.
+# rust.yml — Cargo build, test, clippy, fmt, and scaffold verification across
+# all standalone Rust crates in src/* and tools/*.
 name: Rust CI
 on:
   pull_request:
@@ -20,6 +18,7 @@ concurrency:
 permissions:
   actions: read
   contents: read
+
 jobs:
   check:
     name: Cargo check + clippy + fmt
@@ -28,8 +27,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable # stable
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
         with:
+          toolchain: stable
           components: clippy, rustfmt
       - name: Install Zig 0.15
         uses: mlugg/setup-zig@v2.2.1
@@ -38,29 +38,74 @@ jobs:
       - name: Cache cargo registry and build
         uses: Swatinem/rust-cache@v2.9.2
         with:
-          workspaces: src/paint_core
+          workspaces: |
+            src/ephapax
+            src/ptype_format
+            src/paint_core
+            src/paint_collab
+            src/plugins
+            src/host_core
+            tools/abi-codegen
+            tools/plugin-wizard
+            tools/plugin-minter
+            tools/plugin-harness
+            tools/plugin-configurator
+            tools/plugin-provisioner
       - name: Build libpt (Zig static library)
         run: |
           cd src/interface/ffi
           zig build
-      - name: Cargo check
-        working-directory: src/paint_core
-        run: cargo check --all-targets
-      - name: Cargo fmt
-        working-directory: src/paint_core
-        run: cargo fmt --all -- --check
+      - name: Cargo check across all crates
+        run: |
+          set -euo pipefail
+          for crate in \
+            src/ephapax \
+            src/ptype_format \
+            src/paint_core \
+            src/paint_collab \
+            src/plugins \
+            src/host_core \
+            tools/abi-codegen \
+            tools/plugin-wizard \
+            tools/plugin-minter \
+            tools/plugin-harness \
+            tools/plugin-configurator \
+            tools/plugin-provisioner
+          do
+            echo "=== cargo check: $crate ==="
+            cargo check --manifest-path "$crate/Cargo.toml" --all-targets
+          done
       - name: Cargo clippy
-        working-directory: src/paint_core
-        run: cargo clippy --all-targets -- -D warnings
+        run: |
+          set -euo pipefail
+          for crate in \
+            src/ephapax \
+            src/ptype_format \
+            src/paint_core \
+            src/paint_collab \
+            src/plugins \
+            src/host_core \
+            tools/abi-codegen
+          do
+            echo "=== cargo clippy: $crate ==="
+            cargo clippy --manifest-path "$crate/Cargo.toml" --all-targets -- -D warnings
+          done
+      - name: Cargo fmt check
+        run: |
+          set -euo pipefail
+          for crate in src/ephapax src/ptype_format src/paint_core; do
+            cargo fmt --manifest-path "$crate/Cargo.toml" --all -- --check
+          done
   test:
     name: Cargo test
     runs-on: ubuntu-latest
-    needs: check
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable # stable
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: stable
       - name: Install Zig 0.15
         uses: mlugg/setup-zig@v2.2.1
         with:
@@ -68,18 +113,62 @@ jobs:
       - name: Cache cargo registry and build
         uses: Swatinem/rust-cache@v2.9.2
         with:
-          workspaces: src/paint_core
+          workspaces: |
+            src/ephapax
+            src/ptype_format
+            src/paint_core
+            src/paint_collab
+            src/plugins
+            src/host_core
+            tools/abi-codegen
+            tools/plugin-wizard
+            tools/plugin-minter
+            tools/plugin-harness
+            tools/plugin-configurator
+            tools/plugin-provisioner
       - name: Build libpt (Zig static library)
         run: |
           cd src/interface/ffi
           zig build
-      - name: Run tests
-        working-directory: src/paint_core
-        run: cargo test --all-targets
+      - name: Run tests across all standalone crates
+        run: |
+          set -euo pipefail
+          for crate in \
+            src/ephapax \
+            src/ptype_format \
+            src/paint_core \
+            src/paint_collab \
+            src/plugins \
+            src/host_core \
+            tools/abi-codegen \
+            tools/plugin-wizard \
+            tools/plugin-minter \
+            tools/plugin-harness \
+            tools/plugin-configurator \
+            tools/plugin-provisioner
+          do
+            echo "=== cargo test: $crate ==="
+            cargo test --manifest-path "$crate/Cargo.toml" --all-targets
+          done
+      - name: Smoke-test plugin-wizard non-interactive scaffolding
+        run: |
+          set -euo pipefail
+          OUT_DIR="$(mktemp -d)"
+          cargo run --manifest-path tools/plugin-wizard/Cargo.toml -- \
+            --non-interactive \
+            --type effect \
+            --language rust \
+            --id com.paint_type.test_blur \
+            --name "Test Blur" \
+            --description "Smoke-tested effect scaffold" \
+            --output "$OUT_DIR/rust-effect"
+          test -f "$OUT_DIR/rust-effect/plugin.toml"
+          rm -rf "$OUT_DIR"
       - name: Write summary
         if: always()
         run: |
           echo "## Rust CI Results" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **cargo check**: passed" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **cargo test**: completed" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **cargo check (12 crates)**: passed" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **cargo clippy (7 core/interface crates, -D warnings)**: passed" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **cargo test (12 crates + wizard smoke)**: completed" >> "$GITHUB_STEP_SUMMARY"

@@ -17,7 +17,7 @@
 (meta
   (version "1.1.0")
   (project "paint.type")
-  (last-updated "2026-07-26")
+  (last-updated "2026-10-21")
   (architecture-decisions
     ("ADR-0001 — Adopt Rhodium Standard Repository (RSR) template (docs/decisions/0001-adopt-rsr-standard.adoc)")
     ("Idris2 for ABI definitions — dependent types prove pointer non-nullability, layout correctness, FFI safety. Formal proofs in verification/proofs/idris2/")

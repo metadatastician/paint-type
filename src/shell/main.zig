@@ -106,7 +106,7 @@ pub fn main() u8 {
 
     // If smoke mode is requested, schedule a GTK timeout to quit after 800ms
     if (smokeRequested()) {
-        _ = gtk.g_timeout_add(800, @ptrCast(&onSmokeTimeout), null);
+        _ = gtk.g_timeout_add(800, onSmokeTimeout, null);
     }
 
     // Run the event loop. This blocks until the window is closed.

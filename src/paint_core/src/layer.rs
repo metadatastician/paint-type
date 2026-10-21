@@ -4,13 +4,6 @@
 //
 // A `Layer` owns a sparse collection of `Tile`s keyed by `TileCoord`.
 // A `LayerStack` is a vertical stack of layers (index 0 = bottom).
-// The compositing module (`composite::flatten_layer_stack`) consumes a
-// flat per-pixel stack; this module is the structural counterpart that
-// names layers, controls visibility / opacity, and orders them.
-//
-// At v0.1.0 the FFI surface (`pt_layer_*`) is NOT yet defined; this
-// module is purely Rust. A follow-up PR will expose `pt_layer_*` exports
-// in libpt once the layer model has stabilised. See issue #12.
 //
 // Invariants:
 //   - Each `Layer` owns its `Tile`s linearly (Tile is !Copy, !Clone);
@@ -19,7 +12,23 @@
 //     (`LayerId`), not by position. Reorder operations preserve IDs.
 
 use crate::{Tile, TileError};
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
+
+//==============================================================================
+// BlendMode — separable per-layer compositing mode
+//==============================================================================
+
+/// Blend mode applied when compositing a [`Layer`] onto lower layers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum BlendMode {
+    /// Porter-Duff source-over (`Normal`).
+    #[default]
+    Normal = 0,
+    /// Separable darkening product (`Multiply`).
+    Multiply = 1,
+    /// Separable lightening inverse product (`Screen`).
+    Screen = 2,
+}
 
 //==============================================================================
 // TileCoord — public, hashable position on the canvas grid
@@ -28,7 +37,7 @@ use std::collections::HashMap;
 /// Position of a tile in the canvas grid, in **tile units** (not pixel
 /// units). Mirrors `Abi.Types.TileCoord` on the Idris2 side. Tile (1, 0)
 /// starts at pixel (64, 0).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct TileCoord {
     /// Horizontal tile index.
     pub x: u32,
@@ -69,15 +78,17 @@ impl LayerId {
 ///
 /// Owns its `Tile`s. `opacity` is in `[0.0, 1.0]` and clamped on `set_opacity`.
 /// `visible` is a boolean toggle that callers can use to skip layers when
-/// flattening; this struct stores the flag but does not enforce it (the
-/// renderer / flatten step looks at it).
+/// flattening; this struct stores the flag and both `LayerStack::flatten` and
+/// `render::render_region` enforce visibility, opacity, and blend mode.
 pub struct Layer {
     /// Human-readable name (no uniqueness requirement; callers can
     /// dedupe if they want).
     pub name: String,
-    /// Opacity multiplier applied to this layer's alpha channel when
+    /// Opacity multiplier applied to this layer's channels when
     /// compositing. `[0.0, 1.0]`. Clamped on `set_opacity`.
     opacity: f32,
+    /// Blend mode applied when compositing this layer onto lower layers.
+    pub blend: BlendMode,
     /// Whether the layer participates in compositing.
     pub visible: bool,
     /// Sparse tile map keyed by canvas-grid coordinate.
@@ -86,11 +97,12 @@ pub struct Layer {
 
 impl Layer {
     /// Create a new, empty layer with the given name. Defaults: opacity
-    /// 1.0, visible.
+    /// 1.0, `BlendMode::Normal`, visible.
     pub fn new(name: impl Into<String>) -> Self {
         Self {
             name: name.into(),
             opacity: 1.0,
+            blend: BlendMode::Normal,
             visible: true,
             tiles: HashMap::new(),
         }
@@ -234,6 +246,11 @@ impl LayerStack {
         self.layers.get(position)
     }
 
+    /// Read-only access to the `LayerId` at `position` (0 = bottom).
+    pub fn id_at(&self, position: usize) -> Option<LayerId> {
+        self.ids.get(position).copied()
+    }
+
     /// Iterate over layers from bottom to top.
     pub fn iter(&self) -> impl Iterator<Item = (LayerId, &Layer)> {
         self.ids.iter().copied().zip(self.layers.iter())
@@ -269,52 +286,51 @@ impl LayerStack {
     }
 
     /// Flatten the stack: for each tile coordinate that appears in any
-    /// visible layer, produce the bottom-up composite of the per-tile
-    /// stack. Returns a fresh `Layer` named `name` whose tiles are
-    /// freshly-allocated composites.
-    ///
-    /// Layers with `visible == false` or `opacity == 0.0` are skipped.
-    /// A NaN opacity is treated as 1.0 (matches `Layer::set_opacity`).
-    ///
-    /// Errors: returns the first `TileError` produced by an underlying
-    /// `Tile::composite_over` call; partial results are dropped.
+    /// visible non-zero-opacity layer, produce the bottom-up composite of the
+    /// per-tile stack honouring each layer's fractional `opacity()` and
+    /// `blend` mode, preserving tile grid coordinates `(coord.x, coord.y)`.
     pub fn flatten(&self, name: impl Into<String>) -> Result<Layer, LayerStackError> {
-        // Collect the set of coords touched by any visible layer.
-        let mut coords: Vec<TileCoord> = Vec::new();
+        let mut coords: BTreeSet<TileCoord> = BTreeSet::new();
         for layer in &self.layers {
-            if !layer.visible || layer.opacity == 0.0 {
+            let op = if layer.opacity.is_nan() {
+                1.0
+            } else {
+                layer.opacity.clamp(0.0, 1.0)
+            };
+            if !layer.visible || op <= 0.0 {
                 continue;
             }
             for (c, _) in layer.tiles() {
-                if !coords.contains(&c) {
-                    coords.push(c);
-                }
+                coords.insert(c);
             }
         }
 
         let mut out = Layer::new(name);
         for coord in coords {
-            // Composite bottom-up. We can't easily get an owned starting
-            // tile; instead we walk visible layers and for each layer that
-            // has a tile at `coord`, composite_over the running result.
             let mut acc: Option<Tile> = None;
             for layer in &self.layers {
-                if !layer.visible || layer.opacity == 0.0 {
+                let op = if layer.opacity.is_nan() {
+                    1.0
+                } else {
+                    layer.opacity.clamp(0.0, 1.0)
+                };
+                if !layer.visible || op <= 0.0 {
                     continue;
                 }
                 if let Some(src) = layer.tile(coord) {
                     let new_acc = match acc {
                         None => {
-                            // First contributor — allocate a fresh tile and
-                            // copy `src` into it (so we own the running
-                            // accumulator). Since we don't have a copy-tile
-                            // FFI, simulate via composite_over against an
-                            // empty (transparent) base.
                             let base = Tile::alloc(coord.x, coord.y)
                                 .ok_or(LayerStackError::Tile(TileError::LibError))?;
-                            base.composite_over(src)?
+                            base.composite_over_with_mode(src, coord.x, coord.y, op, layer.blend)?
                         }
-                        Some(running) => running.composite_over(src)?,
+                        Some(running) => running.composite_over_with_mode(
+                            src,
+                            coord.x,
+                            coord.y,
+                            op,
+                            layer.blend,
+                        )?,
                     };
                     acc = Some(new_acc);
                 }
@@ -340,6 +356,7 @@ mod tests {
         let l = Layer::new("background");
         assert_eq!(l.name, "background");
         assert!((l.opacity() - 1.0).abs() < 1e-6);
+        assert_eq!(l.blend, BlendMode::Normal);
         assert!(l.visible);
         assert_eq!(l.tile_count(), 0);
         assert!(l.is_empty());
@@ -406,7 +423,6 @@ mod tests {
         s.reorder_to(bg, 1).expect("reorder");
         assert_eq!(s.position_of(bg), Some(1));
         assert_eq!(s.position_of(fg), Some(0));
-        // Names still match the original IDs.
         assert_eq!(s.get(bg).map(|l| l.name.as_str()), Some("bg"));
         assert_eq!(s.get(fg).map(|l| l.name.as_str()), Some("fg"));
     }
@@ -426,7 +442,6 @@ mod tests {
     fn stack_delete_unknown_id_is_none() {
         let mut s = LayerStack::new();
         let _id = s.push(Layer::new("a"));
-        // Construct an ID we never issued.
         let fake = LayerId(99_999);
         assert!(s.delete(fake).is_none());
     }
@@ -470,13 +485,12 @@ mod tests {
     #[test]
     fn stack_flatten_skips_invisible_layers() {
         let mut s = LayerStack::new();
-        // Bottom: opaque red filled tile at (0,0)
         let mut bg = Layer::new("bg");
         let bg_tile = Tile::alloc(0, 0).unwrap();
         bg_tile.fill_f32(1.0, 0.0, 0.0, 1.0).unwrap();
         bg.put_tile(TileCoord::new(0, 0), bg_tile);
         s.push(bg);
-        // Top: opaque blue, but visible=false
+
         let mut fg = Layer::new("fg");
         fg.visible = false;
         let fg_tile = Tile::alloc(0, 0).unwrap();
@@ -502,7 +516,7 @@ mod tests {
         bg_tile.fill_f32(1.0, 0.0, 0.0, 1.0).unwrap();
         bg.put_tile(TileCoord::new(0, 0), bg_tile);
         s.push(bg);
-        // Top layer with opacity 0 still skipped.
+
         let mut fg = Layer::new("fg");
         fg.set_opacity(0.0);
         let fg_tile = Tile::alloc(0, 0).unwrap();
@@ -510,10 +524,42 @@ mod tests {
         fg.put_tile(TileCoord::new(0, 0), fg_tile);
         s.push(fg);
 
-        let flat = s.flatten("flat").expect("flatten");
+        let flat = s.flatten("flat").expect("flat");
         let result_tile = flat.tile(TileCoord::new(0, 0)).expect("tile present");
         let pixel = result_tile.read_pixel_f32(0, 0).expect("read pixel");
         assert!((pixel[0] - 1.0).abs() < 1e-2);
         assert!(pixel[2].abs() < 1e-2);
+    }
+
+    #[test]
+    fn stack_flatten_honours_fractional_layer_opacity() {
+        let mut s = LayerStack::new();
+        let mut bg = Layer::new("bg");
+        let bg_tile = Tile::alloc(2, 4).unwrap();
+        bg_tile.fill_f32(1.0, 0.0, 0.0, 1.0).unwrap();
+        bg.put_tile(TileCoord::new(2, 4), bg_tile);
+        s.push(bg);
+
+        let mut fg = Layer::new("fg");
+        fg.set_opacity(0.5);
+        let fg_tile = Tile::alloc(2, 4).unwrap();
+        fg_tile.fill_f32(0.0, 0.0, 1.0, 1.0).unwrap();
+        fg.put_tile(TileCoord::new(2, 4), fg_tile);
+        s.push(fg);
+
+        let flat = s.flatten("flat").expect("flatten");
+        let result_tile = flat.tile(TileCoord::new(2, 4)).expect("tile present");
+        let pixel = result_tile.read_pixel_f32(32, 32).expect("read pixel");
+        assert!(
+            (pixel[0] - 0.5).abs() < 1e-2,
+            "expected R ~= 0.5 under 50% blue over red, got {}",
+            pixel[0]
+        );
+        assert!(
+            (pixel[2] - 0.5).abs() < 1e-2,
+            "expected B ~= 0.5 under 50% blue over red, got {}",
+            pixel[2]
+        );
+        assert!((pixel[3] - 1.0).abs() < 1e-2);
     }
 }

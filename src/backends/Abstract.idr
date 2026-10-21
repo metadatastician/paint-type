@@ -305,6 +305,10 @@ namespace Op
   CanvasResize : Type
   CanvasResize = (c : CanvasId) -> (w : Nat) -> (h : Nat) -> (anchorX : Double) -> (anchorY : Double) -> Result ()
 
+  public export
+  CanvasFree   : Type
+  CanvasFree   = (c : CanvasId) -> Result ()
+
   -- MVP-2: Open / Save
   public export
   IoOpen : Type
@@ -362,6 +366,10 @@ namespace Op
   public export
   SelectionPaste : Type
   SelectionPaste = (c : CanvasId) -> (layer : LayerId) -> (dst : Point) -> Result ()
+
+  public export
+  SelectionFree : Type
+  SelectionFree = (m : SelectionMaskId) -> Result ()
 
   -- MVP-8: Shapes
   public export
@@ -468,6 +476,7 @@ record BackendImpl where
   -- MVP-1
   canvasNew        : Op.CanvasNew
   canvasResize     : Op.CanvasResize
+  canvasFree       : Op.CanvasFree
 
   -- MVP-2
   ioOpen           : Op.IoOpen
@@ -493,6 +502,7 @@ record BackendImpl where
   selectionCut     : Op.SelectionCut
   selectionCopy    : Op.SelectionCopy
   selectionPaste   : Op.SelectionPaste
+  selectionFree    : Op.SelectionFree
 
   -- MVP-8
   shapeLine        : Op.ShapeLine
@@ -550,6 +560,7 @@ mvpEpsilons : List OpEpsilon
 mvpEpsilons =
   [ MkOpEpsilon "canvas_new"          MaxAbsDiff       0.0
   , MkOpEpsilon "canvas_resize"       MaxAbsDiff       0.0
+  , MkOpEpsilon "canvas_free"         MaxAbsDiff       0.0
   , MkOpEpsilon "io_open"             MaxAbsDiff       0.0
   , MkOpEpsilon "io_save"             MaxAbsDiff       0.0
   , MkOpEpsilon "tool_stroke_pencil"  MaxAbsDiff       0.0   -- pixel-identical
@@ -563,6 +574,7 @@ mvpEpsilons =
   , MkOpEpsilon "selection_cut"       MaxAbsDiff       0.0
   , MkOpEpsilon "selection_copy"      MaxAbsDiff       0.0
   , MkOpEpsilon "selection_paste"     MaxAbsDiff       0.0
+  , MkOpEpsilon "selection_free"      MaxAbsDiff       0.0
   , MkOpEpsilon "shape_line"          MaxAbsDiff       0.0
   , MkOpEpsilon "shape_rectangle"     MaxAbsDiff       0.0
   , MkOpEpsilon "shape_ellipse"       MaxAbsDiff       0.5   -- midpoint ellipse may differ at sub-pixel edges

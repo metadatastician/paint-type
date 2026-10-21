@@ -43,18 +43,6 @@ check() {
     fi
 }
 
-# check_status <label> <expected-http-status> <actual-http-status>
-check_status() {
-    local name="$1" expected="$2" actual="$3"
-    if [ "$actual" = "$expected" ]; then
-        green "  PASS: $name (HTTP $actual)"
-        PASS=$((PASS + 1))
-    else
-        red "  FAIL: $name (expected HTTP $expected, got HTTP $actual)"
-        FAIL=$((FAIL + 1))
-    fi
-}
-
 # skip <label> <reason>
 skip_test() {
     yellow "  SKIP: $1 ($2)"
@@ -134,6 +122,79 @@ else
     else
         fail_test "shell build failed (see /tmp/pt-shell-build.log)"
         tail -5 /tmp/pt-shell-build.log || true
+    fi
+fi
+
+# ═══════════════════════════════════════════════════════════════════════
+# Section 2: Real-repository pipeline & scenario checks
+# ═══════════════════════════════════════════════════════════════════════
+# Executed only when running inside the full repository tree (kept separate
+# from Section 1's isolated synthetic shell fixture in shell_e2e_harness_test.sh).
+if [ -f "$PROJECT_DIR/src/interface/ffi/build.zig" ]; then
+    echo ""
+    bold "Section 2: FFI, harness, Groove manifest, and Rust scenario suite"
+
+    if command -v zig >/dev/null 2>&1; then
+        if (cd "$PROJECT_DIR" && zig build test) >/tmp/pt-root-zig-test.log 2>&1; then
+            green "  PASS: root Zig build & tests"
+            PASS=$((PASS + 1))
+        else
+            fail_test "root Zig tests failed (see /tmp/pt-root-zig-test.log)"
+            tail -10 /tmp/pt-root-zig-test.log || true
+        fi
+
+        if (cd "$PROJECT_DIR/src/interface/ffi" && zig build && zig build test) >/tmp/pt-ffi-zig-test.log 2>&1; then
+            green "  PASS: FFI Zig library build & tests"
+            PASS=$((PASS + 1))
+        else
+            fail_test "FFI Zig build/tests failed (see /tmp/pt-ffi-zig-test.log)"
+            tail -10 /tmp/pt-ffi-zig-test.log || true
+        fi
+
+        if bash "$PROJECT_DIR/tests/e2e/scenario_libpt_artifacts.sh" "$PROJECT_DIR" >/tmp/pt-scenario-libpt.log 2>&1; then
+            green "  PASS: scenario_libpt_artifacts"
+            PASS=$((PASS + 1))
+        else
+            fail_test "scenario_libpt_artifacts failed"
+            tail -10 /tmp/pt-scenario-libpt.log || true
+        fi
+    else
+        skip_test "Zig FFI & artifact scenarios" "zig not found"
+    fi
+
+    if bash "$PROJECT_DIR/tests/e2e/shell_e2e_harness_test.sh" >/tmp/pt-shell-harness-unit.log 2>&1; then
+        green "  PASS: shell_e2e_harness_test"
+        PASS=$((PASS + 1))
+    else
+        fail_test "shell_e2e_harness_test failed"
+        tail -15 /tmp/pt-shell-harness-unit.log || true
+    fi
+
+    if bash "$PROJECT_DIR/scripts/validate_groove_manifest.sh" >/tmp/pt-groove-e2e.log 2>&1; then
+        green "  PASS: validate_groove_manifest"
+        PASS=$((PASS + 1))
+    else
+        fail_test "validate_groove_manifest failed"
+        tail -10 /tmp/pt-groove-e2e.log || true
+    fi
+
+    if command -v cargo >/dev/null 2>&1; then
+        for rust_scenario in \
+            "$PROJECT_DIR/tests/e2e/scenario_pipeline_dogfood.sh" \
+            "$PROJECT_DIR/tests/e2e/scenario_host_headless.sh" \
+            "$PROJECT_DIR/tests/e2e/collaboration_session_test.sh"
+        do
+            sname="$(basename "$rust_scenario" .sh)"
+            if bash "$rust_scenario" "$PROJECT_DIR" >"/tmp/pt-${sname}.log" 2>&1; then
+                green "  PASS: $sname"
+                PASS=$((PASS + 1))
+            else
+                fail_test "$sname failed"
+                tail -20 "/tmp/pt-${sname}.log" || true
+            fi
+        done
+    else
+        skip_test "Rust E2E scenarios" "cargo not found"
     fi
 fi
 

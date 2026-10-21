@@ -39,8 +39,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7.0.1
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable # stable
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
         with:
+          toolchain: stable
           components: llvm-tools-preview
       - name: Cache cargo registry and build
         uses: Swatinem/rust-cache@v2.9.2
@@ -162,10 +163,17 @@ jobs:
       # is present. Forks and unconfigured repos must not be gated by a
       # missing token, so we guard explicitly and never fail.
       - name: Publish to Codecov (optional)
-        if: ${{ env.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@v7.1.1
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        with:
-          files: src/paint_core/lcov.info
-          fail_ci_if_error: false
+          CODECOV_URL: https://github.com/codecov/codecov-cli/releases/download/v11.3.1/codecovcli_linux
+          CODECOV_SHA256: ca1d64196d2d34771084afe76ea657d581bf628e31d993ff8e52ea09cc88a56d
+        run: |
+          set -euo pipefail
+          if [ -z "${CODECOV_TOKEN:-}" ] || [ ! -f src/paint_core/lcov.info ]; then
+            echo "CODECOV_TOKEN not configured or lcov.info missing — skipping Codecov upload."
+            exit 0
+          fi
+          curl -fsSL "$CODECOV_URL" -o "$RUNNER_TEMP/codecov" || exit 0
+          echo "${CODECOV_SHA256}  ${RUNNER_TEMP}/codecov" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/codecov"
+          "$RUNNER_TEMP/codecov" upload-process -t "$CODECOV_TOKEN" -f src/paint_core/lcov.info || true

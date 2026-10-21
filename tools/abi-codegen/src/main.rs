@@ -25,7 +25,7 @@ fn generate_tile_twasm(tile_size: u32, channels: u32, magic: u32) -> String {
     let bytes_per_pixel = channels * 2;
     let total_pixels = tile_size * tile_size;
     let pixel_bytes = total_pixels * bytes_per_pixel;
-    
+
     format!("// SPDX-License-Identifier: PMPL-1.0-or-later
 // Copyright (c) 2026 Joshua Jewell (JoshuaJewell)
 //
@@ -353,30 +353,60 @@ fn set_opacity(
 ")
 }
 
+fn bridges_dir() -> std::path::PathBuf {
+    let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    manifest_dir.join("../../src/bridges")
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let stdin = io::stdin();
-    
+    let out_dir = bridges_dir();
+
     for line_result in stdin.lock().lines() {
         let line = line_result?;
         if line.trim().is_empty() {
             continue;
         }
-        
+
         let item: AbiItem = serde_json::from_str(&line)?;
-        
+
         match item {
-            AbiItem::Tile { tile_size, channels, magic } => {
+            AbiItem::Tile {
+                tile_size,
+                channels,
+                magic,
+            } => {
                 let twasm = generate_tile_twasm(tile_size, channels, magic);
-                fs::write("../../src/bridges/paint-type-tile.twasm", twasm)?;
+                fs::write(out_dir.join("paint-type-tile.twasm"), twasm)?;
                 println!("Generated src/bridges/paint-type-tile.twasm");
             }
-            AbiItem::LayerStack { max_layers, max_layer_name_len, magic } => {
+            AbiItem::LayerStack {
+                max_layers,
+                max_layer_name_len,
+                magic,
+            } => {
                 let twasm = generate_layer_twasm(max_layers, max_layer_name_len, magic);
-                fs::write("../../src/bridges/paint-type-layer.twasm", twasm)?;
+                fs::write(out_dir.join("paint-type-layer.twasm"), twasm)?;
                 println!("Generated src/bridges/paint-type-layer.twasm");
             }
         }
     }
-    
+
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn generated_twasm_matches_checked_in_bridges() {
+        let expected_tile = fs::read_to_string(bridges_dir().join("paint-type-tile.twasm"))
+            .expect("read paint-type-tile.twasm");
+        let expected_layer = fs::read_to_string(bridges_dir().join("paint-type-layer.twasm"))
+            .expect("read paint-type-layer.twasm");
+
+        assert_eq!(generate_tile_twasm(64, 4, 0x504C_5400), expected_tile);
+        assert_eq!(generate_layer_twasm(256, 256, 0x504C_5354), expected_layer);
+    }
 }

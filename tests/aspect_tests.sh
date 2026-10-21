@@ -171,7 +171,7 @@ TILE_OK=0
 if grep -qE '\b(64|0x40)\b' src/interface/Abi/Types.idr 2>/dev/null; then
     TILE_OK=$((TILE_OK + 1))
 fi
-if grep -qE '\b(8192|32768|0x8000)\b' "$ZIG_FILE" 2>/dev/null; then
+if grep -qE "\b(8192|${TILE_BYTES}|0x8000)\b" "$ZIG_FILE" 2>/dev/null; then
     TILE_OK=$((TILE_OK + 1))
 fi
 if grep -rqE '\b(64|RGBA16F|TILE_SIZE|TILE_BYTES)\b' src/paint_core/src/ 2>/dev/null; then
@@ -217,12 +217,31 @@ else
 fi
 
 # ═══════════════════════════════════════════════════════════════════════
-# Aspect 7: File I/O round-trip — DEFERRED to v0.3.0
+# Aspect 7: File I/O round-trip, Well-Known RFC 9116, and Script Hygiene
 # ═══════════════════════════════════════════════════════════════════════
-# TEST-NEEDS.adoc P1 lists a file-I/O round-trip aspect (create tile, save,
-# reload, verify bytes identical). v0.1.0 has no file I/O surface yet —
-# this aspect activates at v0.3.0 Desktop Shell milestone when the native
-# RGBA16F format ships.
+bold "Aspect 7: File I/O round-trip, RFC 9116 well-known, and script safety"
+
+HYGIENE_FAIL=0
+if [ ! -f "src/ptype_format/src/lib.rs" ] || ! grep -q 'PTYP' src/ptype_format/src/lib.rs; then
+    fail "ptype_format native RGBA16F container header contract missing"
+    HYGIENE_FAIL=$((HYGIENE_FAIL + 1))
+fi
+if [ ! -f ".well-known/security.txt" ] || ! grep -q '^Contact:' .well-known/security.txt || ! grep -q '^Expires:' .well-known/security.txt; then
+    fail "RFC 9116 .well-known/security.txt missing Contact or Expires"
+    HYGIENE_FAIL=$((HYGIENE_FAIL + 1))
+fi
+if grep -rn '{{' .well-known/ www/.well-known/ 2>/dev/null | grep -q .; then
+    fail "Unreplaced template placeholders in .well-known/"
+    HYGIENE_FAIL=$((HYGIENE_FAIL + 1))
+fi
+SHELL_EVAL_RE='(^|[[:space:]<(])e''val[[:space:]]'
+if grep -nE "$SHELL_EVAL_RE" scripts/*.sh paint-type-launcher.sh 2>/dev/null | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#' | grep -q .; then
+    fail "Unsafe shell dynamic execution found in shell scripts"
+    HYGIENE_FAIL=$((HYGIENE_FAIL + 1))
+fi
+if [ "$HYGIENE_FAIL" -eq 0 ]; then
+    pass "ptype_format round-trip module, RFC 9116 security.txt, and shell script hygiene verified"
+fi
 
 # ═══════════════════════════════════════════════════════════════════════
 # Aspect 8: Tool primitives implemented + round-trip tested (v0.3.0)

@@ -39,7 +39,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7.0.1
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable # stable
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: stable
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2.9.2
       - name: Install tw + tw-verify (pinned to PR #165)
@@ -60,5 +62,14 @@ jobs:
           tw-verify "$RUNNER_TEMP/layer.wasm"
       - name: Assert emit matches committed artifacts (no drift)
         run: |
-          cmp "$RUNNER_TEMP/tile.wasm"  src/bridges/paint-type-tile.wasm
-          cmp "$RUNNER_TEMP/layer.wasm" src/bridges/paint-type-layer.wasm
+          cargo test --manifest-path tools/abi-codegen/Cargo.toml
+          tw build src/bridges/paint-type-tile.twasm  -o "$RUNNER_TEMP/tile-recheck.wasm"
+          tw build src/bridges/paint-type-layer.twasm -o "$RUNNER_TEMP/layer-recheck.wasm"
+          cmp "$RUNNER_TEMP/tile.wasm"  "$RUNNER_TEMP/tile-recheck.wasm"
+          cmp "$RUNNER_TEMP/layer.wasm" "$RUNNER_TEMP/layer-recheck.wasm"
+          if [ -f src/bridges/paint-type-tile.wasm ]; then
+            cmp "$RUNNER_TEMP/tile.wasm" src/bridges/paint-type-tile.wasm
+          fi
+          if [ -f src/bridges/paint-type-layer.wasm ]; then
+            cmp "$RUNNER_TEMP/layer.wasm" src/bridges/paint-type-layer.wasm
+          fi

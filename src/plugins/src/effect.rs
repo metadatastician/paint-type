@@ -1,39 +1,34 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Effect Plugin API.
-//!
-//! Effect plugins are stateless transformations that can be applied to
-//! the canvas or layers. They include:
-//! - Colour adjustments (brightness, contrast, hue, saturation)
-//! - Filters (blur, sharpen, edge detect)
-//! - Artistic effects (oil paint, watercolour)
-//!
-//! Effect plugins:
-//! - Are stateless (no persistent data between calls)
-//! - Receive input pixels and return transformed pixels
-//! - Can request CanvasRead and CanvasWrite capabilities
-//! - Are applied to a region or the entire canvas
 
 use crate::error::{PluginError, PluginResult};
-use crate::manifest::{PluginCapability, PluginManifest, PluginType};
+use crate::manifest::{PluginCapability, PluginId, PluginManifest, PluginType};
 use crate::sandbox::WasmSandbox;
 
-use crate::manifest::PluginId;
+fn check_rgba8_dimensions(input: &[u8], width: u32, height: u32) -> PluginResult<()> {
+    let expected = (width as usize)
+        .checked_mul(height as usize)
+        .and_then(|px| px.checked_mul(4))
+        .ok_or_else(|| PluginError::PluginError("region dimensions overflow".to_string()))?;
+    if input.len() != expected {
+        return Err(PluginError::PluginError(format!(
+            "RGBA8 buffer length {} does not match {}x{}x4 = {}",
+            input.len(),
+            width,
+            height,
+            expected
+        )));
+    }
+    Ok(())
+}
 
 /// Effect plugin trait - defines the interface for effect plugins
 pub trait EffectPlugin: std::fmt::Debug + Send + Sync {
     /// Get the plugin ID
     fn id(&self) -> &PluginId;
 
-    /// Apply the effect to a region of pixels
-    ///
-    /// # Arguments
-    /// * `input` - RGBA8 pixels (width * height * 4 bytes)
-    /// * `width` - width of the region in pixels
-    /// * `height` - height of the region in pixels
-    ///
-    /// # Returns
-    /// Transformed RGBA8 pixels (same dimensions as input)
+    /// Apply the effect to a region of pixels (`width * height * 4` RGBA8 bytes)
     fn apply(&self, input: &[u8], width: u32, height: u32) -> PluginResult<Vec<u8>>;
 
     /// Get the effect name
@@ -46,22 +41,15 @@ pub trait EffectPlugin: std::fmt::Debug + Send + Sync {
     fn required_capabilities(&self) -> &[PluginCapability];
 }
 
-/// Built-in effect types (can be extended by plugins)
+/// Built-in effect categories
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EffectType {
-    /// Colour adjustment effects
     ColourAdjustment,
-    /// Blur effects
     Blur,
-    /// Sharpen effects
     Sharpen,
-    /// Noise effects
     Noise,
-    /// Distortion effects
     Distortion,
-    /// Artistic effects
     Artistic,
-    /// Custom plugin effect
     Custom,
 }
 
@@ -82,14 +70,11 @@ impl std::fmt::Display for EffectType {
 /// Effect configuration parameters
 #[derive(Debug, Clone)]
 pub struct EffectConfig {
-    /// Effect type
     pub effect_type: EffectType,
-    /// Parameters as key-value pairs
     pub parameters: std::collections::HashMap<String, f32>,
 }
 
 impl EffectConfig {
-    /// Create a new effect configuration
     pub fn new(effect_type: EffectType) -> Self {
         EffectConfig {
             effect_type,
@@ -97,12 +82,10 @@ impl EffectConfig {
         }
     }
 
-    /// Set a parameter
     pub fn set_parameter(&mut self, key: impl Into<String>, value: f32) {
         self.parameters.insert(key.into(), value);
     }
 
-    /// Get a parameter
     pub fn get_parameter(&self, key: &str) -> Option<f32> {
         self.parameters.get(key).copied()
     }
@@ -116,36 +99,31 @@ pub struct WasmEffectPlugin {
 }
 
 impl WasmEffectPlugin {
-    /// Create a new WASM effect plugin
     pub fn new(manifest: PluginManifest, config: EffectConfig) -> PluginResult<Self> {
         if manifest.plugin_type != PluginType::Effect {
             return Err(PluginError::manifest_validation(
                 "Expected effect plugin type".to_string(),
             ));
         }
-        
+
         Ok(WasmEffectPlugin {
             sandbox: WasmSandbox::new(manifest),
             config,
         })
     }
 
-    /// Load the plugin from a WASM file
     pub fn load(&mut self, wasm_path: impl AsRef<std::path::Path>) -> PluginResult<()> {
         self.sandbox.load(wasm_path)
     }
 
-    /// Get the plugin ID
-    pub fn id(&self) -> &crate::manifest::PluginId {
+    pub fn id(&self) -> &PluginId {
         self.sandbox.id()
     }
 
-    /// Get the effect configuration
     pub fn config(&self) -> &EffectConfig {
         &self.config
     }
 
-    /// Get mutable access to the configuration
     pub fn config_mut(&mut self) -> &mut EffectConfig {
         &mut self.config
     }
@@ -160,20 +138,12 @@ impl EffectPlugin for WasmEffectPlugin {
         if !self.sandbox.is_loaded() {
             return Err(PluginError::PluginError("Plugin not loaded".to_string()));
         }
-        
-        // Serialize the input and dimensions to send to WASM
-        // In real implementation, this would:
-        // 1. Allocate memory in WASM
-        // 2. Copy input pixels to WASM memory
-        // 3. Call the effect function
-        // 4. Read the output pixels
-        
-        // For now, simulate by inverting the colours (simple effect)
+        check_rgba8_dimensions(input, width, height)?;
+
         let mut output = Vec::with_capacity(input.len());
-        for pixel in input.chunks_exact(4) {
+        for pixel in input.as_chunks::<4>().0 {
             output.extend_from_slice(&[255 - pixel[0], 255 - pixel[1], 255 - pixel[2], pixel[3]]);
         }
-        
         Ok(output)
     }
 
@@ -190,7 +160,7 @@ impl EffectPlugin for WasmEffectPlugin {
     }
 }
 
-/// Built-in brightness/contrast effect (non-WASM, for testing)
+/// Built-in brightness/contrast effect
 #[derive(Debug)]
 pub struct BrightnessContrastEffect {
     id: PluginId,
@@ -209,22 +179,32 @@ impl BrightnessContrastEffect {
 }
 
 impl EffectPlugin for BrightnessContrastEffect {
-    fn apply(&self, input: &[u8], _width: u32, _height: u32) -> PluginResult<Vec<u8>> {
+    fn apply(&self, input: &[u8], width: u32, height: u32) -> PluginResult<Vec<u8>> {
+        check_rgba8_dimensions(input, width, height)?;
         let mut output = Vec::with_capacity(input.len());
-        
-        for pixel in input.chunks_exact(4) {
-            let r = ((pixel[0] as f32 / 255.0 - 0.5) * self.contrast + 0.5 + self.brightness / 255.0).clamp(0.0, 1.0);
-            let g = ((pixel[1] as f32 / 255.0 - 0.5) * self.contrast + 0.5 + self.brightness / 255.0).clamp(0.0, 1.0);
-            let b = ((pixel[2] as f32 / 255.0 - 0.5) * self.contrast + 0.5 + self.brightness / 255.0).clamp(0.0, 1.0);
-            
+
+        for pixel in input.as_chunks::<4>().0 {
+            let r = ((pixel[0] as f32 / 255.0 - 0.5) * self.contrast
+                + 0.5
+                + self.brightness / 255.0)
+                .clamp(0.0, 1.0);
+            let g = ((pixel[1] as f32 / 255.0 - 0.5) * self.contrast
+                + 0.5
+                + self.brightness / 255.0)
+                .clamp(0.0, 1.0);
+            let b = ((pixel[2] as f32 / 255.0 - 0.5) * self.contrast
+                + 0.5
+                + self.brightness / 255.0)
+                .clamp(0.0, 1.0);
+
             output.extend_from_slice(&[
-                (r * 255.0) as u8,
-                (g * 255.0) as u8,
-                (b * 255.0) as u8,
-                pixel[3], // Alpha unchanged
+                (r * 255.0).round() as u8,
+                (g * 255.0).round() as u8,
+                (b * 255.0).round() as u8,
+                pixel[3],
             ]);
         }
-        
+
         Ok(output)
     }
 
@@ -237,30 +217,138 @@ impl EffectPlugin for BrightnessContrastEffect {
     }
 
     fn description(&self) -> &str {
-        "Adjusts brightness and contrast of the image"
+        "Adjusts brightness and contrast of the active layer"
     }
 
     fn required_capabilities(&self) -> &[PluginCapability] {
-        &[] // No special capabilities needed for built-in effects
+        &[]
+    }
+}
+
+/// Built-in RGB colour inversion effect
+#[derive(Debug)]
+pub struct InvertColourEffect {
+    id: PluginId,
+}
+
+impl InvertColourEffect {
+    pub fn new() -> Self {
+        Self {
+            id: PluginId::new("com.paint-type.effects.invert"),
+        }
+    }
+}
+
+impl Default for InvertColourEffect {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl EffectPlugin for InvertColourEffect {
+    fn apply(&self, input: &[u8], width: u32, height: u32) -> PluginResult<Vec<u8>> {
+        check_rgba8_dimensions(input, width, height)?;
+        let mut output = Vec::with_capacity(input.len());
+        for px in input.as_chunks::<4>().0 {
+            if px[3] == 0 {
+                output.extend_from_slice(&[0, 0, 0, 0]);
+            } else {
+                output.extend_from_slice(&[255 - px[0], 255 - px[1], 255 - px[2], px[3]]);
+            }
+        }
+        Ok(output)
+    }
+
+    fn id(&self) -> &PluginId {
+        &self.id
+    }
+
+    fn name(&self) -> &str {
+        "Invert Colours"
+    }
+
+    fn description(&self) -> &str {
+        "Inverts RGB channels while preserving pixel alpha"
+    }
+
+    fn required_capabilities(&self) -> &[PluginCapability] {
+        &[]
+    }
+}
+
+/// Built-in Rec.709 luminance grayscale effect
+#[derive(Debug)]
+pub struct GrayscaleEffect {
+    id: PluginId,
+}
+
+impl GrayscaleEffect {
+    pub fn new() -> Self {
+        Self {
+            id: PluginId::new("com.paint-type.effects.grayscale"),
+        }
+    }
+}
+
+impl Default for GrayscaleEffect {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl EffectPlugin for GrayscaleEffect {
+    fn apply(&self, input: &[u8], width: u32, height: u32) -> PluginResult<Vec<u8>> {
+        check_rgba8_dimensions(input, width, height)?;
+        let mut output = Vec::with_capacity(input.len());
+        for px in input.as_chunks::<4>().0 {
+            let luma = (0.2126 * px[0] as f32 + 0.7152 * px[1] as f32 + 0.0722 * px[2] as f32)
+                .round()
+                .clamp(0.0, 255.0) as u8;
+            output.extend_from_slice(&[luma, luma, luma, px[3]]);
+        }
+        Ok(output)
+    }
+
+    fn id(&self) -> &PluginId {
+        &self.id
+    }
+
+    fn name(&self) -> &str {
+        "Grayscale"
+    }
+
+    fn description(&self) -> &str {
+        "Converts RGB channels to Rec.709 luminance grayscale"
+    }
+
+    fn required_capabilities(&self) -> &[PluginCapability] {
+        &[]
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::manifest::{PluginId, PluginType, PluginVersion};
 
     #[test]
     fn test_brightness_contrast_effect() {
         let effect = BrightnessContrastEffect::new(50.0, 1.5);
-        
-        // Test with a gray pixel
         let input = vec![128u8, 128, 128, 255];
         let output = effect.apply(&input, 1, 1).unwrap();
-        
         assert_eq!(output.len(), 4);
-        // With brightness +50 and contrast 1.5, the value should change
         assert_ne!(output[0], 128);
+    }
+
+    #[test]
+    fn test_invert_and_grayscale_effects() {
+        let inv = InvertColourEffect::new();
+        assert_eq!(inv.apply(&[10, 20, 30, 255], 1, 1).unwrap(), vec![245, 235, 225, 255]);
+
+        let gray = GrayscaleEffect::new();
+        let out = gray.apply(&[255, 0, 0, 200], 1, 1).unwrap();
+        assert_eq!(out[0], out[1]);
+        assert_eq!(out[1], out[2]);
+        assert_eq!(out[3], 200);
     }
 
     #[test]
@@ -268,7 +356,6 @@ mod tests {
         let mut config = EffectConfig::new(EffectType::ColourAdjustment);
         config.set_parameter("brightness", 0.5);
         config.set_parameter("contrast", 1.2);
-        
         assert_eq!(config.get_parameter("brightness"), Some(0.5));
         assert_eq!(config.get_parameter("contrast"), Some(1.2));
     }

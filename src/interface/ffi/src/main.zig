@@ -142,7 +142,7 @@ export fn pt_tile_alloc(x: u32, y: u32) u64 {
         .width = TILE_SIZE,
         .height = TILE_SIZE,
         ._pad = 0,
-        .pixels = [_]f16{0} ** TILE_PIXEL_SCALARS,
+        .pixels = @splat(0),
     };
 
     clearError();

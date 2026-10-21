@@ -176,7 +176,7 @@ pub trait ToolPlugin: std::fmt::Debug + Send + Sync {
 }
 
 /// Tool response
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ToolResponse {
     /// Whether the canvas was modified
     pub canvas_modified: bool,
@@ -186,17 +186,6 @@ pub struct ToolResponse {
     pub preview: Option<Vec<u8>>,
     /// Status message (optional)
     pub status: Option<String>,
-}
-
-impl Default for ToolResponse {
-    fn default() -> Self {
-        ToolResponse {
-            canvas_modified: false,
-            dirty_rect: None,
-            preview: None,
-            status: None,
-        }
-    }
 }
 
 impl ToolResponse {
@@ -241,7 +230,7 @@ impl WasmToolPlugin {
                 "Expected tool plugin type".to_string(),
             ));
         }
-        
+
         Ok(WasmToolPlugin {
             sandbox: WasmSandbox::new(manifest),
             config,
@@ -289,7 +278,7 @@ impl ToolPlugin for WasmToolPlugin {
         if !self.sandbox.is_loaded() {
             return Err(PluginError::PluginError("Plugin not loaded".to_string()));
         }
-        
+
         // In real implementation, this would call into WASM
         // For now, simulate a simple brush tool
         match event {
@@ -371,6 +360,21 @@ impl BrushTool {
             color,
         }
     }
+
+    /// Configured brush diameter in pixels.
+    pub fn size(&self) -> f32 {
+        self.size
+    }
+
+    /// Configured brush hardness in `[0.0, 1.0]`.
+    pub fn hardness(&self) -> f32 {
+        self.hardness
+    }
+
+    /// Configured brush RGBA8 colour.
+    pub fn color(&self) -> [u8; 4] {
+        self.color
+    }
 }
 
 impl ToolPlugin for BrushTool {
@@ -387,11 +391,11 @@ impl ToolPlugin for BrushTool {
                 if !state.is_active {
                     return Ok(ToolResponse::new());
                 }
-                
+
                 state.x = x;
                 state.y = y;
                 state.pressure = pressure;
-                
+
                 // Simulate painting with the brush
                 // In real implementation, this would use the brush engine
                 Ok(ToolResponse::new().with_modified(Some((
@@ -433,11 +437,11 @@ impl ToolPlugin for BrushTool {
     fn config(&self) -> &ToolConfig {
         // Build config dynamically using OnceLock for thread-safe lazy initialization
         static CONFIG: OnceLock<ToolConfig> = OnceLock::new();
-        
+
         CONFIG.get_or_init(|| {
             let mut config = ToolConfig::new("Brush");
             config.set_cursor("crosshair".to_string());
-            
+
             let size_option = ToolOption {
                 label: "Size".to_string(),
                 option_type: ToolOptionType::Float,
@@ -448,7 +452,7 @@ impl ToolPlugin for BrushTool {
                 allowed_values: None,
             };
             config.add_option("size", size_option);
-            
+
             let hardness_option = ToolOption {
                 label: "Hardness".to_string(),
                 option_type: ToolOptionType::Float,
@@ -459,7 +463,7 @@ impl ToolPlugin for BrushTool {
                 allowed_values: None,
             };
             config.add_option("hardness", hardness_option);
-            
+
             config
         })
     }
@@ -482,12 +486,12 @@ mod tests {
     fn test_tool_state() {
         let mut state = ToolState::new();
         assert!(!state.is_active);
-        
+
         state.x = 100.0;
         state.y = 200.0;
         state.is_active = true;
         state.set_custom("test", "value");
-        
+
         assert_eq!(state.x, 100.0);
         assert_eq!(state.y, 200.0);
         assert!(state.is_active);
@@ -498,7 +502,7 @@ mod tests {
     fn test_tool_response() {
         let mut response = ToolResponse::new();
         assert!(!response.canvas_modified);
-        
+
         response = response.with_modified(Some((0, 0, 10, 10)));
         assert!(response.canvas_modified);
         assert_eq!(response.dirty_rect, Some((0, 0, 10, 10)));

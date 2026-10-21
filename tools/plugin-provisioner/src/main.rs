@@ -49,6 +49,7 @@ pub enum ProvisioningPhase {
 }
 
 /// Provisioning state - affine state machine
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct ProvisioningState {
     pub phase: ProvisioningPhase,
@@ -62,6 +63,7 @@ pub struct ProvisioningState {
     pub errors: Vec<String>,
 }
 
+#[allow(dead_code)]
 impl ProvisioningState {
     pub fn new() -> Self {
         Self {
@@ -78,8 +80,8 @@ impl ProvisioningState {
     }
 
     pub fn log(&mut self, message: String) {
-        self.provisioning_log.push(message.clone());
-        info!("{}", self.provisioning_log.last().unwrap());
+        info!("{}", message);
+        self.provisioning_log.push(message);
     }
 
     pub fn log_str(&mut self, message: &str) {
@@ -88,8 +90,8 @@ impl ProvisioningState {
     }
 
     pub fn error(&mut self, message: String) {
-        self.errors.push(message.clone());
-        error!("{}", self.errors.last().unwrap());
+        error!("{}", message);
+        self.errors.push(message);
     }
 
     pub fn error_str(&mut self, message: &str) {
@@ -266,12 +268,12 @@ fn provision_plugin(
     let manifest_toml = Path::new("plugin.toml");
     let manifest_json = Path::new("plugin.json");
     let wasm_entry_path = Path::new(&manifest.wasm_entry);
-    
+
     for entry in WalkDir::new(source_dir) {
         let entry = entry.context("Failed to walk source directory")?;
         let entry_path = entry.path();
         let rel_path = entry_path.strip_prefix(source_dir).unwrap_or(entry_path);
-        
+
         // Skip manifest files (already copied)
         if rel_path == manifest_toml || rel_path == manifest_json {
             continue;
@@ -349,7 +351,7 @@ fn list_plugins(target_dir: &Path, detailed: bool) -> Result<()> {
         let dir_path = entry.path();
         let manifest_toml_path = dir_path.join("plugin.toml");
         let manifest_json_path = dir_path.join("plugin.json");
-        
+
         if manifest_toml_path.exists() {
             if let Ok(manifest) = PluginManifest::from_toml_file(&manifest_toml_path) {
                 plugins.push((dir_path.to_path_buf(), manifest));
@@ -419,13 +421,20 @@ fn validate_plugin(path: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Remove a plugin
+/// Remove a plugin (rejects parent-directory traversal and paths escaping target_dir)
 fn remove_plugin(plugin_id_or_path: &str, target_dir: &Path) -> Result<()> {
-    let plugin_path = if Path::new(plugin_id_or_path).is_absolute() {
-        PathBuf::from(plugin_id_or_path)
-    } else {
-        target_dir.join(plugin_id_or_path)
-    };
+    let candidate = Path::new(plugin_id_or_path);
+    if candidate.is_absolute()
+        || candidate
+            .components()
+            .any(|c| matches!(c, std::path::Component::ParentDir))
+    {
+        anyhow::bail!(
+            "Unsafe plugin identifier or path rejected: {}",
+            plugin_id_or_path
+        );
+    }
+    let plugin_path = target_dir.join(candidate);
 
     if !plugin_path.exists() {
         anyhow::bail!("Plugin not found: {}", plugin_path.display());
@@ -555,11 +564,11 @@ enum Command {
 
 fn main() -> Result<()> {
     // Initialize logging
+    let directive = "plugin_provisioner=info"
+        .parse()
+        .map_err(|e| anyhow::anyhow!("Invalid tracing filter directive: {}", e))?;
     tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive("plugin_provisioner=info".parse().unwrap()),
-        )
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env().add_directive(directive))
         .init();
 
     let args = Args::parse();
@@ -637,7 +646,7 @@ fn main() -> Result<()> {
             // Display the capabilities (dependencies)
             println!("Plugin: {}", manifest.id.as_str());
             println!("Type: {}", manifest.plugin_type);
-            
+
             if !manifest.capabilities.is_empty() {
                 println!("\nRequired capabilities:");
                 for cap in &manifest.capabilities {

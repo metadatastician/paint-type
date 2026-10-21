@@ -28,6 +28,8 @@
 // paint-type would open a dedicated `paint-edit` DataChannel alongside the
 // existing AI channel and frame `Op`s onto it.
 
+use std::collections::VecDeque;
+
 use crate::session::{Op, Transport};
 
 /// Connection parameters for a Burble-brokered WebRTC session.
@@ -74,14 +76,16 @@ impl core::fmt::Display for TransportError {
 
 impl std::error::Error for TransportError {}
 
-/// The live WebRTC-over-Burble transport. Holds config and a local out/in
-/// staging buffer; the actual data-channel wiring is the unimplemented part.
+/// Maximum staged outgoing ops retained while disconnected before dropping
+/// oldest items (bounds memory under prolonged offline painting).
+pub const MAX_PENDING_OPS: usize = 65_536;
+
+/// The live WebRTC-over-Burble transport. Holds config and a bounded local
+/// out/in staging buffer; the actual data-channel wiring is the unimplemented
+/// part.
 pub struct BurbleTransport {
     config: BurbleConfig,
-    /// Ops the session asked us to broadcast but that we could not ship
-    /// because the channel is not wired. Retained (not dropped) so a future
-    /// `flush()` after the channel is established can drain them.
-    pending_out: Vec<Op>,
+    pending_out: VecDeque<Op>,
 }
 
 impl BurbleTransport {
@@ -90,7 +94,7 @@ impl BurbleTransport {
     pub fn new(config: BurbleConfig) -> BurbleTransport {
         BurbleTransport {
             config,
-            pending_out: Vec::new(),
+            pending_out: VecDeque::new(),
         }
     }
 
@@ -115,20 +119,20 @@ impl BurbleTransport {
     }
 
     /// Ops that were broadcast while disconnected (would be flushed on connect).
-    pub fn pending(&self) -> &[Op] {
+    pub fn pending(&self) -> &VecDeque<Op> {
         &self.pending_out
     }
 }
 
 impl Transport for BurbleTransport {
     fn broadcast(&mut self, op: Op) {
-        // Not connected: stage the op rather than drop it, so semantics are
-        // honest (no silent loss) and a future flush can ship it.
-        self.pending_out.push(op);
+        if self.pending_out.len() >= MAX_PENDING_OPS {
+            let _ = self.pending_out.pop_front();
+        }
+        self.pending_out.push_back(op);
     }
 
     fn drain_inbox(&mut self) -> Vec<Op> {
-        // No live channel ⇒ nothing ever arrives in this build.
         Vec::new()
     }
 }

@@ -5,14 +5,6 @@
 // The mandatory, always-loaded reference backend. The oracle for every
 // accelerated backend. Correct first, fast nowhere. No SIMD assumptions
 // here; speed lives under src/backends/vector/.
-//
-// Governed by ADR-0002. This file registers a single BackendImpl with the
-// dispatcher at startup. Each MVP-N operation's reference implementation
-// lives in its own section below. Operations not yet implemented return
-// ResultCode.not_implemented, which the dispatcher honours as a "please
-// fall back" signal — but here, on the reference backend, that's a bug:
-// the reference must implement everything. The not_implemented stubs are
-// scaffolding that will be filled in milestone by milestone.
 
 const std = @import("std");
 const dispatcher = @import("dispatcher");
@@ -24,23 +16,28 @@ const dispatcher = @import("dispatcher");
 const TILE_SIZE: u32 = 64;
 const TILE_CHANNELS: u32 = 4;
 const TILE_SCALARS: usize = @as(usize, TILE_SIZE) * TILE_SIZE * TILE_CHANNELS;
-
-// Upper bound on canvas dimensions. width/height arrive as raw u32 across the
-// FFI from callers we don't trust and feed allocation + PNG-encoder size
-// arithmetic (width*height*4, (row_bytes+1)*height). Without a cap those
-// products can overflow `usize` on 32-bit targets — yielding a buffer too small
-// for the full-size write that follows (heap overflow) — and on any target
-// invite an allocation-DoS. 16384 mirrors the Rust codec's MAX_DIM.
 const MAX_CANVAS_DIM: u32 = 16384;
-
-// Hard cap on the number of stamps a single brush-stroke segment may emit, so a
-// caller passing far-apart points can't drive an unbounded stamp loop.
 const MAX_STROKE_STAMPS: u32 = 1 << 20;
 
-// `@intFromFloat` is illegal behaviour for NaN, ±Inf, or out-of-range values: a
-// safety-check panic in Debug and undefined behaviour in ReleaseFast. Stroke
-// coordinates and brush geometry are caller-supplied f64s, so every conversion
-// goes through these guards rather than a bare `@intFromFloat`.
+/// Normalise a unit interval parameter from an untrusted `f64`:
+/// `NaN` normalises to `default_on_nan`, then clamps to `[0.0, 1.0]`.
+fn sanitizeUnitF64(v: f64, default_on_nan: f64) f64 {
+    if (std.math.isNan(v)) return default_on_nan;
+    if (v < 0.0) return 0.0;
+    if (v > 1.0) return 1.0;
+    return v;
+}
+
+/// Sanitise a caller-supplied linear-light RGBA colour so non-finite channels
+/// cannot poison tile state or downstream alpha compositing.
+fn sanitizeColour(c: [4]f32) [4]f32 {
+    return .{
+        if (std.math.isFinite(c[0])) c[0] else 0.0,
+        if (std.math.isFinite(c[1])) c[1] else 0.0,
+        if (std.math.isFinite(c[2])) c[2] else 0.0,
+        if (std.math.isNan(c[3])) 0.0 else std.math.clamp(c[3], 0.0, 1.0),
+    };
+}
 
 /// Floor `v` to an integer in [0, limit), or null if `v` is non-finite,
 /// negative, or beyond the limit (caller should skip the value).
@@ -51,8 +48,7 @@ fn finiteFloorU32(v: f64, limit: u32) ?u32 {
     return @intFromFloat(f);
 }
 
-/// Convert `v` to an i64 clamped to [lo, hi]; NaN maps to `lo`. Keeps an
-/// attacker-large bbox coordinate from overflowing the i64 cast.
+/// Convert `v` to an i64 clamped to [lo, hi]; NaN maps to `lo`.
 fn finiteToI64Clamped(v: f64, lo: i64, hi: i64) i64 {
     if (std.math.isNan(v)) return lo;
     if (v <= @as(f64, @floatFromInt(lo))) return lo;
@@ -61,9 +57,8 @@ fn finiteToI64Clamped(v: f64, lo: i64, hi: i64) i64 {
 }
 
 const Tile = struct {
-    /// RGBA16F pixel data stored as u16 bit-patterns of f16 values. Same
-    /// convention as src/interface/ffi/src/main.zig and src/ephapax/src/lib.rs.
-    pixels: [TILE_SCALARS]u16 = [_]u16{0} ** TILE_SCALARS,
+    /// RGBA16F pixel data stored as u16 bit-patterns of f16 values.
+    pixels: [TILE_SCALARS]u16 = @splat(0),
 };
 
 const TileKey = struct { tx: u32, ty: u32 };
@@ -75,6 +70,7 @@ const BlendMode = enum(u32) {
 };
 
 const Layer = struct {
+    id: u64,
     name: []u8,
     visible: bool = true,
     opacity: f64 = 1.0,
@@ -90,11 +86,8 @@ const Layer = struct {
 };
 
 const Canvas = struct {
-    // std.Thread.Mutex sleeps under contention rather than burning a core, and
-    // is the standard, non-reentrant lock — do not re-enter on the same Canvas
-    // (see cpu_canvas_render_rgba8, which splits into an _internal helper to
-    // avoid re-acquiring this lock).
-    lock: std.Thread.Mutex = .{},
+    lock: dispatcher.SpinMutex = .{},
+    refs: std.atomic.Value(usize) = .init(1),
     width: u32,
     height: u32,
     format: u32, // 0=RGBA16F, 1=RGBA8, ...
@@ -103,6 +96,14 @@ const Canvas = struct {
     next_layer_id: u64 = 1,
     history: History = .{},
     viewport: Viewport = .{},
+
+    fn findLayerIndex(self: *const Canvas, layer_id: u64) ?usize {
+        if (layer_id == 0) return null;
+        for (self.layers.items, 0..) |l, idx| {
+            if (l.id == layer_id) return idx;
+        }
+        return null;
+    }
 
     fn deinit(self: *Canvas, alloc: std.mem.Allocator) void {
         for (self.layers.items) |l| {
@@ -123,25 +124,12 @@ const Viewport = struct {
 
 // ----------------------------------------------------------------------------
 // History — persistent (tree-shaped) undo graph backed by full canvas snapshots.
-//
-// Each operation records a HistoryNode containing a snapshot of the layer
-// stack + canvas-level state. undo / redo walk the tree by moving `current`
-// along parent / child edges and restoring the snapshot at the new node.
-//
-// Branching is supported: undoing then performing a new operation creates a
-// SIBLING child rather than discarding the previous future. That's the
-// "branches are first-class so non-linear edits don't lose work" promise from
-// the ROADMAP v0.2.0 MVP-10 entry.
-//
-// Memory: snapshots are full-state right now. Bounded-memory pruning is a
-// v0.3.0 perf concern — the data structure already records cost-per-node so
-// the pruner has accurate accounting once it lands. See VerisimDB Temporal
-// modality (ADR-0003) for the production-grade persistence path.
 // ----------------------------------------------------------------------------
 
 const TileMap = std.AutoHashMapUnmanaged(TileKey, *Tile);
 
 const LayerSnapshot = struct {
+    id: u64,
     name: []u8,
     visible: bool,
     opacity: f64,
@@ -162,6 +150,7 @@ const CanvasSnapshot = struct {
     format: u32,
     background: [4]f32,
     viewport: Viewport,
+    next_layer_id: u64,
     layers: std.ArrayListUnmanaged(LayerSnapshot) = .empty,
 
     fn deinit(self: *CanvasSnapshot, alloc: std.mem.Allocator) void {
@@ -191,7 +180,7 @@ const History = struct {
     current: u64 = 0,
     next_id: u64 = 1,
     used_bytes: u64 = 0,
-    budget_bytes: u64 = 1024 * 1024 * 512, // 512 MiB; pruning is a v0.3.0 concern
+    budget_bytes: u64 = 1024 * 1024 * 512, // 512 MiB
 
     fn deinit(self: *History, alloc: std.mem.Allocator) void {
         var it = self.nodes.valueIterator();
@@ -274,9 +263,15 @@ fn pruneHistory(alloc: std.mem.Allocator, c: *Canvas) void {
 
 fn cloneTileMap(alloc: std.mem.Allocator, src: *const TileMap) !TileMap {
     var out: TileMap = .empty;
+    errdefer {
+        var cit = out.valueIterator();
+        while (cit.next()) |tp| alloc.destroy(tp.*);
+        out.deinit(alloc);
+    }
     var it = src.iterator();
     while (it.next()) |e| {
         const t = try alloc.create(Tile);
+        errdefer alloc.destroy(t);
         t.* = e.value_ptr.*.*;
         try out.put(alloc, e.key_ptr.*, t);
     }
@@ -290,12 +285,20 @@ fn snapshotCanvas(alloc: std.mem.Allocator, c: *const Canvas) !CanvasSnapshot {
         .format = c.format,
         .background = c.background,
         .viewport = c.viewport,
+        .next_layer_id = c.next_layer_id,
     };
     errdefer snap.deinit(alloc);
     for (c.layers.items) |l| {
-        const tiles_copy = try cloneTileMap(alloc, &l.tiles);
+        var tiles_copy = try cloneTileMap(alloc, &l.tiles);
+        errdefer {
+            var cit = tiles_copy.valueIterator();
+            while (cit.next()) |tp| alloc.destroy(tp.*);
+            tiles_copy.deinit(alloc);
+        }
         const name_copy = try alloc.dupe(u8, l.name);
+        errdefer alloc.free(name_copy);
         try snap.layers.append(alloc, .{
+            .id = l.id,
             .name = name_copy,
             .visible = l.visible,
             .opacity = l.opacity,
@@ -316,37 +319,65 @@ fn snapshotByteCost(snap: *const CanvasSnapshot) u64 {
 }
 
 fn restoreCanvas(alloc: std.mem.Allocator, c: *Canvas, snap: *const CanvasSnapshot) !void {
-    // Drop existing layers.
+    // Build the replacement layer list completely before dropping existing
+    // layers so an out-of-memory error leaves `c` untouched.
+    var rebuilt: std.ArrayListUnmanaged(*Layer) = .empty;
+    errdefer {
+        for (rebuilt.items) |rl| {
+            rl.deinit(alloc);
+            alloc.destroy(rl);
+        }
+        rebuilt.deinit(alloc);
+    }
+    for (snap.layers.items) |*ls| {
+        const l = try alloc.create(Layer);
+        errdefer alloc.destroy(l);
+        const name_copy = try alloc.dupe(u8, ls.name);
+        errdefer alloc.free(name_copy);
+        var tiles_copy = try cloneTileMap(alloc, &ls.tiles);
+        errdefer {
+            var cit = tiles_copy.valueIterator();
+            while (cit.next()) |tp| alloc.destroy(tp.*);
+            tiles_copy.deinit(alloc);
+        }
+        l.* = .{
+            .id = ls.id,
+            .name = name_copy,
+            .visible = ls.visible,
+            .opacity = ls.opacity,
+            .blend = ls.blend,
+            .tiles = tiles_copy,
+        };
+        try rebuilt.append(alloc, l);
+    }
+
     for (c.layers.items) |l| {
         l.deinit(alloc);
         alloc.destroy(l);
     }
-    c.layers.clearRetainingCapacity();
+    c.layers.deinit(alloc);
+    c.layers = rebuilt;
+    c.width = snap.width;
+    c.height = snap.height;
+    c.format = snap.format;
     c.background = snap.background;
     c.viewport = snap.viewport;
-    // Rebuild layers from snapshot.
-    for (snap.layers.items) |*ls| {
-        const l = try alloc.create(Layer);
-        l.* = .{
-            .name = try alloc.dupe(u8, ls.name),
-            .visible = ls.visible,
-            .opacity = ls.opacity,
-            .blend = ls.blend,
-            .tiles = try cloneTileMap(alloc, &ls.tiles),
-        };
-        try c.layers.append(alloc, l);
-    }
+    c.next_layer_id = @max(c.next_layer_id, snap.next_layer_id);
 }
 
 fn ensureHistoryInit(alloc: std.mem.Allocator, c: *Canvas) !void {
     if (c.history.nodes.count() != 0) return;
     const root = try alloc.create(HistoryNode);
-    const snap = try snapshotCanvas(alloc, c);
+    errdefer alloc.destroy(root);
+    var snap = try snapshotCanvas(alloc, c);
+    errdefer snap.deinit(alloc);
+    const op_name = try alloc.dupe(u8, "init");
+    errdefer alloc.free(op_name);
     const cost = snapshotByteCost(&snap);
     root.* = .{
         .id = 0,
         .parent = null,
-        .op_name = try alloc.dupe(u8, "init"),
+        .op_name = op_name,
         .cost_bytes = cost,
         .snapshot = snap,
     };
@@ -363,25 +394,31 @@ fn ensureHistoryInit(alloc: std.mem.Allocator, c: *Canvas) !void {
 
 /// Magic for a live SelectionMask, validated on every handle deref. "PMSK".
 const PT_MASK_MAGIC: u32 = 0x504D534B;
+/// Poison magic stamped on free so double-free is cleanly rejected. "DEAD".
+const PT_MASK_DEAD: u32 = 0x44454144;
 
-/// A canvas-sized boolean selection mask. Handles cross the FFI as
-/// @intFromPtr(mask); `liveMask` validates the magic before use so a stale or
-/// garbage handle is a reported error, not a crash. (The selection ABI has no
-/// explicit free; masks are owned by the backend allocator for its lifetime,
-/// matching the canvas registry.)
 const SelectionMask = struct {
     magic: u32,
+    refs: std.atomic.Value(usize) = .init(1),
     w: u32,
     h: u32,
     /// w*h bytes; 1 = selected, 0 = unselected. Row-major.
     sel: []u8,
 };
 
-fn liveMask(handle: u64) ?*SelectionMask {
-    if (handle == 0) return null;
-    const m: *SelectionMask = @ptrFromInt(handle);
-    if (m.magic != PT_MASK_MAGIC) return null;
-    return m;
+fn releaseCanvas(alloc: std.mem.Allocator, c: *Canvas) void {
+    if (c.refs.fetchSub(1, .acq_rel) == 1) {
+        c.deinit(alloc);
+        alloc.destroy(c);
+    }
+}
+
+fn releaseMask(alloc: std.mem.Allocator, m: *SelectionMask) void {
+    if (m.refs.fetchSub(1, .acq_rel) == 1) {
+        m.magic = PT_MASK_DEAD;
+        alloc.free(m.sel);
+        alloc.destroy(m);
+    }
 }
 
 fn newMask(alloc: std.mem.Allocator, w: u32, h: u32) !*SelectionMask {
@@ -393,10 +430,8 @@ fn newMask(alloc: std.mem.Allocator, w: u32, h: u32) !*SelectionMask {
     return m;
 }
 
-/// A copied/cut region: a dense bbox of straight RGBA plus a per-cell selected
-/// flag and the bbox origin in canvas coordinates. paste replays it at an
-/// offset from that origin.
 const Clipboard = struct {
+    refs: std.atomic.Value(usize) = .init(1),
     w: u32,
     h: u32,
     ox: u32,
@@ -405,19 +440,58 @@ const Clipboard = struct {
     has: []u8,
 };
 
+fn releaseClipboard(alloc: std.mem.Allocator, cb: *Clipboard) void {
+    if (cb.refs.fetchSub(1, .acq_rel) == 1) {
+        alloc.free(cb.px);
+        alloc.free(cb.has);
+        alloc.destroy(cb);
+    }
+}
+
 const State = struct {
     alloc: std.mem.Allocator,
     canvases: std.AutoHashMapUnmanaged(u64, *Canvas) = .empty,
+    masks: std.AutoHashMapUnmanaged(u64, *SelectionMask) = .empty,
     next_canvas_id: u64 = 1,
-    clipboard: ?Clipboard = null,
-    lock: std.Thread.Mutex = .{},
+    next_mask_id: u64 = 1,
+    clipboard: ?*Clipboard = null,
+    lock: dispatcher.SpinMutex = .{},
 
-    fn replaceClipboard(self: *State, cb: Clipboard) void {
-        if (self.clipboard) |old| {
-            self.alloc.free(old.px);
-            self.alloc.free(old.has);
-        }
+    fn replaceClipboard(self: *State, cb: *Clipboard) void {
+        self.lock.lock();
+        const old = self.clipboard;
         self.clipboard = cb;
+        self.lock.unlock();
+        if (old) |prev| releaseClipboard(self.alloc, prev);
+    }
+
+    fn acquireClipboard(self: *State) ?*Clipboard {
+        self.lock.lock();
+        defer self.lock.unlock();
+        const cb = self.clipboard orelse return null;
+        _ = cb.refs.fetchAdd(1, .acq_rel);
+        return cb;
+    }
+
+    fn deinit(self: *State) void {
+        self.lock.lock();
+        defer self.lock.unlock();
+        var cit = self.canvases.valueIterator();
+        while (cit.next()) |cp| {
+            releaseCanvas(self.alloc, cp.*);
+        }
+        self.canvases.deinit(self.alloc);
+
+        var mit = self.masks.valueIterator();
+        while (mit.next()) |mp| {
+            releaseMask(self.alloc, mp.*);
+        }
+        self.masks.deinit(self.alloc);
+
+        if (self.clipboard) |old| {
+            releaseClipboard(self.alloc, old);
+            self.clipboard = null;
+        }
     }
 
     fn put(self: *State, c: *Canvas) !u64 {
@@ -429,16 +503,54 @@ const State = struct {
         return id;
     }
 
-    fn get(self: *State, id: u64) ?*Canvas {
+    fn acquire(self: *State, id: u64) ?*Canvas {
         self.lock.lock();
         defer self.lock.unlock();
-        return self.canvases.get(id);
+        const c = self.canvases.get(id) orelse return null;
+        _ = c.refs.fetchAdd(1, .acq_rel);
+        return c;
+    }
+
+    fn removeCanvas(self: *State, id: u64) ?*Canvas {
+        self.lock.lock();
+        defer self.lock.unlock();
+        if (self.canvases.fetchRemove(id)) |kv| return kv.value;
+        return null;
+    }
+
+    fn trackMask(self: *State, m: *SelectionMask) !u64 {
+        self.lock.lock();
+        defer self.lock.unlock();
+        const handle = self.next_mask_id;
+        self.next_mask_id += 1;
+        try self.masks.put(self.alloc, handle, m);
+        return handle;
+    }
+
+    fn acquireMask(self: *State, handle: u64) ?*SelectionMask {
+        if (handle == 0) return null;
+        self.lock.lock();
+        defer self.lock.unlock();
+        const m = self.masks.get(handle) orelse return null;
+        if (m.magic != PT_MASK_MAGIC) return null;
+        _ = m.refs.fetchAdd(1, .acq_rel);
+        return m;
+    }
+
+    fn removeMask(self: *State, handle: u64) ?*SelectionMask {
+        self.lock.lock();
+        defer self.lock.unlock();
+        if (self.masks.fetchRemove(handle)) |kv| return kv.value;
+        return null;
     }
 };
 
 var state: ?State = null;
 
 fn requireState() *State {
+    if (state == null) {
+        state = .{ .alloc = std.heap.c_allocator };
+    }
     return &state.?;
 }
 
@@ -446,8 +558,6 @@ fn requireState() *State {
 // 2. Helpers — colour, format, tile addressing
 //==============================================================================
 
-/// f32 → IEEE 754 binary16 bit pattern (stable-Rust-compatible algorithm).
-/// Mirrors src/ephapax/src/lib.rs::f32_to_f16_bits.
 fn f32ToF16Bits(value: f32) u16 {
     const bits: u32 = @bitCast(value);
     const sign: u16 = @intCast((bits >> 31) & 0x1);
@@ -488,7 +598,6 @@ fn f32ToF16Bits(value: f32) u16 {
     return (sign << 15) | (@as(u16, @intCast(new_exp)) << 10) | @as(u16, @intCast(new_mant));
 }
 
-/// IEEE 754 binary16 bit pattern → f32. Inverse of f32ToF16Bits.
 fn f16BitsToF32(bits: u16) f32 {
     const sign: u32 = @intCast(bits >> 15);
     const exp_u: u32 = @intCast((bits >> 10) & 0x1F);
@@ -498,7 +607,6 @@ fn f16BitsToF32(bits: u16) f32 {
         if (mant == 0) {
             out = sign << 31;
         } else {
-            // Subnormal: normalise.
             var e: i32 = -1;
             var m: u32 = mant;
             while ((m & 0x0400) == 0) {
@@ -512,7 +620,6 @@ fn f16BitsToF32(bits: u16) f32 {
     } else if (exp_u == 0x1F) {
         out = (sign << 31) | 0x7F80_0000 | (mant << 13);
     } else {
-        // Reorder to avoid u32 underflow when exp_u < 15 (i.e. f16 < 1.0).
         const new_exp: u32 = exp_u + 127 - 15;
         out = (sign << 31) | (new_exp << 23) | (mant << 13);
     }
@@ -538,21 +645,8 @@ fn readPixelF32(layer: *const Layer, x: u32, y: u32) [4]f32 {
     return .{ 0, 0, 0, 0 };
 }
 
-/// Single-pixel compositing: place `above` (already scaled by `opacity`) over
-/// `below` using `mode`. Both are linear-light straight (non-premultiplied)
-/// RGBA. Output is straight RGBA.
-///
-/// Formulas follow the standard "blend mode applied per channel, then
-/// Porter-Duff src-over" convention used by Photoshop/Paint.NET:
-///
-///   α_eff      = above.a * opacity
-///   blended_rgb = B(above.rgb, below.rgb)   -- per blend mode
-///   result.rgb = blended_rgb * α_eff + below.rgb * below.a * (1 - α_eff)
-///   result.a   = α_eff + below.a * (1 - α_eff)
-///
-/// The non-Normal modes still use src-over for alpha; only the RGB combination
-/// differs.
 fn blend(below: [4]f32, above: [4]f32, opacity: f32, mode: BlendMode) [4]f32 {
+    if (!std.math.isFinite(opacity) or !std.math.isFinite(above[3])) return below;
     const a_eff: f32 = above[3] * opacity;
     if (a_eff <= 0) return below;
 
@@ -577,7 +671,7 @@ fn blend(below: [4]f32, above: [4]f32, opacity: f32, mode: BlendMode) [4]f32 {
 
     const one_minus_aeff: f32 = 1.0 - a_eff;
     const r_a: f32 = a_eff + below[3] * one_minus_aeff;
-    if (r_a <= 0) return .{ 0, 0, 0, 0 };
+    if (r_a <= 0 or !std.math.isFinite(r_a)) return .{ 0, 0, 0, 0 };
 
     return .{
         (blended[0] * a_eff + below[0] * below[3] * one_minus_aeff) / r_a,
@@ -588,13 +682,12 @@ fn blend(below: [4]f32, above: [4]f32, opacity: f32, mode: BlendMode) [4]f32 {
 }
 
 fn quantizeU8(v: f32) u8 {
-    // clamp() propagates NaN, and @intFromFloat(NaN) is illegal behaviour; map
-    // a NaN channel (e.g. from a caller-supplied colour) to 0.
     if (std.math.isNan(v)) return 0;
     return @intFromFloat(std.math.clamp(v, 0.0, 1.0) * 255.0 + 0.5);
 }
 
 fn writePixelF16(layer: *Layer, alloc: std.mem.Allocator, x: u32, y: u32, c: [4]f32) !void {
+    const clean = sanitizeColour(c);
     const tx = x / TILE_SIZE;
     const ty = y / TILE_SIZE;
     const lx = x % TILE_SIZE;
@@ -608,10 +701,10 @@ fn writePixelF16(layer: *Layer, alloc: std.mem.Allocator, x: u32, y: u32, c: [4]
     }
     const t = gop.value_ptr.*;
     const idx: usize = (@as(usize, ly) * TILE_SIZE + @as(usize, lx)) * TILE_CHANNELS;
-    t.pixels[idx + 0] = f32ToF16Bits(c[0]);
-    t.pixels[idx + 1] = f32ToF16Bits(c[1]);
-    t.pixels[idx + 2] = f32ToF16Bits(c[2]);
-    t.pixels[idx + 3] = f32ToF16Bits(c[3]);
+    t.pixels[idx + 0] = f32ToF16Bits(clean[0]);
+    t.pixels[idx + 1] = f32ToF16Bits(clean[1]);
+    t.pixels[idx + 2] = f32ToF16Bits(clean[2]);
+    t.pixels[idx + 3] = f32ToF16Bits(clean[3]);
 }
 
 //==============================================================================
@@ -627,9 +720,10 @@ fn cpu_canvas_new(width: u32, height: u32, fmt: u32, bg_r: f32, bg_g: f32, bg_b:
         .width = width,
         .height = height,
         .format = fmt,
-        .background = .{ bg_r, bg_g, bg_b, bg_a },
+        .background = sanitizeColour(.{ bg_r, bg_g, bg_b, bg_a }),
+        .next_layer_id = 2,
     };
-    // Every canvas starts with one layer.
+    // Every canvas starts with one Background layer at stable id = 1.
     const l = s.alloc.create(Layer) catch {
         s.alloc.destroy(c);
         return @intFromEnum(dispatcher.ResultCode.out_of_memory);
@@ -639,17 +733,13 @@ fn cpu_canvas_new(width: u32, height: u32, fmt: u32, bg_r: f32, bg_g: f32, bg_b:
         s.alloc.destroy(c);
         return @intFromEnum(dispatcher.ResultCode.out_of_memory);
     };
-    l.* = .{ .name = name };
+    l.* = .{ .id = 1, .name = name };
     c.layers.append(s.alloc, l) catch {
         l.deinit(s.alloc);
         s.alloc.destroy(l);
         s.alloc.destroy(c);
         return @intFromEnum(dispatcher.ResultCode.out_of_memory);
     };
-    // Capture the empty-canvas snapshot as the history root. Eager init avoids
-    // the "first history_record captures post-op state as root" footgun where
-    // undoing all the way back lands on the first op's after-state instead of
-    // the truly initial blank canvas.
     ensureHistoryInit(s.alloc, c) catch {
         c.deinit(s.alloc);
         s.alloc.destroy(c);
@@ -667,40 +757,53 @@ fn cpu_canvas_new(width: u32, height: u32, fmt: u32, bg_r: f32, bg_g: f32, bg_b:
 fn cpu_canvas_resize(canvas: u64, w: u32, h: u32, _ax: f64, _ay: f64) callconv(.c) u32 {
     _ = _ax;
     _ = _ay;
-    const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
     if (w == 0 or h == 0 or w > MAX_CANVAS_DIM or h > MAX_CANVAS_DIM)
         return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const s = requireState();
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
+    c.lock.lock();
+    defer c.lock.unlock();
     c.width = w;
     c.height = h;
-    // Existing tiles outside the new bounds are not eagerly dropped; that's a
-    // post-MVP optimisation. Correctness is preserved.
+    return @intFromEnum(dispatcher.ResultCode.ok);
+}
+
+fn cpu_canvas_free(canvas: u64) callconv(.c) u32 {
+    const s = requireState();
+    const c = s.removeCanvas(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    releaseCanvas(s.alloc, c);
     return @intFromEnum(dispatcher.ResultCode.ok);
 }
 
 //==============================================================================
-// 4. MVP-12 — Layers (real implementation)
+// 4. MVP-12 — Layers (real implementation, immutable layer IDs)
 //==============================================================================
 
-fn cpu_layer_new(canvas: u64, _after: u64, _has_after: u32, name: [*:0]const u8, out_layer: *u64) callconv(.c) u32 {
-    _ = _after;
-    _ = _has_after;
+fn cpu_layer_new(canvas: u64, after: u64, has_after: u32, name: [*:0]const u8, out_layer: *u64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
+
+    const insert_idx: usize = if (has_after != 0) blk: {
+        const after_idx = c.findLayerIndex(after) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+        break :blk after_idx + 1;
+    } else c.layers.items.len;
+
     const l = s.alloc.create(Layer) catch return @intFromEnum(dispatcher.ResultCode.out_of_memory);
     const name_copy = s.alloc.dupe(u8, std.mem.span(name)) catch {
         s.alloc.destroy(l);
         return @intFromEnum(dispatcher.ResultCode.out_of_memory);
     };
-    l.* = .{ .name = name_copy };
-    c.layers.append(s.alloc, l) catch {
+    const id = c.next_layer_id;
+    l.* = .{ .id = id, .name = name_copy };
+    c.layers.insert(s.alloc, insert_idx, l) catch {
         l.deinit(s.alloc);
         s.alloc.destroy(l);
         return @intFromEnum(dispatcher.ResultCode.out_of_memory);
     };
-    const id = c.next_layer_id;
     c.next_layer_id += 1;
     out_layer.* = id;
     return @intFromEnum(dispatcher.ResultCode.ok);
@@ -708,11 +811,11 @@ fn cpu_layer_new(canvas: u64, _after: u64, _has_after: u32, name: [*:0]const u8,
 
 fn cpu_layer_delete(canvas: u64, layer: u64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
-    if (layer == 0 or layer > c.layers.items.len) return @intFromEnum(dispatcher.ResultCode.invalid_param);
-    const idx = @as(usize, layer - 1);
+    const idx = c.findLayerIndex(layer) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
     const l = c.layers.orderedRemove(idx);
     l.deinit(s.alloc);
     s.alloc.destroy(l);
@@ -721,45 +824,56 @@ fn cpu_layer_delete(canvas: u64, layer: u64) callconv(.c) u32 {
 
 fn cpu_layer_reorder(canvas: u64, layer: u64, new_index: u32) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
-    if (layer == 0 or layer > c.layers.items.len) return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const old_idx = c.findLayerIndex(layer) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
     if (new_index >= c.layers.items.len) return @intFromEnum(dispatcher.ResultCode.invalid_param);
-    const old_idx: usize = @intCast(layer - 1);
     const l = c.layers.orderedRemove(old_idx);
-    c.layers.insert(s.alloc, @intCast(new_index), l) catch return @intFromEnum(dispatcher.ResultCode.out_of_memory);
+    c.layers.insert(s.alloc, @intCast(new_index), l) catch {
+        c.layers.append(s.alloc, l) catch {
+            l.deinit(s.alloc);
+            s.alloc.destroy(l);
+        };
+        return @intFromEnum(dispatcher.ResultCode.out_of_memory);
+    };
     return @intFromEnum(dispatcher.ResultCode.ok);
 }
 
 fn cpu_layer_set_visible(canvas: u64, layer: u64, visible: u32) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
-    if (layer == 0 or layer > c.layers.items.len) return @intFromEnum(dispatcher.ResultCode.invalid_param);
-    c.layers.items[@intCast(layer - 1)].visible = visible != 0;
+    const idx = c.findLayerIndex(layer) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    c.layers.items[idx].visible = visible != 0;
     return @intFromEnum(dispatcher.ResultCode.ok);
 }
 
 fn cpu_layer_set_opacity(canvas: u64, layer: u64, opacity: f64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
-    if (layer == 0 or layer > c.layers.items.len) return @intFromEnum(dispatcher.ResultCode.invalid_param);
-    c.layers.items[@intCast(layer - 1)].opacity = std.math.clamp(opacity, 0.0, 1.0);
+    const idx = c.findLayerIndex(layer) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    // NaN normalises to 1.0 rather than propagating NaN through std.math.clamp
+    // and wiping the rendered canvas to [0, 0, 0, 0].
+    c.layers.items[idx].opacity = sanitizeUnitF64(opacity, 1.0);
     return @intFromEnum(dispatcher.ResultCode.ok);
 }
 
 fn cpu_layer_set_blend(canvas: u64, layer: u64, mode: u32) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
-    if (layer == 0 or layer > c.layers.items.len) return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const idx = c.findLayerIndex(layer) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
     if (mode > @intFromEnum(BlendMode.screen)) return @intFromEnum(dispatcher.ResultCode.invalid_param);
-    c.layers.items[@intCast(layer - 1)].blend = @enumFromInt(mode);
+    c.layers.items[idx].blend = @enumFromInt(mode);
     return @intFromEnum(dispatcher.ResultCode.ok);
 }
 
@@ -767,7 +881,8 @@ fn cpu_canvas_render_rgba8_internal(c: *const Canvas, x: u32, y: u32, w: u32, h:
     if (@as(u64, x) + @as(u64, w) > @as(u64, c.width)) return @intFromEnum(dispatcher.ResultCode.invalid_param);
     if (@as(u64, y) + @as(u64, h) > @as(u64, c.height)) return @intFromEnum(dispatcher.ResultCode.invalid_param);
 
-    const needed: usize = @as(usize, w) * @as(usize, h) * 4;
+    const pixel_count = std.math.mul(usize, w, h) catch return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const needed = std.math.mul(usize, pixel_count, 4) catch return @intFromEnum(dispatcher.ResultCode.invalid_param);
     if (out_buf_len < needed) return @intFromEnum(dispatcher.ResultCode.invalid_param);
 
     var py: u32 = 0;
@@ -777,14 +892,11 @@ fn cpu_canvas_render_rgba8_internal(c: *const Canvas, x: u32, y: u32, w: u32, h:
             const cx: u32 = x + px;
             const cy: u32 = y + py;
 
-            // Start with the canvas background as the bottom of the stack.
             var below: [4]f32 = c.background;
-
-            // Composite each visible layer in stack order (index 0 = bottom).
             for (c.layers.items) |layer| {
                 if (!layer.visible) continue;
                 const above = readPixelF32(layer, cx, cy);
-                below = blend(below, above, @floatCast(layer.opacity), layer.blend);
+                below = blend(below, above, @floatCast(sanitizeUnitF64(layer.opacity, 1.0)), layer.blend);
             }
 
             const out_idx: usize = (@as(usize, py) * @as(usize, w) + @as(usize, px)) * 4;
@@ -799,7 +911,8 @@ fn cpu_canvas_render_rgba8_internal(c: *const Canvas, x: u32, y: u32, w: u32, h:
 
 fn cpu_canvas_render_rgba8(canvas: u64, x: u32, y: u32, w: u32, h: u32, out_buf: [*]u8, out_buf_len: usize) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     return cpu_canvas_render_rgba8_internal(c, x, y, w, h, out_buf, out_buf_len);
@@ -810,8 +923,14 @@ fn cpu_canvas_render_rgba8(canvas: u64, x: u32, y: u32, w: u32, h: u32, out_buf:
 //==============================================================================
 
 fn cpu_viewport_set(canvas: u64, zoom: f64, px: f64, py: f64, rot: f64) callconv(.c) u32 {
+    if (!std.math.isFinite(zoom) or zoom <= 0.0 or
+        !std.math.isFinite(px) or !std.math.isFinite(py) or !std.math.isFinite(rot))
+    {
+        return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    }
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     c.viewport = .{ .zoom = zoom, .pan_x = px, .pan_y = py, .rotation = rot };
@@ -820,11 +939,10 @@ fn cpu_viewport_set(canvas: u64, zoom: f64, px: f64, py: f64, rot: f64) callconv
 
 fn cpu_viewport_fit(canvas: u64, oz: *f64, opx: *f64, opy: *f64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
-    // Fit-to-window heuristic; without a viewport size from the display
-    // backend we just return zoom=1, pan=0.
     oz.* = 1.0;
     opx.* = 0.0;
     opy.* = 0.0;
@@ -832,53 +950,37 @@ fn cpu_viewport_fit(canvas: u64, oz: *f64, opx: *f64, opy: *f64) callconv(.c) u3
 }
 
 //==============================================================================
-// 6. MVP-3 — Pencil stub (placeholder, writes one pixel per point)
+// 6. MVP-3 — Pencil & Brush & Eraser & Fill & Selection
 //==============================================================================
 
 fn cpu_tool_stroke_pencil(canvas: u64, layer: u64, n: u32, points: [*]const f64, points_len: usize, colour: *const [4]f32) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
-    if (layer == 0 or layer > c.layers.items.len) return @intFromEnum(dispatcher.ResultCode.invalid_param);
-    const l = c.layers.items[@intCast(layer - 1)];
-    // Each pencil point is a flat (x, y) f64 pair, so the buffer must hold 2*n
-    // elements. Validate against the caller-declared length before indexing —
-    // without it an over-large `n` is an out-of-bounds read. `i` is usize so
-    // `i * 2` cannot wrap the index arithmetic.
+    const idx = c.findLayerIndex(layer) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const l = c.layers.items[idx];
     const needed = std.math.mul(usize, n, 2) catch return @intFromEnum(dispatcher.ResultCode.invalid_param);
     if (needed > points_len) return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const clean_colour = sanitizeColour(colour.*);
     var i: usize = 0;
     while (i < n) : (i += 1) {
         const px = points[i * 2];
         const py = points[i * 2 + 1];
         const ix = finiteFloorU32(px, c.width) orelse continue;
         const iy = finiteFloorU32(py, c.height) orelse continue;
-        writePixelF16(l, s.alloc, ix, iy, colour.*) catch return @intFromEnum(dispatcher.ResultCode.out_of_memory);
+        writePixelF16(l, s.alloc, ix, iy, clean_colour) catch return @intFromEnum(dispatcher.ResultCode.out_of_memory);
     }
     return @intFromEnum(dispatcher.ResultCode.ok);
 }
 
-//==============================================================================
-// 6b. Brush footprint + stamp (MVP-3)
-//
-//   brushAlphaProfile maps normalised distance + hardness to a per-pixel
-//   coverage value. The "hardness" axis is the fraction of the radius that
-//   stays at full alpha; beyond it, a smoothstep falloff carries down to
-//   alpha=0 at the radius edge. hardness=1 → hard disk, hardness=0 → fully
-//   soft (Photoshop / Krita / Paint.NET semantics).
-//
-//   stampBrush places one footprint at (cx, cy). A stroke is just a sequence
-//   of stamps along the polyline between successive stroke points, spaced by
-//   `spacing` (fraction of brush diameter).
-//==============================================================================
-
 fn brushAlphaProfile(norm_dist: f64, hardness: f64) f64 {
-    if (norm_dist >= 1.0) return 0;
-    if (norm_dist <= hardness) return 1.0;
-    if (hardness >= 1.0) return 1.0;
-    const t: f64 = (norm_dist - hardness) / (1.0 - hardness);
-    // smoothstep(0,1,t)
+    if (!std.math.isFinite(norm_dist) or norm_dist >= 1.0) return 0;
+    const h = sanitizeUnitF64(hardness, 1.0);
+    if (norm_dist <= h) return 1.0;
+    if (h >= 1.0) return 1.0;
+    const t: f64 = (norm_dist - h) / (1.0 - h);
     const ss: f64 = t * t * (3.0 - 2.0 * t);
     return 1.0 - ss;
 }
@@ -895,8 +997,11 @@ fn stampBrush(
     opacity: f64,
     colour: [4]f32,
 ) !void {
-    if (radius <= 0) return;
-    if (!std.math.isFinite(cx) or !std.math.isFinite(cy) or !std.math.isFinite(radius)) return;
+    if (!std.math.isFinite(radius) or radius <= 0) return;
+    if (!std.math.isFinite(cx) or !std.math.isFinite(cy)) return;
+    if (!std.math.isFinite(opacity) or opacity <= 0) return;
+
+    const clean_colour = sanitizeColour(colour);
     const bbox_x0_f = @floor(cx - radius - 1.0);
     const bbox_y0_f = @floor(cy - radius - 1.0);
     const bbox_x1_f = @ceil(cx + radius + 1.0);
@@ -905,9 +1010,6 @@ fn stampBrush(
     const w_i: i64 = @intCast(canvas_w);
     const h_i: i64 = @intCast(canvas_h);
 
-    // Clamp the footprint bbox into the canvas before the i64 cast: this bounds
-    // the iteration and prevents an attacker-large coordinate from overflowing
-    // the conversion.
     const x0: i64 = finiteToI64Clamped(bbox_x0_f, 0, w_i);
     const y0: i64 = finiteToI64Clamped(bbox_y0_f, 0, h_i);
     const x1: i64 = finiteToI64Clamped(bbox_x1_f, 0, w_i);
@@ -924,43 +1026,35 @@ fn stampBrush(
             const ddx = fx - cx;
             const ddy = fy - cy;
             const dist = @sqrt(ddx * ddx + ddy * ddy);
-            if (dist >= radius) continue;
+            if (!std.math.isFinite(dist) or dist >= radius) continue;
             const norm_d = dist / radius;
             const cov = brushAlphaProfile(norm_d, hardness);
-            const stamp_a: f64 = cov * opacity * @as(f64, colour[3]);
-            if (stamp_a <= 0) continue;
+            const stamp_a: f64 = cov * opacity * @as(f64, clean_colour[3]);
+            if (!std.math.isFinite(stamp_a) or stamp_a <= 0) continue;
 
             const ux: u32 = @intCast(x);
             const uy: u32 = @intCast(y);
             const dst = readPixelF32(layer, ux, uy);
-            const sa: f32 = @floatCast(stamp_a);
+            const sa: f32 = @floatCast(sanitizeUnitF64(stamp_a, 0.0));
             const one_minus_sa: f32 = 1.0 - sa;
             const result_a: f32 = sa + dst[3] * one_minus_sa;
             var rr: f32 = 0;
             var rg: f32 = 0;
             var rb: f32 = 0;
             if (result_a > 0) {
-                rr = (colour[0] * sa + dst[0] * dst[3] * one_minus_sa) / result_a;
-                rg = (colour[1] * sa + dst[1] * dst[3] * one_minus_sa) / result_a;
-                rb = (colour[2] * sa + dst[2] * dst[3] * one_minus_sa) / result_a;
+                rr = (clean_colour[0] * sa + dst[0] * dst[3] * one_minus_sa) / result_a;
+                rg = (clean_colour[1] * sa + dst[1] * dst[3] * one_minus_sa) / result_a;
+                rb = (clean_colour[2] * sa + dst[2] * dst[3] * one_minus_sa) / result_a;
             }
             try writePixelF16(layer, alloc, ux, uy, .{ rr, rg, rb, result_a });
         }
     }
 }
 
-//==============================================================================
-// 6c. Eraser / fill / selection helpers (MVP-3 tool primitives)
-//==============================================================================
-
-/// Shorthand for returning a dispatcher result code from a C-ABI tool fn.
 inline fn rcode(code: dispatcher.ResultCode) u32 {
     return @intFromEnum(code);
 }
 
-/// Erase footprint: lower destination alpha by the brush coverage, leaving RGB
-/// intact. `strength` is the already-clamped erase opacity. Fully-transparent
-/// pixels are skipped so no tile is allocated just to write zero.
 fn stampEraser(
     layer: *Layer,
     alloc: std.mem.Allocator,
@@ -972,8 +1066,9 @@ fn stampEraser(
     hardness: f64,
     strength: f64,
 ) !void {
-    if (radius <= 0 or strength <= 0) return;
-    if (!std.math.isFinite(cx) or !std.math.isFinite(cy) or !std.math.isFinite(radius)) return;
+    if (!std.math.isFinite(radius) or radius <= 0) return;
+    if (!std.math.isFinite(strength) or strength <= 0) return;
+    if (!std.math.isFinite(cx) or !std.math.isFinite(cy)) return;
 
     const w_i: i64 = @intCast(canvas_w);
     const h_i: i64 = @intCast(canvas_h);
@@ -993,23 +1088,22 @@ fn stampEraser(
             const ddx = fx - cx;
             const ddy = fy - cy;
             const dist = @sqrt(ddx * ddx + ddy * ddy);
-            if (dist >= radius) continue;
+            if (!std.math.isFinite(dist) or dist >= radius) continue;
             const cov = brushAlphaProfile(dist / radius, hardness);
             const e: f64 = cov * strength;
-            if (e <= 0) continue;
+            if (!std.math.isFinite(e) or e <= 0) continue;
 
             const ux: u32 = @intCast(x);
             const uy: u32 = @intCast(y);
             const dst = readPixelF32(layer, ux, uy);
-            if (dst[3] <= 0) continue; // already transparent — nothing to erase
-            const ef: f32 = @floatCast(std.math.clamp(e, 0.0, 1.0));
+            if (dst[3] <= 0) continue;
+            const ef: f32 = @floatCast(sanitizeUnitF64(e, 0.0));
             const new_a: f32 = dst[3] * (1.0 - ef);
             try writePixelF16(layer, alloc, ux, uy, .{ dst[0], dst[1], dst[2], new_a });
         }
     }
 }
 
-/// Chebyshev (per-channel max-abs) colour match used by the fill tool.
 fn colourWithin(a: [4]f32, b: [4]f32, tol: f32) bool {
     var i: usize = 0;
     while (i < 4) : (i += 1) {
@@ -1018,8 +1112,6 @@ fn colourWithin(a: [4]f32, b: [4]f32, tol: f32) bool {
     return true;
 }
 
-/// Even-odd ray-casting point-in-polygon test for the lasso. `pts` holds
-/// `2*n` f64s as (x, y) pairs; the polygon is implicitly closed.
 fn pointInPoly(x: f64, y: f64, pts: [*]const f64, n: u32) bool {
     var inside = false;
     var i: usize = 0;
@@ -1041,8 +1133,6 @@ fn pointInPoly(x: f64, y: f64, pts: [*]const f64, n: u32) bool {
 
 const SelectionError = error{ OutOfMemory, EmptySelection };
 
-/// Copy the masked pixels of `l` into the state clipboard as a tight bbox.
-/// Caller must hold `c.lock`. Errors if the selection is empty.
 fn copyMaskedRegion(s: *State, c: *Canvas, l: *Layer, m: *SelectionMask) SelectionError!void {
     var minx: u32 = c.width;
     var miny: u32 = c.height;
@@ -1070,6 +1160,8 @@ fn copyMaskedRegion(s: *State, c: *Canvas, l: *Layer, m: *SelectionMask) Selecti
     const px = try s.alloc.alloc([4]f32, cnt);
     errdefer s.alloc.free(px);
     const has = try s.alloc.alloc(u8, cnt);
+    errdefer s.alloc.free(has);
+    const cb = try s.alloc.create(Clipboard);
     @memset(has, 0);
 
     var yy: u32 = miny;
@@ -1085,17 +1177,12 @@ fn copyMaskedRegion(s: *State, c: *Canvas, l: *Layer, m: *SelectionMask) Selecti
             }
         }
     }
-    s.replaceClipboard(.{ .w = bw, .h = bh, .ox = minx, .oy = miny, .px = px, .has = has });
+    cb.* = .{ .w = bw, .h = bh, .ox = minx, .oy = miny, .px = px, .has = has };
+    s.replaceClipboard(cb);
 }
 
 //==============================================================================
 // 6a. Codecs — PNG and PPM encoders used by io_save (MVP-2)
-//
-//   These are pure-Zig encoders with no external dependencies. PNG uses
-//   deflate STORED blocks (no compression) — perfectly valid PNG, just
-//   larger files than a real LZ77 compressor would produce. We trade
-//   bytes for code simplicity at MVP; real compression lands when an
-//   accelerated backend with a fast DEFLATE / zstd / etc. comes online.
 //==============================================================================
 
 const CRC32_POLY: u32 = 0xEDB88320;
@@ -1106,7 +1193,6 @@ fn crc32Byte(crc: u32, byte: u8) u32 {
     while (i < 7) : (i += 1) {
         c = if ((c & 1) != 0) (c >> 1) ^ CRC32_POLY else c >> 1;
     }
-    // unrolled last iter to keep i: u3 in range
     c = if ((c & 1) != 0) (c >> 1) ^ CRC32_POLY else c >> 1;
     return c;
 }
@@ -1141,11 +1227,9 @@ fn writeLE16(buf: []u8, offset: usize, val: u16) void {
     buf[offset + 1] = @intCast((val >> 8) & 0xFF);
 }
 
-/// Encode RGBA8 pixels as a valid PNG image. Caller owns the returned slice.
 fn encodePngRgba8(alloc: std.mem.Allocator, width: u32, height: u32, rgba: []const u8) ![]u8 {
     if (rgba.len != @as(usize, width) * @as(usize, height) * 4) return error.InvalidParam;
 
-    // Step 1 — build the filtered scanlines (filter byte 0 = None, per row).
     const row_bytes: usize = @as(usize, width) * 4;
     const filtered_len: usize = (row_bytes + 1) * @as(usize, height);
     var filtered = try alloc.alloc(u8, filtered_len);
@@ -1153,12 +1237,11 @@ fn encodePngRgba8(alloc: std.mem.Allocator, width: u32, height: u32, rgba: []con
     var y: u32 = 0;
     while (y < height) : (y += 1) {
         const dst_off: usize = @as(usize, y) * (row_bytes + 1);
-        filtered[dst_off] = 0; // filter type None
+        filtered[dst_off] = 0;
         const src_off: usize = @as(usize, y) * row_bytes;
         @memcpy(filtered[dst_off + 1 .. dst_off + 1 + row_bytes], rgba[src_off .. src_off + row_bytes]);
     }
 
-    // Step 2 — wrap as a zlib stream of stored deflate blocks.
     const max_block: usize = 65535;
     const block_count: usize = (filtered_len + max_block - 1) / max_block;
     const block_count_safe: usize = if (block_count == 0) 1 else block_count;
@@ -1166,13 +1249,11 @@ fn encodePngRgba8(alloc: std.mem.Allocator, width: u32, height: u32, rgba: []con
     var idat = try alloc.alloc(u8, idat_len);
     defer alloc.free(idat);
 
-    // zlib header: CMF=0x78 (deflate, 32K window), FLG=0x01 (FCHECK OK: 0x7801 mod 31 == 0).
     idat[0] = 0x78;
     idat[1] = 0x01;
     var p: usize = 2;
 
     if (filtered_len == 0) {
-        // Edge: write one empty final stored block.
         idat[p] = 0x01;
         writeLE16(idat, p + 1, 0);
         writeLE16(idat, p + 3, 0xFFFF);
@@ -1202,26 +1283,23 @@ fn encodePngRgba8(alloc: std.mem.Allocator, width: u32, height: u32, rgba: []con
 
     const idat_payload = idat[0..p];
 
-    // Step 3 — assemble the PNG: signature + IHDR + IDAT + IEND.
     var ihdr: [13]u8 = undefined;
     writeBE32(ihdr[0..], 0, width);
     writeBE32(ihdr[0..], 4, height);
-    ihdr[8] = 8; // bit depth
-    ihdr[9] = 6; // colour type 6 = RGBA
-    ihdr[10] = 0; // compression method (deflate)
-    ihdr[11] = 0; // filter method 0
-    ihdr[12] = 0; // no interlace
+    ihdr[8] = 8;
+    ihdr[9] = 6;
+    ihdr[10] = 0;
+    ihdr[11] = 0;
+    ihdr[12] = 0;
 
     const total: usize = 8 + (4 + 4 + 13 + 4) + (4 + 4 + idat_payload.len + 4) + (4 + 4 + 0 + 4);
     var out = try alloc.alloc(u8, total);
 
     var op: usize = 0;
-    // Signature
     const sig = [_]u8{ 137, 80, 78, 71, 13, 10, 26, 10 };
     @memcpy(out[op .. op + 8], &sig);
     op += 8;
 
-    // IHDR chunk
     writeBE32(out, op, 13);
     op += 4;
     @memcpy(out[op .. op + 4], "IHDR");
@@ -1231,7 +1309,6 @@ fn encodePngRgba8(alloc: std.mem.Allocator, width: u32, height: u32, rgba: []con
     writeBE32(out, op, crc32Concat(&.{ "IHDR", ihdr[0..] }));
     op += 4;
 
-    // IDAT chunk
     writeBE32(out, op, @intCast(idat_payload.len));
     op += 4;
     @memcpy(out[op .. op + 4], "IDAT");
@@ -1241,7 +1318,6 @@ fn encodePngRgba8(alloc: std.mem.Allocator, width: u32, height: u32, rgba: []con
     writeBE32(out, op, crc32Concat(&.{ "IDAT", idat_payload }));
     op += 4;
 
-    // IEND chunk
     writeBE32(out, op, 0);
     op += 4;
     @memcpy(out[op .. op + 4], "IEND");
@@ -1282,12 +1358,8 @@ fn writeFileBytes(path: [*:0]const u8, data: []const u8) bool {
 }
 
 //==============================================================================
-// 7. Stubs returning not_implemented — to be filled in MVP-by-MVP
+// 7. Operations & Stubs
 //==============================================================================
-// The dispatcher honours `not_implemented` from a non-reference backend by
-// falling back to the reference. From the reference itself, `not_implemented`
-// is a flag that this operation still needs its real body — the test harness
-// will surface these as TODO before v0.2.0 closes.
 
 fn cpu_io_open(_path: [*:0]const u8, _fmt: ?[*:0]const u8, _out: *u64) callconv(.c) u32 {
     _ = _path;
@@ -1296,36 +1368,34 @@ fn cpu_io_open(_path: [*:0]const u8, _fmt: ?[*:0]const u8, _out: *u64) callconv(
     return @intFromEnum(dispatcher.ResultCode.not_implemented);
 }
 
-// SECURITY: `path` is written verbatim via fopen() with no canonicalisation or
-// sandboxing. That is correct for the local desktop app, whose user chooses the
-// save location ("Save As anywhere"). It is NOT safe to forward a request-
-// supplied path here from a network surface: any future REST/connector dispatch
-// that reaches io_save MUST constrain paths to a sandbox and reject
-// traversal/absolute/symlink-escaping paths at that boundary. See
-// audits/SECURITY-REVIEW-2026-06-15.md (M2).
 fn cpu_io_save(canvas: u64, path: [*:0]const u8, fmt: [*:0]const u8, _opts: [*:0]const u8) callconv(.c) u32 {
     _ = _opts;
-    const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
     if (std.mem.span(path).len == 0) return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const s = requireState();
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
 
-    // Step 1 — composite the canvas into an RGBA8 buffer through the same
-    // render path the rest of the pipeline uses.
-    const pixel_count: usize = @as(usize, c.width) * @as(usize, c.height);
-    const buf = s.alloc.alloc(u8, pixel_count * 4) catch return @intFromEnum(dispatcher.ResultCode.out_of_memory);
+    c.lock.lock();
+    const w = c.width;
+    const h = c.height;
+    const pixel_count: usize = @as(usize, w) * @as(usize, h);
+    const buf = s.alloc.alloc(u8, pixel_count * 4) catch {
+        c.lock.unlock();
+        return @intFromEnum(dispatcher.ResultCode.out_of_memory);
+    };
     defer s.alloc.free(buf);
-    const rc = cpu_canvas_render_rgba8(canvas, 0, 0, c.width, c.height, buf.ptr, buf.len);
+    const rc = cpu_canvas_render_rgba8_internal(c, 0, 0, w, h, buf.ptr, buf.len);
+    c.lock.unlock();
     if (rc != @intFromEnum(dispatcher.ResultCode.ok)) return rc;
 
-    // Step 2 — encode according to the requested format.
     const fmt_str = std.mem.span(fmt);
     if (std.mem.eql(u8, fmt_str, "png")) {
-        const bytes = encodePngRgba8(s.alloc, c.width, c.height, buf) catch return @intFromEnum(dispatcher.ResultCode.out_of_memory);
+        const bytes = encodePngRgba8(s.alloc, w, h, buf) catch return @intFromEnum(dispatcher.ResultCode.out_of_memory);
         defer s.alloc.free(bytes);
         return if (writeFileBytes(path, bytes)) @intFromEnum(dispatcher.ResultCode.ok) else @intFromEnum(dispatcher.ResultCode.err);
     }
     if (std.mem.eql(u8, fmt_str, "ppm")) {
-        const bytes = encodePpmRgba8(s.alloc, c.width, c.height, buf) catch return @intFromEnum(dispatcher.ResultCode.out_of_memory);
+        const bytes = encodePpmRgba8(s.alloc, w, h, buf) catch return @intFromEnum(dispatcher.ResultCode.out_of_memory);
         defer s.alloc.free(bytes);
         return if (writeFileBytes(path, bytes)) @intFromEnum(dispatcher.ResultCode.ok) else @intFromEnum(dispatcher.ResultCode.err);
     }
@@ -1342,29 +1412,30 @@ fn cpu_tool_stroke_brush(
     colour: *const [4]f32,
 ) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
-    if (layer == 0 or layer > c.layers.items.len) return @intFromEnum(dispatcher.ResultCode.invalid_param);
-    // `points` holds one StrokePointC per point; reject an `n` larger than the
-    // caller-declared buffer before indexing.
+    const idx = c.findLayerIndex(layer) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
     if (n > points_len) return @intFromEnum(dispatcher.ResultCode.invalid_param);
-    const l = c.layers.items[@intCast(layer - 1)];
+    const l = c.layers.items[idx];
 
     const radius: f64 = brush_state.radius;
-    if (radius <= 0) return @intFromEnum(dispatcher.ResultCode.invalid_param);
-    const hardness: f64 = std.math.clamp(brush_state.hardness, 0.0, 1.0);
-    const opacity: f64 = std.math.clamp(brush_state.opacity, 0.0, 1.0);
+    if (!std.math.isFinite(radius) or radius <= 0.0) return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    if (!std.math.isFinite(brush_state.hardness) or !std.math.isFinite(brush_state.opacity) or !std.math.isFinite(brush_state.spacing)) {
+        return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    }
+    const hardness: f64 = sanitizeUnitF64(brush_state.hardness, 1.0);
+    const opacity: f64 = sanitizeUnitF64(brush_state.opacity, 1.0);
     const spacing_frac: f64 = if (brush_state.spacing > 0.0) brush_state.spacing else 0.25;
-    // Distance between successive stamps, in pixels.
     const spacing_px: f64 = spacing_frac * radius * 2.0;
+    if (!std.math.isFinite(spacing_px) or spacing_px <= 0.0) return @intFromEnum(dispatcher.ResultCode.invalid_param);
 
     if (n == 0) return @intFromEnum(dispatcher.ResultCode.ok);
 
-    // Always stamp the first point — single-tap brush works even with one input point.
-    stampBrush(l, s.alloc, c.width, c.height, points[0].x, points[0].y, radius, hardness, opacity, colour.*) catch return @intFromEnum(dispatcher.ResultCode.out_of_memory);
+    const clean_colour = sanitizeColour(colour.*);
+    stampBrush(l, s.alloc, c.width, c.height, points[0].x, points[0].y, radius, hardness, opacity, clean_colour) catch return @intFromEnum(dispatcher.ResultCode.out_of_memory);
 
-    // Walk consecutive pairs, lerp at spacing intervals.
     var i: u32 = 1;
     while (i < n) : (i += 1) {
         const prev = points[i - 1];
@@ -1374,9 +1445,11 @@ fn cpu_tool_stroke_brush(
         const dx = curr.x - prev.x;
         const dy = curr.y - prev.y;
         const dist = @sqrt(dx * dx + dy * dy);
-        if (dist <= 0) continue;
+        if (!std.math.isFinite(dist) or dist <= 0) continue;
         const stamps_f = dist / spacing_px;
-        const stamps: u32 = if (stamps_f < 1.0)
+        const stamps: u32 = if (!std.math.isFinite(stamps_f))
+            MAX_STROKE_STAMPS
+        else if (stamps_f < 1.0)
             1
         else if (stamps_f >= @as(f64, @floatFromInt(MAX_STROKE_STAMPS)))
             MAX_STROKE_STAMPS
@@ -1387,7 +1460,7 @@ fn cpu_tool_stroke_brush(
             const t: f64 = @as(f64, @floatFromInt(k)) / @as(f64, @floatFromInt(stamps));
             const sx = prev.x + dx * t;
             const sy = prev.y + dy * t;
-            stampBrush(l, s.alloc, c.width, c.height, sx, sy, radius, hardness, opacity, colour.*) catch return @intFromEnum(dispatcher.ResultCode.out_of_memory);
+            stampBrush(l, s.alloc, c.width, c.height, sx, sy, radius, hardness, opacity, clean_colour) catch return @intFromEnum(dispatcher.ResultCode.out_of_memory);
         }
     }
 
@@ -1404,22 +1477,25 @@ fn cpu_tool_stroke_eraser(
     mode: u32,
 ) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return rcode(.invalid_param);
+    const c = s.acquire(canvas) orelse return rcode(.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
-    if (layer == 0 or layer > c.layers.items.len) return rcode(.invalid_param);
-    // Only mode 0 (Normal — lower alpha) is defined for v0.3.0; reject others
-    // loudly rather than silently treating them as Normal.
+    const idx = c.findLayerIndex(layer) orelse return rcode(.invalid_param);
     if (mode != 0) return rcode(.invalid_param);
     if (n > points_len) return rcode(.invalid_param);
-    const l = c.layers.items[@intCast(layer - 1)];
+    const l = c.layers.items[idx];
 
     const radius: f64 = brush_state.radius;
-    if (radius <= 0) return rcode(.invalid_param);
-    const hardness: f64 = std.math.clamp(brush_state.hardness, 0.0, 1.0);
-    const strength: f64 = std.math.clamp(brush_state.opacity, 0.0, 1.0);
+    if (!std.math.isFinite(radius) or radius <= 0.0) return rcode(.invalid_param);
+    if (!std.math.isFinite(brush_state.hardness) or !std.math.isFinite(brush_state.opacity) or !std.math.isFinite(brush_state.spacing)) {
+        return rcode(.invalid_param);
+    }
+    const hardness: f64 = sanitizeUnitF64(brush_state.hardness, 1.0);
+    const strength: f64 = sanitizeUnitF64(brush_state.opacity, 1.0);
     const spacing_frac: f64 = if (brush_state.spacing > 0.0) brush_state.spacing else 0.25;
     const spacing_px: f64 = spacing_frac * radius * 2.0;
+    if (!std.math.isFinite(spacing_px) or spacing_px <= 0.0) return rcode(.invalid_param);
 
     if (n == 0) return rcode(.ok);
 
@@ -1434,9 +1510,11 @@ fn cpu_tool_stroke_eraser(
         const dx = curr.x - prev.x;
         const dy = curr.y - prev.y;
         const dist = @sqrt(dx * dx + dy * dy);
-        if (dist <= 0) continue;
+        if (!std.math.isFinite(dist) or dist <= 0) continue;
         const stamps_f = dist / spacing_px;
-        const stamps: u32 = if (stamps_f < 1.0)
+        const stamps: u32 = if (!std.math.isFinite(stamps_f))
+            MAX_STROKE_STAMPS
+        else if (stamps_f < 1.0)
             1
         else if (stamps_f >= @as(f64, @floatFromInt(MAX_STROKE_STAMPS)))
             MAX_STROKE_STAMPS
@@ -1465,23 +1543,22 @@ fn cpu_tool_sample_colour(_c: u64, _x: f64, _y: f64, _a: u32, _out: *[4]f32) cal
 
 fn cpu_tool_fill(canvas: u64, layer: u64, sx: f64, sy: f64, colour: *const [4]f32, tol: f64, contig: u32) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return rcode(.invalid_param);
+    const c = s.acquire(canvas) orelse return rcode(.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
-    if (layer == 0 or layer > c.layers.items.len) return rcode(.invalid_param);
-    const l = c.layers.items[@intCast(layer - 1)];
+    const layer_idx = c.findLayerIndex(layer) orelse return rcode(.invalid_param);
+    const l = c.layers.items[layer_idx];
 
     const seed_x = finiteFloorU32(sx, c.width) orelse return rcode(.invalid_param);
     const seed_y = finiteFloorU32(sy, c.height) orelse return rcode(.invalid_param);
 
     const target = readPixelF32(l, seed_x, seed_y);
-    const fill_colour = colour.*;
-    const tolf: f32 = if (std.math.isNan(tol) or tol < 0) 0.0 else @floatCast(tol);
+    const fill_colour = sanitizeColour(colour.*);
+    const tolf: f32 = if (!std.math.isFinite(tol) or tol < 0) 0.0 else @floatCast(@min(tol, 16.0));
     const total: usize = @as(usize, c.width) * @as(usize, c.height);
 
     if (contig != 0) {
-        // Contiguous 4-connected flood fill. Mark pixels visited on push so each
-        // enters the work stack at most once (stack bounded by pixel count).
         const visited = s.alloc.alloc(u8, total) catch return rcode(.out_of_memory);
         defer s.alloc.free(visited);
         @memset(visited, 0);
@@ -1517,7 +1594,6 @@ fn cpu_tool_fill(canvas: u64, layer: u64, sx: f64, sy: f64, colour: *const [4]f3
             }
         }
     } else {
-        // Global fill: every pixel matching the seed colour within tolerance.
         var y: u32 = 0;
         while (y < c.height) : (y += 1) {
             var x: u32 = 0;
@@ -1533,12 +1609,11 @@ fn cpu_tool_fill(canvas: u64, layer: u64, sx: f64, sy: f64, colour: *const [4]f3
 
 fn cpu_selection_rect(canvas: u64, x0: u32, y0: u32, x1: u32, y1: u32, out_mask: *u64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return rcode(.invalid_param);
+    const c = s.acquire(canvas) orelse return rcode(.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     const m = newMask(s.alloc, c.width, c.height) catch return rcode(.out_of_memory);
-    // Half-open [lo, hi) in each axis, clamped to the canvas; corners may arrive
-    // in any order.
     const lo_x = @min(@min(x0, x1), c.width);
     const hi_x = @min(@max(x0, x1), c.width);
     const lo_y = @min(@min(y0, y1), c.height);
@@ -1550,54 +1625,106 @@ fn cpu_selection_rect(canvas: u64, x0: u32, y0: u32, x1: u32, y1: u32, out_mask:
             m.sel[@as(usize, yy) * c.width + xx] = 1;
         }
     }
-    out_mask.* = @intFromPtr(m);
+    const handle = s.trackMask(m) catch {
+        s.alloc.free(m.sel);
+        s.alloc.destroy(m);
+        return rcode(.out_of_memory);
+    };
+    out_mask.* = handle;
     return rcode(.ok);
 }
 
 fn cpu_selection_lasso(canvas: u64, n: u32, pts: [*]const f64, out_mask: *u64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return rcode(.invalid_param);
+    const c = s.acquire(canvas) orelse return rcode(.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     if (n < 3) return rcode(.invalid_param);
+
+    // Validate vertices and compute tight polygon bounding box so a small
+    // lasso on a 16384x16384 canvas only rasterises inside `[min..max]`.
+    var min_xf: f64 = pts[0];
+    var max_xf: f64 = pts[0];
+    var min_yf: f64 = pts[1];
+    var max_yf: f64 = pts[1];
+    var vi: usize = 0;
+    while (vi < n) : (vi += 1) {
+        const vx = pts[vi * 2];
+        const vy = pts[vi * 2 + 1];
+        if (!std.math.isFinite(vx) or !std.math.isFinite(vy)) return rcode(.invalid_param);
+        min_xf = @min(min_xf, vx);
+        max_xf = @max(max_xf, vx);
+        min_yf = @min(min_yf, vy);
+        max_yf = @max(max_yf, vy);
+    }
+
     const m = newMask(s.alloc, c.width, c.height) catch return rcode(.out_of_memory);
-    var py: u32 = 0;
-    while (py < c.height) : (py += 1) {
+    const w_i: i64 = @intCast(c.width);
+    const h_i: i64 = @intCast(c.height);
+    const lo_x: u32 = @intCast(finiteToI64Clamped(@floor(min_xf), 0, w_i));
+    const hi_x: u32 = @intCast(finiteToI64Clamped(@ceil(max_xf), 0, w_i));
+    const lo_y: u32 = @intCast(finiteToI64Clamped(@floor(min_yf), 0, h_i));
+    const hi_y: u32 = @intCast(finiteToI64Clamped(@ceil(max_yf), 0, h_i));
+
+    var py: u32 = lo_y;
+    while (py < hi_y) : (py += 1) {
         const fy: f64 = @as(f64, @floatFromInt(py)) + 0.5;
-        var px: u32 = 0;
-        while (px < c.width) : (px += 1) {
+        var px: u32 = lo_x;
+        while (px < hi_x) : (px += 1) {
             const fx: f64 = @as(f64, @floatFromInt(px)) + 0.5;
             if (pointInPoly(fx, fy, pts, n)) m.sel[@as(usize, py) * c.width + px] = 1;
         }
     }
-    out_mask.* = @intFromPtr(m);
+    const handle = s.trackMask(m) catch {
+        s.alloc.free(m.sel);
+        s.alloc.destroy(m);
+        return rcode(.out_of_memory);
+    };
+    out_mask.* = handle;
     return rcode(.ok);
 }
 
 fn cpu_selection_invert(canvas: u64, mask: u64, out_mask: *u64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return rcode(.invalid_param);
+    const c = s.acquire(canvas) orelse return rcode(.invalid_param);
+    defer releaseCanvas(s.alloc, c);
+    const src = s.acquireMask(mask) orelse return rcode(.invalid_param);
+    defer releaseMask(s.alloc, src);
     c.lock.lock();
     defer c.lock.unlock();
-    const src = liveMask(mask) orelse return rcode(.invalid_param);
     if (src.w != c.width or src.h != c.height) return rcode(.invalid_param);
     const m = newMask(s.alloc, c.width, c.height) catch return rcode(.out_of_memory);
     var i: usize = 0;
     while (i < src.sel.len) : (i += 1) {
         m.sel[i] = if (src.sel[i] != 0) 0 else 1;
     }
-    out_mask.* = @intFromPtr(m);
+    const handle = s.trackMask(m) catch {
+        s.alloc.free(m.sel);
+        s.alloc.destroy(m);
+        return rcode(.out_of_memory);
+    };
+    out_mask.* = handle;
+    return rcode(.ok);
+}
+
+fn cpu_selection_free(mask: u64) callconv(.c) u32 {
+    const s = requireState();
+    const m = s.removeMask(mask) orelse return rcode(.invalid_param);
+    releaseMask(s.alloc, m);
     return rcode(.ok);
 }
 
 fn cpu_selection_cut(canvas: u64, layer: u64, mask: u64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return rcode(.invalid_param);
+    const c = s.acquire(canvas) orelse return rcode(.invalid_param);
+    defer releaseCanvas(s.alloc, c);
+    const m = s.acquireMask(mask) orelse return rcode(.invalid_param);
+    defer releaseMask(s.alloc, m);
     c.lock.lock();
     defer c.lock.unlock();
-    if (layer == 0 or layer > c.layers.items.len) return rcode(.invalid_param);
-    const l = c.layers.items[@intCast(layer - 1)];
-    const m = liveMask(mask) orelse return rcode(.invalid_param);
+    const idx = c.findLayerIndex(layer) orelse return rcode(.invalid_param);
+    const l = c.layers.items[idx];
     if (m.w != c.width or m.h != c.height) return rcode(.invalid_param);
 
     copyMaskedRegion(s, c, l, m) catch |e| return switch (e) {
@@ -1605,8 +1732,6 @@ fn cpu_selection_cut(canvas: u64, layer: u64, mask: u64) callconv(.c) u32 {
         error.EmptySelection => rcode(.invalid_param),
     };
 
-    // Clear the selected pixels (skip already-transparent ones so we don't
-    // allocate tiles just to write zero).
     var y: u32 = 0;
     while (y < c.height) : (y += 1) {
         var x: u32 = 0;
@@ -1623,12 +1748,14 @@ fn cpu_selection_cut(canvas: u64, layer: u64, mask: u64) callconv(.c) u32 {
 
 fn cpu_selection_copy(canvas: u64, layer: u64, mask: u64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return rcode(.invalid_param);
+    const c = s.acquire(canvas) orelse return rcode(.invalid_param);
+    defer releaseCanvas(s.alloc, c);
+    const m = s.acquireMask(mask) orelse return rcode(.invalid_param);
+    defer releaseMask(s.alloc, m);
     c.lock.lock();
     defer c.lock.unlock();
-    if (layer == 0 or layer > c.layers.items.len) return rcode(.invalid_param);
-    const l = c.layers.items[@intCast(layer - 1)];
-    const m = liveMask(mask) orelse return rcode(.invalid_param);
+    const idx = c.findLayerIndex(layer) orelse return rcode(.invalid_param);
+    const l = c.layers.items[idx];
     if (m.w != c.width or m.h != c.height) return rcode(.invalid_param);
 
     copyMaskedRegion(s, c, l, m) catch |e| return switch (e) {
@@ -1640,12 +1767,14 @@ fn cpu_selection_copy(canvas: u64, layer: u64, mask: u64) callconv(.c) u32 {
 
 fn cpu_selection_paste(canvas: u64, layer: u64, dx: f64, dy: f64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return rcode(.invalid_param);
+    const c = s.acquire(canvas) orelse return rcode(.invalid_param);
+    defer releaseCanvas(s.alloc, c);
+    const cb = s.acquireClipboard() orelse return rcode(.invalid_param);
+    defer releaseClipboard(s.alloc, cb);
     c.lock.lock();
     defer c.lock.unlock();
-    if (layer == 0 or layer > c.layers.items.len) return rcode(.invalid_param);
-    const l = c.layers.items[@intCast(layer - 1)];
-    const cb = s.clipboard orelse return rcode(.invalid_param); // nothing copied yet
+    const idx = c.findLayerIndex(layer) orelse return rcode(.invalid_param);
+    const l = c.layers.items[idx];
     if (!std.math.isFinite(dx) or !std.math.isFinite(dy)) return rcode(.invalid_param);
 
     const base_x: f64 = @round(@as(f64, @floatFromInt(cb.ox)) + dx);
@@ -1742,40 +1871,47 @@ fn cpu_history_record(canvas: u64, opcode: [*:0]const u8, _n: u32, _p: [*]const 
     _ = _p;
     _ = _rc;
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     ensureHistoryInit(s.alloc, c) catch return @intFromEnum(dispatcher.ResultCode.out_of_memory);
 
-    // Capture the post-op state.
     var snap = snapshotCanvas(s.alloc, c) catch return @intFromEnum(dispatcher.ResultCode.out_of_memory);
-    errdefer snap.deinit(s.alloc);
     const cost = snapshotByteCost(&snap);
 
-    // New node hangs as a child of `current`.
-    const node = s.alloc.create(HistoryNode) catch return @intFromEnum(dispatcher.ResultCode.out_of_memory);
+    const node = s.alloc.create(HistoryNode) catch {
+        snap.deinit(s.alloc);
+        return @intFromEnum(dispatcher.ResultCode.out_of_memory);
+    };
     const name = s.alloc.dupe(u8, std.mem.span(opcode)) catch {
+        snap.deinit(s.alloc);
         s.alloc.destroy(node);
         return @intFromEnum(dispatcher.ResultCode.out_of_memory);
     };
+    const new_id = c.history.next_id;
     node.* = .{
-        .id = c.history.next_id,
+        .id = new_id,
         .parent = c.history.current,
         .op_name = name,
         .cost_bytes = cost,
         .snapshot = snap,
     };
-    c.history.next_id += 1;
-    c.history.nodes.put(s.alloc, node.id, node) catch {
+    c.history.nodes.put(s.alloc, new_id, node) catch {
         node.deinit(s.alloc);
         s.alloc.destroy(node);
         return @intFromEnum(dispatcher.ResultCode.out_of_memory);
     };
-    // Wire as a child of parent.
     if (c.history.nodes.get(c.history.current)) |parent| {
-        parent.children.append(s.alloc, node.id) catch return @intFromEnum(dispatcher.ResultCode.out_of_memory);
+        parent.children.append(s.alloc, new_id) catch {
+            _ = c.history.nodes.remove(new_id);
+            node.deinit(s.alloc);
+            s.alloc.destroy(node);
+            return @intFromEnum(dispatcher.ResultCode.out_of_memory);
+        };
     }
-    c.history.current = node.id;
+    c.history.next_id += 1;
+    c.history.current = new_id;
     c.history.used_bytes = saturatingAdd(c.history.used_bytes, cost);
     pruneHistory(s.alloc, c);
     return @intFromEnum(dispatcher.ResultCode.ok);
@@ -1783,13 +1919,14 @@ fn cpu_history_record(canvas: u64, opcode: [*:0]const u8, _n: u32, _p: [*]const 
 
 fn cpu_history_undo(canvas: u64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     ensureHistoryInit(s.alloc, c) catch return @intFromEnum(dispatcher.ResultCode.out_of_memory);
 
     const cur = c.history.nodes.get(c.history.current) orelse return @intFromEnum(dispatcher.ResultCode.err);
-    const parent_id = cur.parent orelse return @intFromEnum(dispatcher.ResultCode.ok); // at root — nothing to undo
+    const parent_id = cur.parent orelse return @intFromEnum(dispatcher.ResultCode.ok);
     const parent = c.history.nodes.get(parent_id) orelse return @intFromEnum(dispatcher.ResultCode.err);
 
     restoreCanvas(s.alloc, c, &parent.snapshot) catch return @intFromEnum(dispatcher.ResultCode.out_of_memory);
@@ -1799,16 +1936,14 @@ fn cpu_history_undo(canvas: u64) callconv(.c) u32 {
 
 fn cpu_history_redo(canvas: u64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     ensureHistoryInit(s.alloc, c) catch return @intFromEnum(dispatcher.ResultCode.out_of_memory);
 
     const cur = c.history.nodes.get(c.history.current) orelse return @intFromEnum(dispatcher.ResultCode.err);
-    if (cur.children.items.len == 0) return @intFromEnum(dispatcher.ResultCode.ok); // nothing to redo
-    // Pick the most-recently-added child — this preserves "redo continues
-    // the branch you last extended" semantics. Branch picking among multiple
-    // futures is a v0.3.0 UI concern.
+    if (cur.children.items.len == 0) return @intFromEnum(dispatcher.ResultCode.ok);
     const child_id = cur.children.items[cur.children.items.len - 1];
     const child = c.history.nodes.get(child_id) orelse return @intFromEnum(dispatcher.ResultCode.err);
 
@@ -1841,17 +1976,15 @@ const cpu_reference_impl = dispatcher.BackendImpl{
 
     .canvas_new = cpu_canvas_new,
     .canvas_resize = cpu_canvas_resize,
+    .canvas_free = cpu_canvas_free,
 
     .io_open = cpu_io_open,
     .io_save = cpu_io_save,
 
     .tool_stroke_pencil = cpu_tool_stroke_pencil,
     .tool_stroke_brush = cpu_tool_stroke_brush,
-
     .tool_stroke_eraser = cpu_tool_stroke_eraser,
-
     .tool_sample_colour = cpu_tool_sample_colour,
-
     .tool_fill = cpu_tool_fill,
 
     .selection_rect = cpu_selection_rect,
@@ -1860,6 +1993,7 @@ const cpu_reference_impl = dispatcher.BackendImpl{
     .selection_cut = cpu_selection_cut,
     .selection_copy = cpu_selection_copy,
     .selection_paste = cpu_selection_paste,
+    .selection_free = cpu_selection_free,
 
     .shape_line = cpu_shape_line,
     .shape_rectangle = cpu_shape_rectangle,
@@ -1888,12 +2022,21 @@ const cpu_reference_impl = dispatcher.BackendImpl{
 /// Called once at process start. Initialises internal state and registers
 /// the reference backend with the dispatcher.
 pub export fn pt_cpu_reference_register(allocator: ?*anyopaque) callconv(.c) u32 {
-    _ = allocator; // dispatcher owns the allocator currently
+    _ = allocator;
     if (state == null) {
         state = .{ .alloc = std.heap.c_allocator };
     }
     dispatcher.register(&cpu_reference_impl) catch return @intFromEnum(dispatcher.ResultCode.err);
     return @intFromEnum(dispatcher.ResultCode.ok);
+}
+
+/// Tear down global CPU backend state, freeing all live canvases, masks, and
+/// clipboard allocations.
+pub export fn pt_cpu_reference_shutdown() callconv(.c) void {
+    if (state) |*s| {
+        s.deinit();
+        state = null;
+    }
 }
 
 test "history budget pruning" {
@@ -1906,21 +2049,15 @@ test "history budget pruning" {
     };
     defer canvas.deinit(alloc);
 
-    // Initialise history
     try ensureHistoryInit(alloc, &canvas);
-
-    // Set a small budget (e.g. 300 bytes)
     canvas.history.budget_bytes = 300;
-
-    // The root node (id 0) is already added in ensureHistoryInit.
-    // Let's verify we have 1 node.
     try std.testing.expectEqual(@as(usize, 1), canvas.history.nodes.count());
     const initial_cost = canvas.history.used_bytes;
     try std.testing.expect(initial_cost > 0);
 
-    // Create a new layer so subsequent snapshots have some cost
     const layer = try alloc.create(Layer);
     layer.* = .{
+        .id = 2,
         .name = try alloc.dupe(u8, "layer1"),
         .visible = true,
         .opacity = 1.0,
@@ -1929,7 +2066,6 @@ test "history budget pruning" {
     };
     try canvas.layers.append(alloc, layer);
 
-    // Record some history entries manually to avoid global state.
     var i: u32 = 0;
     while (i < 5) : (i += 1) {
         var snap = try snapshotCanvas(alloc, &canvas);
@@ -1953,16 +2089,11 @@ test "history budget pruning" {
         }
         canvas.history.current = node.id;
         canvas.history.used_bytes = saturatingAdd(canvas.history.used_bytes, cost);
-
-        // Run pruner
         pruneHistory(alloc, &canvas);
     }
 
-    // Since budget_bytes is 300, and each snapshot has a cost, some early nodes must have been pruned!
     try std.testing.expect(canvas.history.used_bytes <= canvas.history.budget_bytes or canvas.history.root == canvas.history.current);
-    // Also verify that the root node is no longer 0 (since it was pruned).
     try std.testing.expect(canvas.history.root > 0);
-    // Verify that the old root (0) is deleted from the map.
     try std.testing.expect(!canvas.history.nodes.contains(0));
 }
 
@@ -1993,7 +2124,7 @@ test "concurrent history records" {
                     ctx.alloc.destroy(node);
                     return;
                 };
-                var snap = snapshotCanvas(ctx.alloc, ctx.c) catch {
+                const snap = snapshotCanvas(ctx.alloc, ctx.c) catch {
                     ctx.alloc.free(name);
                     ctx.alloc.destroy(node);
                     return;
@@ -2031,15 +2162,6 @@ test "concurrent history records" {
     }
 }
 
-//==============================================================================
-// MVP-3 tool primitive tests (eraser / fill / selection)
-//
-// These drive the real C-ABI tool functions through the global backend state
-// (initialised with the C allocator, so the intentionally-unfreed selection
-// masks/clipboard do not trip the test leak detector) and assert the
-// gesture -> tile-mutation round-trip.
-//==============================================================================
-
 fn testNewCanvas(w: u32, h: u32) u64 {
     if (state == null) state = .{ .alloc = std.heap.c_allocator };
     var handle: u64 = 0;
@@ -2063,7 +2185,9 @@ test "pointInPoly: square containment" {
 
 test "eraser lowers destination alpha and preserves rgb" {
     const canvas = testNewCanvas(64, 64);
-    const c = requireState().get(canvas).?;
+    defer _ = cpu_canvas_free(canvas);
+    const c = requireState().acquire(canvas).?;
+    defer releaseCanvas(requireState().alloc, c);
     const l = c.layers.items[0];
     try writePixelF16(l, requireState().alloc, 10, 10, .{ 0.25, 0.5, 0.75, 1.0 });
 
@@ -2072,18 +2196,19 @@ test "eraser lowers destination alpha and preserves rgb" {
     try std.testing.expectEqual(rcode(.ok), cpu_tool_stroke_eraser(canvas, 1, &bs, 1, &pts, pts.len, 0));
 
     const p = readPixelF32(l, 10, 10);
-    try std.testing.expect(p[3] < 0.01); // alpha erased at the hard centre
-    try std.testing.expectApproxEqAbs(@as(f32, 0.25), p[0], 0.01); // rgb preserved
+    try std.testing.expect(p[3] < 0.01);
+    try std.testing.expectApproxEqAbs(@as(f32, 0.25), p[0], 0.01);
     try std.testing.expectApproxEqAbs(@as(f32, 0.5), p[1], 0.01);
     try std.testing.expectApproxEqAbs(@as(f32, 0.75), p[2], 0.01);
 
-    // Unknown erase mode is rejected loudly.
     try std.testing.expectEqual(rcode(.invalid_param), cpu_tool_stroke_eraser(canvas, 1, &bs, 1, &pts, pts.len, 9));
 }
 
 test "fill flood fills a uniform layer (contiguous)" {
     const canvas = testNewCanvas(8, 8);
-    const c = requireState().get(canvas).?;
+    defer _ = cpu_canvas_free(canvas);
+    const c = requireState().acquire(canvas).?;
+    defer releaseCanvas(requireState().alloc, c);
     const l = c.layers.items[0];
     const red = [4]f32{ 1, 0, 0, 1 };
     try std.testing.expectEqual(rcode(.ok), cpu_tool_fill(canvas, 1, 0, 0, &red, 0.0, 1));
@@ -2100,58 +2225,194 @@ test "fill flood fills a uniform layer (contiguous)" {
 
 test "fill (contiguous) stops at a colour boundary" {
     const canvas = testNewCanvas(8, 8);
-    const c = requireState().get(canvas).?;
+    defer _ = cpu_canvas_free(canvas);
+    const c = requireState().acquire(canvas).?;
+    defer releaseCanvas(requireState().alloc, c);
     const l = c.layers.items[0];
     const alloc = requireState().alloc;
-    // Full-height blue wall at x = 4 separates left from right.
     var yy: u32 = 0;
     while (yy < 8) : (yy += 1) try writePixelF16(l, alloc, 4, yy, .{ 0, 0, 1, 1 });
     const green = [4]f32{ 0, 1, 0, 1 };
     try std.testing.expectEqual(rcode(.ok), cpu_tool_fill(canvas, 1, 0, 0, &green, 0.0, 1));
-    try std.testing.expectApproxEqAbs(@as(f32, 1.0), readPixelF32(l, 0, 0)[1], 0.01); // filled green
-    try std.testing.expectApproxEqAbs(@as(f32, 1.0), readPixelF32(l, 3, 5)[1], 0.01); // filled green
-    try std.testing.expectApproxEqAbs(@as(f32, 1.0), readPixelF32(l, 4, 5)[2], 0.01); // wall intact (blue)
-    try std.testing.expectApproxEqAbs(@as(f32, 0.0), readPixelF32(l, 5, 5)[3], 0.01); // right side untouched
+    try std.testing.expectApproxEqAbs(@as(f32, 1.0), readPixelF32(l, 0, 0)[1], 0.01);
+    try std.testing.expectApproxEqAbs(@as(f32, 1.0), readPixelF32(l, 3, 5)[1], 0.01);
+    try std.testing.expectApproxEqAbs(@as(f32, 1.0), readPixelF32(l, 4, 5)[2], 0.01);
+    try std.testing.expectApproxEqAbs(@as(f32, 0.0), readPixelF32(l, 5, 5)[3], 0.01);
 }
 
-test "selection rect -> cut -> paste round-trips" {
+test "selection rect -> cut -> paste -> free round-trips" {
     const canvas = testNewCanvas(16, 16);
-    const c = requireState().get(canvas).?;
+    defer _ = cpu_canvas_free(canvas);
+    const c = requireState().acquire(canvas).?;
+    defer releaseCanvas(requireState().alloc, c);
     const l = c.layers.items[0];
-    try writePixelF16(l, requireState().alloc, 2, 2, .{ 1, 0, 0, 1 }); // red marker
+    try writePixelF16(l, requireState().alloc, 2, 2, .{ 1, 0, 0, 1 });
 
     var mask: u64 = 0;
     try std.testing.expectEqual(rcode(.ok), cpu_selection_rect(canvas, 0, 0, 8, 8, &mask));
     try std.testing.expect(mask != 0);
 
-    // Cut: copy the [0,8)x[0,8) region to the clipboard and clear it.
     try std.testing.expectEqual(rcode(.ok), cpu_selection_cut(canvas, 1, mask));
     try std.testing.expectApproxEqAbs(@as(f32, 0.0), readPixelF32(l, 2, 2)[3], 0.001);
 
-    // Paste at the original origin restores the marker exactly.
     try std.testing.expectEqual(rcode(.ok), cpu_selection_paste(canvas, 1, 0, 0));
     try std.testing.expectApproxEqAbs(@as(f32, 1.0), readPixelF32(l, 2, 2)[0], 0.001);
     try std.testing.expectApproxEqAbs(@as(f32, 1.0), readPixelF32(l, 2, 2)[3], 0.001);
 
-    // Paste shifted by (5,5): the marker reappears at (7,7).
     try std.testing.expectEqual(rcode(.ok), cpu_selection_paste(canvas, 1, 5, 5));
     try std.testing.expectApproxEqAbs(@as(f32, 1.0), readPixelF32(l, 7, 7)[0], 0.001);
 
-    // Invert yields a fresh, distinct complementary mask handle.
     var inv: u64 = 0;
     try std.testing.expectEqual(rcode(.ok), cpu_selection_invert(canvas, mask, &inv));
     try std.testing.expect(inv != 0 and inv != mask);
+
+    // Free masks and verify stale and forged handles are cleanly rejected without UAF.
+    try std.testing.expectEqual(rcode(.ok), cpu_selection_free(mask));
+    try std.testing.expectEqual(rcode(.invalid_param), cpu_selection_free(mask));
+    try std.testing.expectEqual(rcode(.invalid_param), cpu_selection_copy(canvas, 1, mask));
+    try std.testing.expectEqual(rcode(.invalid_param), cpu_selection_cut(canvas, 1, mask));
+    try std.testing.expectEqual(rcode(.invalid_param), cpu_selection_invert(canvas, mask, &inv));
+    try std.testing.expectEqual(rcode(.invalid_param), cpu_selection_copy(canvas, 1, 0xDEAD_BEEF));
+    try std.testing.expectEqual(rcode(.ok), cpu_selection_free(inv));
 }
 
-test "selection lasso selects a triangle interior" {
+test "selection lasso selects a triangle interior and rejects NaN vertices" {
     const canvas = testNewCanvas(16, 16);
-    // Triangle (1,1)-(14,1)-(1,14): (3,3) inside, (12,12) outside.
+    defer _ = cpu_canvas_free(canvas);
     const poly = [_]f64{ 1, 1, 14, 1, 1, 14 };
     var mask: u64 = 0;
     try std.testing.expectEqual(rcode(.ok), cpu_selection_lasso(canvas, 3, &poly, &mask));
-    const m = liveMask(mask).?;
-    try std.testing.expect(m.sel[@as(usize, 3) * 16 + 3] != 0); // inside
-    try std.testing.expect(m.sel[@as(usize, 12) * 16 + 12] == 0); // outside
-    // Degenerate polygons are rejected.
+    const m = requireState().acquireMask(mask).?;
+    try std.testing.expect(m.sel[@as(usize, 3) * 16 + 3] != 0);
+    try std.testing.expect(m.sel[@as(usize, 12) * 16 + 12] == 0);
+    releaseMask(requireState().alloc, m);
+    try std.testing.expectEqual(rcode(.ok), cpu_selection_free(mask));
+
     try std.testing.expectEqual(rcode(.invalid_param), cpu_selection_lasso(canvas, 2, &poly, &mask));
+    const nan_poly = [_]f64{ 1, std.math.nan(f64), 14, 1, 1, 14 };
+    try std.testing.expectEqual(rcode(.invalid_param), cpu_selection_lasso(canvas, 3, &nan_poly, &mask));
+}
+
+test "selection rect -> cut -> paste round-trips" {
+    const canvas = testNewCanvas(16, 16);
+    defer _ = cpu_canvas_free(canvas);
+
+    const blue = [4]f32{ 0, 0, 1, 1 };
+    try std.testing.expectEqual(rcode(.ok), cpu_tool_fill(canvas, 1, 0, 0, &blue, 0.0, 1));
+
+    var mask: u64 = 0;
+    try std.testing.expectEqual(rcode(.ok), cpu_selection_rect(canvas, 4, 4, 6, 6, &mask));
+    defer _ = cpu_selection_free(mask);
+
+    try std.testing.expectEqual(rcode(.ok), cpu_selection_cut(canvas, 1, mask));
+    const c_after_cut = requireState().acquire(canvas).?;
+    defer releaseCanvas(requireState().alloc, c_after_cut);
+    try std.testing.expectApproxEqAbs(@as(f32, 0.0), readPixelF32(c_after_cut.layers.items[0], 5, 5)[3], 0.001);
+    try std.testing.expectApproxEqAbs(@as(f32, 1.0), readPixelF32(c_after_cut.layers.items[0], 1, 1)[3], 0.001);
+
+    try std.testing.expectEqual(rcode(.ok), cpu_selection_paste(canvas, 1, 0, 0));
+
+    var rgba: [16 * 16 * 4]u8 = undefined;
+    try std.testing.expectEqual(rcode(.ok), cpu_canvas_render_rgba8(canvas, 0, 0, 16, 16, &rgba, rgba.len));
+    const idx = (@as(usize, 5) * 16 + 5) * 4;
+    try std.testing.expectEqual(@as(u8, 255), rgba[idx + 2]);
+    try std.testing.expectEqual(@as(u8, 255), rgba[idx + 3]);
+}
+
+test "layer ids stay stable across new, after-insert, reorder, and delete (B-02)" {
+    const canvas = testNewCanvas(8, 8);
+    defer _ = cpu_canvas_free(canvas);
+
+    var fg_id: u64 = 0;
+    try std.testing.expectEqual(rcode(.ok), cpu_layer_new(canvas, 0, 0, "Foreground", &fg_id));
+    // Background holds id=1; the newly created layer MUST receive id=2 so mutations
+    // never alias Background.
+    try std.testing.expectEqual(@as(u64, 2), fg_id);
+
+    // Insert a middle layer explicitly after Background (id=1).
+    var mid_id: u64 = 0;
+    try std.testing.expectEqual(rcode(.ok), cpu_layer_new(canvas, 1, 1, "Midground", &mid_id));
+    try std.testing.expectEqual(@as(u64, 3), mid_id);
+
+    const c = requireState().acquire(canvas).?;
+    defer releaseCanvas(requireState().alloc, c);
+    try std.testing.expectEqual(@as(u64, 1), c.layers.items[0].id);
+    try std.testing.expectEqual(@as(u64, 3), c.layers.items[1].id);
+    try std.testing.expectEqual(@as(u64, 2), c.layers.items[2].id);
+
+    // Paint green onto Foreground (id=2) only; Background (id=1) must remain transparent.
+    const green = [4]f32{ 0, 1, 0, 1 };
+    const pt = [_]f64{ 3, 3 };
+    try std.testing.expectEqual(rcode(.ok), cpu_tool_stroke_pencil(canvas, fg_id, 1, &pt, pt.len, &green));
+    try std.testing.expectApproxEqAbs(@as(f32, 0.0), readPixelF32(c.layers.items[0], 3, 3)[3], 0.001);
+    try std.testing.expectApproxEqAbs(@as(f32, 1.0), readPixelF32(c.layers.items[2], 3, 3)[1], 0.001);
+
+    // Deleting Midground (id=3) leaves Foreground addressable via id=2 even though
+    // its array slot shifted from index 2 to index 1.
+    try std.testing.expectEqual(rcode(.ok), cpu_layer_delete(canvas, mid_id));
+    try std.testing.expectEqual(rcode(.ok), cpu_layer_set_opacity(canvas, fg_id, 0.5));
+    try std.testing.expectApproxEqAbs(@as(f64, 0.5), c.layers.items[1].opacity, 0.001);
+    try std.testing.expectApproxEqAbs(@as(f64, 1.0), c.layers.items[0].opacity, 0.001);
+}
+
+test "NaN and Inf parameters do not corrupt canvas or panic (B-03, B-08)" {
+    const canvas = testNewCanvas(16, 16);
+    defer _ = cpu_canvas_free(canvas);
+
+    const red = [4]f32{ 1, 0, 0, 1 };
+    try std.testing.expectEqual(rcode(.ok), cpu_tool_fill(canvas, 1, 0, 0, &red, 0.0, 1));
+
+    // NaN opacity normalises to 1.0 instead of poisoning compositing output.
+    try std.testing.expectEqual(rcode(.ok), cpu_layer_set_opacity(canvas, 1, std.math.nan(f64)));
+    var rgba: [16 * 16 * 4]u8 = undefined;
+    try std.testing.expectEqual(rcode(.ok), cpu_canvas_render_rgba8(canvas, 0, 0, 16, 16, &rgba, rgba.len));
+    try std.testing.expectEqual(@as(u8, 255), rgba[0]);
+    try std.testing.expectEqual(@as(u8, 255), rgba[3]);
+
+    // Non-finite radius / hardness / spacing are rejected on brush and eraser.
+    const pts = [_]dispatcher.StrokePointC{.{ .x = 8, .y = 8, .pressure = 1, .tilt_x = 0, .tilt_y = 0 }};
+    const nan_radius = dispatcher.BrushStateC{ .radius = std.math.nan(f64), .hardness = 1, .opacity = 1, .spacing = 0.25, .profile = 0 };
+    const inf_radius = dispatcher.BrushStateC{ .radius = std.math.inf(f64), .hardness = 1, .opacity = 1, .spacing = 0.25, .profile = 0 };
+    const nan_hardness = dispatcher.BrushStateC{ .radius = 4, .hardness = std.math.nan(f64), .opacity = 1, .spacing = 0.25, .profile = 0 };
+    try std.testing.expectEqual(rcode(.invalid_param), cpu_tool_stroke_brush(canvas, 1, &nan_radius, 1, &pts, pts.len, &red));
+    try std.testing.expectEqual(rcode(.invalid_param), cpu_tool_stroke_brush(canvas, 1, &inf_radius, 1, &pts, pts.len, &red));
+    try std.testing.expectEqual(rcode(.invalid_param), cpu_tool_stroke_brush(canvas, 1, &nan_hardness, 1, &pts, pts.len, &red));
+    try std.testing.expectEqual(rcode(.invalid_param), cpu_tool_stroke_eraser(canvas, 1, &nan_radius, 1, &pts, pts.len, 0));
+    try std.testing.expectEqual(rcode(.invalid_param), cpu_tool_stroke_eraser(canvas, 1, &inf_radius, 1, &pts, pts.len, 0));
+
+    // Canvas resize dimensions round-trip across history undo/redo.
+    _ = cpu_history_record(canvas, "fill", 0, &[_]u8{}, 0);
+    try std.testing.expectEqual(rcode(.ok), cpu_canvas_resize(canvas, 32, 24, 0, 0));
+    _ = cpu_history_record(canvas, "resize", 0, &[_]u8{}, 0);
+    try std.testing.expectEqual(rcode(.ok), cpu_history_undo(canvas));
+    const c = requireState().acquire(canvas).?;
+    defer releaseCanvas(requireState().alloc, c);
+    try std.testing.expectEqual(@as(u32, 16), c.width);
+    try std.testing.expectEqual(@as(u32, 16), c.height);
+    try std.testing.expectEqual(rcode(.ok), cpu_history_redo(canvas));
+    try std.testing.expectEqual(@as(u32, 32), c.width);
+    try std.testing.expectEqual(@as(u32, 24), c.height);
+}
+
+test "concurrent canvas operations synchronize safely with cpu_canvas_free" {
+    const canvas = testNewCanvas(16, 16);
+    const Worker = struct {
+        fn run(id: u64) void {
+            var rgba: [16 * 16 * 4]u8 = undefined;
+            const pt = [_]f64{ 4, 4 };
+            const col = [4]f32{ 1, 0.5, 0.25, 1 };
+            var i: usize = 0;
+            while (i < 64) : (i += 1) {
+                _ = cpu_tool_stroke_pencil(id, 1, 1, &pt, pt.len, &col);
+                _ = cpu_canvas_render_rgba8(id, 0, 0, 16, 16, &rgba, rgba.len);
+            }
+        }
+    };
+    var threads: [4]std.Thread = undefined;
+    for (&threads) |*t| {
+        t.* = try std.Thread.spawn(.{}, Worker.run, .{canvas});
+    }
+    try std.testing.expectEqual(rcode(.ok), cpu_canvas_free(canvas));
+    try std.testing.expectEqual(rcode(.invalid_param), cpu_canvas_free(canvas));
+    for (threads) |t| t.join();
 }

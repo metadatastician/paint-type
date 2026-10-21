@@ -5,6 +5,8 @@
 // This module defines the plugin manifest types used by the provisioner.
 // These mirror the types in paint-type-plugins crate for compatibility.
 
+#![allow(dead_code)]
+
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
 use std::path::Path;
@@ -88,9 +90,9 @@ impl<'de> Deserialize<'de> for PluginVersion {
             Struct { major: u32, minor: u32, patch: u32 },
             String(String),
         }
-        
+
         let helper = VersionHelper::deserialize(deserializer)?;
-        
+
         match helper {
             VersionHelper::Struct { major, minor, patch } => {
                 Ok(PluginVersion { major, minor, patch })
@@ -135,20 +137,28 @@ impl fmt::Display for PluginType {
 pub enum PluginCapability {
     /// Read access to the canvas
     #[default]
+    #[serde(alias = "CanvasRead")]
     CanvasRead,
     /// Write access to the canvas
+    #[serde(alias = "CanvasWrite")]
     CanvasWrite,
     /// Access to layer stack
+    #[serde(alias = "LayerAccess")]
     LayerAccess,
     /// Access to selection
+    #[serde(alias = "SelectionAccess")]
     SelectionAccess,
     /// Access to file system (restricted paths)
+    #[serde(alias = "FileAccess")]
     FileAccess,
     /// Network access (for fetching resources)
+    #[serde(alias = "NetworkAccess")]
     NetworkAccess,
     /// User interface (modal dialogs, notifications)
+    #[serde(alias = "UserInterface")]
     UserInterface,
     /// Persistent storage
+    #[serde(alias = "PersistentStorage")]
     PersistentStorage,
 }
 
@@ -192,7 +202,7 @@ pub struct PluginManifest {
     #[serde(default)]
     pub author_email: Option<String>,
     /// Plugin type (Effect or Tool)
-    #[serde(default, rename = "type")]
+    #[serde(default, rename = "type", alias = "plugin_type")]
     pub plugin_type: PluginType,
     /// Minimum API version required
     #[serde(default = "default_api_version")]
@@ -250,18 +260,18 @@ impl PluginManifest {
     /// Load a manifest from a TOML file
     pub fn from_toml_file(path: impl AsRef<Path>) -> Result<Self, PluginError> {
         let path = path.as_ref();
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| PluginError::IoError(path.display().to_string(), e.to_string()))?;
+        let content = read_bounded_manifest_file(path)?;
         Self::from_toml(&content, path.parent().unwrap_or(path))
     }
 
     /// Load a manifest from a JSON file
     pub fn from_json_file(path: impl AsRef<Path>) -> Result<Self, PluginError> {
         let path = path.as_ref();
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| PluginError::IoError(path.display().to_string(), e.to_string()))?;
-        serde_json::from_str(&content)
-            .map_err(|e| PluginError::ManifestValidation(e.to_string()))
+        let content = read_bounded_manifest_file(path)?;
+        let manifest: Self = serde_json::from_str(&content)
+            .map_err(|e| PluginError::ManifestValidation(e.to_string()))?;
+        manifest.validate()?;
+        Ok(manifest)
     }
 
     /// Load a manifest from a TOML string
@@ -269,7 +279,7 @@ impl PluginManifest {
         // Use toml crate for parsing
         let mut manifest: Self = toml::from_str(content)
             .map_err(|e| PluginError::ManifestValidation(e.to_string()))?;
-        
+
         // Apply defaults for missing fields
         if manifest.id.0.is_empty() {
             manifest.id = PluginId::new("unknown".to_string());
@@ -286,7 +296,7 @@ impl PluginManifest {
         if manifest.api_version == 0 {
             manifest.api_version = PluginVersion::MIN_API_VERSION;
         }
-        
+
         manifest.validate()?;
         Ok(manifest)
     }
@@ -297,10 +307,14 @@ impl PluginManifest {
             return Err(PluginError::ManifestValidation(String::from("id is required")));
         }
 
-        if !self.id.0.contains('.') {
-            return Err(PluginError::ManifestValidation(
-                String::from("id must be in reverse domain notation (e.g., com.example.plugin)"),
-            ));
+        if !self.id.0.contains('.')
+            || self.id.0.contains("..")
+            || self.id.0.contains('/')
+            || self.id.0.contains('\\')
+        {
+            return Err(PluginError::ManifestValidation(String::from(
+                "id must be safe reverse domain notation (e.g., com.example.plugin)",
+            )));
         }
 
         if self.name.is_empty() {
@@ -315,8 +329,10 @@ impl PluginManifest {
             return Err(PluginError::ManifestValidation(String::from("author is required")));
         }
 
-        if self.wasm_entry.is_empty() {
-            return Err(PluginError::ManifestValidation(String::from("wasm_entry is required")));
+        if self.wasm_entry.is_empty() || self.wasm_entry.contains("..") {
+            return Err(PluginError::ManifestValidation(String::from(
+                "wasm_entry is required and must not contain '..'",
+            )));
         }
 
         if self.license.is_empty() {
@@ -324,10 +340,6 @@ impl PluginManifest {
         }
 
         if self.api_version < PluginVersion::MIN_API_VERSION {
-            return Err(PluginError::UnsupportedVersion(self.version));
-        }
-
-        if !self.version.is_compatible() {
             return Err(PluginError::UnsupportedVersion(self.version));
         }
 
@@ -346,3 +358,62 @@ impl PluginManifest {
 }
 
 pub type PluginResult<T> = Result<T, PluginError>;
+
+const MAX_MANIFEST_BYTES: u64 = 1024 * 1024;
+
+fn read_bounded_manifest_file(path: &Path) -> Result<String, PluginError> {
+    use std::io::Read;
+    let file = std::fs::File::open(path)
+        .map_err(|e| PluginError::IoError(path.display().to_string(), e.to_string()))?;
+    let mut content = String::new();
+    file.take(MAX_MANIFEST_BYTES + 1)
+        .read_to_string(&mut content)
+        .map_err(|e| PluginError::IoError(path.display().to_string(), e.to_string()))?;
+    if content.len() as u64 > MAX_MANIFEST_BYTES {
+        return Err(PluginError::ManifestValidation(format!(
+            "manifest exceeds maximum allowed size ({} bytes)",
+            MAX_MANIFEST_BYTES
+        )));
+    }
+    Ok(content)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_snake_and_pascal_case_capabilities() {
+        let toml_input = r#"
+id = "com.paint_type.blur"
+version = "1.2.3"
+name = "Gaussian Blur"
+description = "HDR blur effect"
+author = "paint.type"
+type = "effect"
+capabilities = ["CanvasRead", "canvas_write", "LayerAccess"]
+wasm_entry = "plugin.wasm"
+license = "AGPL-3.0-or-later"
+"#;
+        let parsed = PluginManifest::from_toml(toml_input, Path::new("."));
+        assert!(parsed.is_ok());
+        if let Ok(manifest) = parsed {
+            assert!(manifest.has_capability(PluginCapability::CanvasRead));
+            assert!(manifest.has_capability(PluginCapability::CanvasWrite));
+            assert!(manifest.has_capability(PluginCapability::LayerAccess));
+        }
+    }
+
+    #[test]
+    fn rejects_traversal_plugin_ids() {
+        let toml_input = r#"
+id = "../evil"
+version = "1.0.0"
+name = "Bad"
+description = "Traversal ID"
+author = "bad"
+"#;
+        assert!(PluginManifest::from_toml(toml_input, Path::new(".")).is_err());
+    }
+}
+

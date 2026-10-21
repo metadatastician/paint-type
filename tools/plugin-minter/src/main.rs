@@ -26,7 +26,7 @@ struct MinterConfig {
     plugin_type: String,
     wasm_entry: String,
     license: String,
-    
+
     // Optional fields
     #[serde(default)]
     author_email: Option<String>,
@@ -70,27 +70,7 @@ fn default_api_version() -> u32 {
     1
 }
 
-/// Represents the plugin manifest to be written
-#[derive(Debug, Clone)]
-struct PluginManifest {
-    id: String,
-    version: String,
-    name: String,
-    description: String,
-    author: String,
-    author_email: Option<String>,
-    plugin_type: String,
-    wasm_entry: String,
-    api_version: u32,
-    license: String,
-    homepage: Option<String>,
-    icon: Option<String>,
-    capabilities: Vec<String>,
-    tags: Vec<String>,
-    long_description: Option<String>,
-}
-
-/// Convert domain notation to crate name (e.g., com.example.plugin -> paint-type-plugin)
+/// Convert domain notation to crate name (e.g., com.example.plugin -> com-example-plugin)
 fn id_to_crate_name(id: &str) -> String {
     id.replace('.', "-")
         .to_lowercase()
@@ -102,7 +82,7 @@ fn id_to_crate_name(id: &str) -> String {
 fn to_camel_case(s: &str) -> String {
     let mut result = String::new();
     let mut capitalize_next = true;
-    
+
     for c in s.chars() {
         if c == '_' || c == '-' || c == '.' || c == ' ' {
             capitalize_next = true;
@@ -113,16 +93,18 @@ fn to_camel_case(s: &str) -> String {
             result.push(c.to_ascii_lowercase());
         }
     }
-    
+
     result
 }
 
 /// Validate the minter configuration
 fn validate_config(cfg: &MinterConfig) -> Result<()> {
     let mut errors = Vec::new();
-    
+
     if cfg.name.is_empty() {
         errors.push("missing 'name' field");
+    } else if cfg.name.contains("..") || cfg.name.contains('/') || cfg.name.contains('\\') {
+        errors.push("'name' must not contain path separators or '..'");
     }
     if cfg.description.is_empty() {
         errors.push("missing 'description' field");
@@ -132,8 +114,12 @@ fn validate_config(cfg: &MinterConfig) -> Result<()> {
     }
     if cfg.id.is_empty() {
         errors.push("missing 'id' field");
-    } else if !cfg.id.contains('.') {
-        errors.push("'id' must be in reverse domain notation (e.g., com.example.plugin)");
+    } else if !cfg.id.contains('.')
+        || cfg.id.contains("..")
+        || cfg.id.contains('/')
+        || cfg.id.contains('\\')
+    {
+        errors.push("'id' must be safe reverse domain notation without '..' or slashes");
     }
     if cfg.author.is_empty() {
         errors.push("missing 'author' field");
@@ -145,50 +131,52 @@ fn validate_config(cfg: &MinterConfig) -> Result<()> {
     }
     if cfg.wasm_entry.is_empty() {
         errors.push("missing 'wasm_entry' field");
+    } else if cfg.wasm_entry.contains("..") {
+        errors.push("'wasm_entry' must not contain '..'");
     }
     if cfg.license.is_empty() {
         errors.push("missing 'license' field");
     }
-    
+
     if !errors.is_empty() {
         anyhow::bail!("minter.toml validation failed:\n  - {}", errors.join("\n  - "));
     }
-    
+
     Ok(())
 }
 
 /// Determine the destination path for the plugin
 fn destination_for(cfg: &MinterConfig, explicit_dest: Option<&str>) -> PathBuf {
     let dest = explicit_dest.map(PathBuf::from);
-    
+
     if let Some(d) = dest {
         return d;
     }
-    
+
     // Default: src/plugins/available/<plugin_id>/
     let repo_root = Path::new("tools/plugin-minter")
         .ancestors()
         .nth(2)
         .unwrap_or(Path::new(""));
-    
+
     repo_root.join("src").join("plugins").join("available").join(&cfg.id)
 }
 
 /// Copy a directory tree recursively
 fn copy_dir_all(src: &Path, dst: &Path) -> Result<()> {
     fs::create_dir_all(dst)?;
-    
+
     for entry in fs::read_dir(src)? {
         let entry = entry?;
         let ty = entry.file_type()?;
-        
+
         if ty.is_dir() {
             copy_dir_all(&entry.path(), &dst.join(entry.file_name()))?;
         } else {
             fs::copy(&entry.path(), dst.join(entry.file_name()))?;
         }
     }
-    
+
     Ok(())
 }
 
@@ -199,7 +187,7 @@ fn replace_placeholders(content: &str, cfg: &MinterConfig, crate_name: &str) -> 
     let author_email = cfg.author_email.as_deref().unwrap_or("");
     let homepage = cfg.homepage.as_deref().unwrap_or("");
     let icon = cfg.icon.as_deref().unwrap_or("");
-    
+
     // Use a more efficient approach: collect all replacements and apply in order
     // This avoids the N^2 complexity of chained replace
     let replacements: Vec<(&str, &str)> = vec![
@@ -218,7 +206,7 @@ fn replace_placeholders(content: &str, cfg: &MinterConfig, crate_name: &str) -> 
         ("PLUGIN_HOMEPAGE", homepage),
         ("PLUGIN_ICON", icon),
     ];
-    
+
     // Apply replacements in order
     let mut current: String = content.to_string();
     for (placeholder, replacement) in replacements {
@@ -235,69 +223,88 @@ fn replace_placeholders(content: &str, cfg: &MinterConfig, crate_name: &str) -> 
             current = new_string;
         }
     }
-    
+
     current
+}
+
+fn read_bounded_utf8(path: &Path, max_bytes: u64) -> Result<String> {
+    use std::io::Read;
+    let file = fs::File::open(path)
+        .with_context(|| format!("failed to open file: {}", path.display()))?;
+    let mut content = String::new();
+    file.take(max_bytes + 1)
+        .read_to_string(&mut content)
+        .with_context(|| format!("failed to read file: {}", path.display()))?;
+    if content.len() as u64 > max_bytes {
+        anyhow::bail!("file exceeds maximum allowed size ({} bytes): {}", max_bytes, path.display());
+    }
+    Ok(content)
 }
 
 /// Mint a new plugin from configuration
 fn mint(config_path: &Path, explicit_dest: Option<&str>) -> Result<()> {
     // Read and parse the minter.toml
-    let toml_content = fs::read_to_string(config_path)
-        .with_context(|| format!("failed to read config file: {}", config_path.display()))?;
-    
+    let toml_content = read_bounded_utf8(config_path, 1024 * 1024)?;
+
     let cfg: MinterConfig = toml::from_str(&toml_content)
         .with_context(|| format!("failed to parse config file: {}", config_path.display()))?;
-    
+
     validate_config(&cfg)?;
-    
+
     let crate_name = id_to_crate_name(&cfg.id);
     let dest = destination_for(&cfg, explicit_dest);
-    
+    if dest
+        .components()
+        .any(|c| matches!(c, std::path::Component::ParentDir))
+    {
+        anyhow::bail!("destination must not contain '..': {}", dest.display());
+    }
+
     // Check if destination already exists
     if dest.exists() {
         anyhow::bail!("destination already exists: {}", dest.display());
     }
-    
+
     // Create the template directory path
     let template_dir = Path::new("tools/plugin-minter/templates/plugin_template");
-    
+
     // Copy the template tree
     copy_dir_all(template_dir, &dest)?;
-    
+
     // Rename the template directory from plugin_template to the plugin name
     let temp_template_dir = dest.join("plugin_template");
     let final_dest = dest.join(&cfg.name);
     if temp_template_dir.exists() {
         fs::rename(&temp_template_dir, &final_dest)?;
     }
-    
+
     // Determine actual destination without cloning
-    let actual_dest: &Path = if final_dest.exists() { 
-        &final_dest 
-    } else { 
-        &dest 
+    let actual_dest: &Path = if final_dest.exists() {
+        &final_dest
+    } else {
+        &dest
     };
-    
+
     // Now replace placeholders in all files recursively
     let mut stack: Vec<PathBuf> = Vec::with_capacity(32);
     stack.push(actual_dest.to_path_buf());
-    
+
     while let Some(dir) = stack.pop() {
         for entry in fs::read_dir(&dir)? {
             let entry = entry?;
             let path = entry.path();
-            
+
             if entry.file_type()?.is_dir() {
                 stack.push(path);
                 continue;
             }
-            
-            // Read the file
-            let content = match fs::read_to_string(&path) {
+
+            // Read the file (bounded to 4 MiB)
+            let content = match read_bounded_utf8(&path, 4 * 1024 * 1024) {
                 Ok(c) => c,
                 Err(_) => continue,
             };
-            
+
             // Check if content has any placeholders
             if content.contains("PLUGIN_") {
                 let replaced = replace_placeholders(&content, &cfg, &crate_name);
@@ -305,11 +312,11 @@ fn mint(config_path: &Path, explicit_dest: Option<&str>) -> Result<()> {
             }
         }
     }
-    
+
     // Copy the original minter.toml to the plugin directory for reproducibility
     let minter_dest = dest.join("minter.toml");
     fs::copy(config_path, minter_dest)?;
-    
+
     println!("✓ Minted {} → {}", cfg.name, dest.display());
     println!("  Plugin ID: {}", cfg.id);
     println!("  Type: {}", cfg.plugin_type);
@@ -318,13 +325,13 @@ fn mint(config_path: &Path, explicit_dest: Option<&str>) -> Result<()> {
     println!("  1. Edit Cargo.toml to add dependencies");
     println!("  2. Edit src/lib.rs to implement your plugin");
     println!("  3. cargo build --release");
-    
+
     Ok(())
 }
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
-    
+
     if args.len() < 2 || args[1] == "--help" || args[1] == "-h" {
         println!("Usage: plugin-minter <minter.toml> [--dest <path>]");
         println!();
@@ -336,9 +343,9 @@ fn main() -> Result<()> {
         println!("  cargo run --manifest-path tools/plugin-minter/Cargo.toml -- minter.toml --dest ./my-plugin");
         std::process::exit(if args.len() < 2 { 1 } else { 0 });
     }
-    
+
     let config_path = Path::new(&args[1]);
-    
+
     // Find --dest argument
     let mut explicit_dest: Option<&str> = None;
     for (i, arg) in args.iter().skip(2).enumerate() {
@@ -347,7 +354,7 @@ fn main() -> Result<()> {
             break;
         }
     }
-    
+
     // Change to repo root
     let minter_path = Path::new("tools/plugin-minter").canonicalize()?;
     let repo_root = minter_path
@@ -355,22 +362,22 @@ fn main() -> Result<()> {
         .and_then(|p| p.parent())
         .ok_or_else(|| anyhow::anyhow!("Could not determine repository root"))?;
     std::env::set_current_dir(repo_root)?;
-    
+
     mint(config_path, explicit_dest)?;
-    
+
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_id_to_crate_name() {
         assert_eq!(id_to_crate_name("com.example.plugin"), "com-example-plugin");
         assert_eq!(id_to_crate_name("org.paint.type.blur"), "org-paint-type-blur");
     }
-    
+
     #[test]
     fn test_to_camel_case() {
         assert_eq!(to_camel_case("blur_effect"), "BlurEffect");

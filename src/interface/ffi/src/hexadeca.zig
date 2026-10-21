@@ -2,30 +2,6 @@
 // Copyright (c) 2026 Joshua Jewell (JoshuaJewell) <paint-type@pm.me>
 //
 // paint.type Hexadeca-Connector — sixteen-protocol unified API surface.
-//
-// Implements a multi-transport surface wrapping the paint.type FFI core.
-// The hexadeca pattern follows the estate standard established in Hypatia.
-//
-//   Core 12 protocols
-//     1.  grpc
-//     2.  graphql
-//     3.  rest
-//     4.  flatbuffers
-//     5.  bebop
-//     6.  jsonrpc
-//     7.  websocket
-//     8.  mqtt
-//     9.  trpc
-//     10. capnproto
-//     11. soap
-//     12. verisimdb-rest
-//   Umoja-substrate 4
-//     13. bsp           (Build Server Protocol)
-//     14. scip          (Source Code Index Protocol)
-//     15. ipfs
-//     16. arrow-flight
-//
-// Each connector exposes a standard start/dispatch interface.
 
 const std = @import("std");
 
@@ -46,6 +22,14 @@ pub const Connector = enum(u8) {
     scip = 13,
     ipfs = 14,
     arrow_flight = 15,
+
+    /// Safe decoding from an untrusted wire byte without UB on `16..=255`.
+    pub fn fromId(id: u8) ?Connector {
+        if (id < CONNECTOR_COUNT) {
+            return @enumFromInt(id);
+        }
+        return null;
+    }
 
     pub fn name(self: Connector) [*:0]const u8 {
         return switch (self) {
@@ -70,6 +54,7 @@ pub const Connector = enum(u8) {
 };
 
 pub const CONNECTOR_COUNT: usize = @typeInfo(Connector).@"enum".fields.len;
+pub const MAX_BASE_PORT: u16 = std.math.maxInt(u16) - (CONNECTOR_COUNT - 1);
 
 const grpc = @import("connectors/grpc.zig");
 const graphql = @import("connectors/graphql.zig");
@@ -88,7 +73,15 @@ const scip = @import("connectors/scip.zig");
 const ipfs = @import("connectors/ipfs.zig");
 const arrow_flight = @import("connectors/arrow_flight.zig");
 
-pub fn startAll(base_port: u16) void {
+pub const PortError = error{
+    PortZero,
+    PortRangeOverflow,
+};
+
+pub fn startAll(base_port: u16) PortError!void {
+    if (base_port == 0) return PortError.PortZero;
+    if (base_port > MAX_BASE_PORT) return PortError.PortRangeOverflow;
+
     grpc.start(base_port + 0);
     graphql.start(base_port + 1);
     rest.start(base_port + 2);
@@ -107,6 +100,13 @@ pub fn startAll(base_port: u16) void {
     arrow_flight.start(base_port + 15);
 }
 
-test "hexadeca count" {
+test "hexadeca count and safe bounds" {
     try std.testing.expectEqual(@as(usize, 16), CONNECTOR_COUNT);
+    try std.testing.expectEqual(@as(?Connector, .grpc), Connector.fromId(0));
+    try std.testing.expectEqual(@as(?Connector, .arrow_flight), Connector.fromId(15));
+    try std.testing.expectEqual(@as(?Connector, null), Connector.fromId(16));
+    try std.testing.expectEqual(@as(?Connector, null), Connector.fromId(255));
+    try std.testing.expectError(PortError.PortZero, startAll(0));
+    try std.testing.expectError(PortError.PortRangeOverflow, startAll(MAX_BASE_PORT + 1));
+    try startAll(9100);
 }

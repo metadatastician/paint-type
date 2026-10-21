@@ -196,6 +196,9 @@ impl Brush {
     ///
     /// Returns the number of pixels actually written (after clipping).
     pub fn stamp(&self, tile: &Tile, cx: f32, cy: f32) -> Result<u32, TileError> {
+        if !cx.is_finite() || !cy.is_finite() {
+            return Ok(0);
+        }
         let d = self.tip.diameter() as i64;
         // Tip footprint in tile-local coordinates.
         let half = (d as f32) * 0.5_f32;
@@ -246,6 +249,9 @@ impl Brush {
     /// in proportion to the tip. Pixels where the mask is zero are left
     /// untouched. Only calls `write_buffer` when at least one pixel changed.
     pub fn erase_stamp(&self, tile: &Tile, cx: f32, cy: f32) -> Result<u32, TileError> {
+        if !cx.is_finite() || !cy.is_finite() {
+            return Ok(0);
+        }
         let d = self.tip.diameter() as i64;
         let half = (d as f32) * 0.5_f32;
         let top_left_x = (cx - half).floor() as i64;
@@ -296,17 +302,16 @@ impl Brush {
 /// is cheap to reset between strokes.
 #[derive(Debug, Clone, Default)]
 pub struct Stroke {
-    last_point: Option<(f32, f32)>,
-    /// Distance until the next scheduled stamp from `last_point`. When
-    /// this drops to zero (or below) a stamp is emitted and the value is
-    /// reset to the brush's spacing.
-    distance_until_next: f32,
+    last_point: Option<(f64, f64)>,
+    /// Distance until the next scheduled stamp from `last_point`. Tracked
+    /// in `f64` so multi-thousand-sample strokes never accumulate float drift.
+    distance_until_next: f64,
 }
 
 impl Stroke {
     /// Construct an empty `Stroke`. Equivalent to `Stroke::default()`;
     /// no sample has been seen and no stamps will be emitted until the
-    /// first `push`.
+    /// first finite `push`.
     pub fn new() -> Self {
         Self::default()
     }
@@ -317,26 +322,29 @@ impl Stroke {
         self.distance_until_next = 0.0;
     }
 
-    /// Push the next cursor sample at `(x, y)`. Returns the stamp centres
-    /// that should be applied to the canvas between the previous sample
-    /// and this one. The first call after `reset` always emits exactly
-    /// one stamp at the input point so single-click dabs work.
+    /// Push the next cursor sample at `(x, y)`. Non-finite coordinates
+    /// (`NaN`, `±Inf`) are ignored without corrupting stroke state.
     pub fn push(&mut self, x: f32, y: f32, brush: &Brush) -> Vec<(f32, f32)> {
-        let spacing = brush.stamp_spacing();
+        if !x.is_finite() || !y.is_finite() {
+            return Vec::new();
+        }
+        let spacing = brush.stamp_spacing() as f64;
+        let xf = x as f64;
+        let yf = y as f64;
         let mut stamps = Vec::new();
 
         let Some((lx, ly)) = self.last_point else {
             // First sample of a stroke: emit one dab here.
             stamps.push((x, y));
-            self.last_point = Some((x, y));
+            self.last_point = Some((xf, yf));
             self.distance_until_next = spacing;
             return stamps;
         };
 
-        let dx = x - lx;
-        let dy = y - ly;
-        let seg_len = (dx * dx + dy * dy).sqrt();
-        if seg_len < f32::EPSILON {
+        let dx = xf - lx;
+        let dy = yf - ly;
+        let seg_len = dx.hypot(dy);
+        if seg_len < f64::EPSILON {
             // Zero-length push — no new stamps.
             return stamps;
         }
@@ -346,14 +354,14 @@ impl Stroke {
 
         while next_at <= seg_len {
             let t = next_at / seg_len;
-            stamps.push((lx + dx * t, ly + dy * t));
+            stamps.push(((lx + dx * t) as f32, (ly + dy * t) as f32));
             next_at += spacing;
         }
 
         // Carry the unspent distance into `distance_until_next` so the
         // next push picks up where this one left off.
         self.distance_until_next = next_at - seg_len;
-        self.last_point = Some((x, y));
+        self.last_point = Some((xf, yf));
         stamps
     }
 

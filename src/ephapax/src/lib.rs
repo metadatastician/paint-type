@@ -152,9 +152,7 @@ pub fn f32_to_f16_bits(value: f32) -> u16 {
         let lower_mask = (1u32 << shift) - 1;
         let lower_bits = mant_with_lead & lower_mask;
         let mut rounded = shifted;
-        if lower_bits > half_bit
-            || (lower_bits == half_bit && (shifted & 1) == 1)
-        {
+        if lower_bits > half_bit || (lower_bits == half_bit && (shifted & 1) == 1) {
             rounded += 1;
         }
         return (sign << 15) | (rounded as u16);
@@ -165,13 +163,10 @@ pub fn f32_to_f16_bits(value: f32) -> u16 {
     let lower_mask = (1u32 << 13) - 1;
     let mut new_mant = mant >> 13;
     let lower_bits = mant & lower_mask;
-    if lower_bits > half_bit
-        || (lower_bits == half_bit && (new_mant & 1) == 1)
-    {
+    if lower_bits > half_bit || (lower_bits == half_bit && (new_mant & 1) == 1) {
         new_mant += 1;
         if new_mant == 0x400 {
             // Mantissa overflowed back to 1.0 — bump the exponent.
-            new_mant = 0;
             let bumped_exp = new_exp + 1;
             if bumped_exp >= 0x1F {
                 return (sign << 15) | 0x7C00;
@@ -207,7 +202,8 @@ pub fn f16_bits_to_f32(bits: u16) -> f32 {
         // Inf or NaN.
         (sign << 31) | 0x7F80_0000 | (mant << 13)
     } else {
-        let new_exp = exp - 15 + 127;
+        // exp is in [1, 30], so exp - 15 + 127 == exp + 112 without u32 underflow.
+        let new_exp = exp + 112;
         (sign << 31) | (new_exp << 23) | (mant << 13)
     };
 
@@ -386,7 +382,7 @@ mod tests {
         for i in 0..512 {
             let t = Tile::alloc(i, i).expect("alloc");
             t.fill_bits(0x3C00, 0x0000, 0x0000, 0x3C00).expect("fill"); // f16 1.0, 0.0, 0.0, 1.0
-            // Drop t.
+                                                                        // Drop t.
         }
     }
 

@@ -27,12 +27,10 @@ exclude:
 
 # Language support for paint-type
 analysis:
+  # Tree-sitter languages currently supported by oikosbot-cli config::load
   languages:
     - rust
-    - idris
-    - zig
-    - haskell
-    - python
+    - javascript
 
 # Reporting
 reporting:

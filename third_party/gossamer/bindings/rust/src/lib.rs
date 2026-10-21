@@ -283,11 +283,14 @@ impl Capability {
     /// Grant a new capability token for the given resource kind.
     pub fn grant(kind: ResourceKind) -> Option<Self> {
         // SAFETY: FFI call, returns 0 on failure
-        let token = unsafe { gossamer_cap_grant(kind as u32) };
-        if token == 0 {
+        let cap_handle = unsafe { gossamer_cap_grant(kind as u32) };
+        if cap_handle == 0 {
             None
         } else {
-            Some(Capability { token, kind })
+            Some(Capability {
+                token: cap_handle,
+                kind,
+            })
         }
     }
 

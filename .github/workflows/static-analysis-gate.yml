@@ -125,7 +125,7 @@ jobs:
           # lowercased, `.message` carrying the description. Both the raw
           # report and this array are uploaded below.
           jq '[.weak_points[] | select(.suppressed != true) | {
-                 file:     (.file // null),
+                 file:     (.file // .location // null),
                  line:     (.line // null),
                  severity: (.severity | ascii_downcase),
                  message:  .description,
@@ -306,7 +306,7 @@ jobs:
           echo "::error::Hypatia found ${{ steps.scan.outputs.critical }} critical security issue(s) — blocking merge"
           exit 1
   # ---------------------------------------------------------------------------
-  # Job 3: patch-bridge triage (CVE contextual assessment)
+  # Job 3: patch-bridge triage (RustSec CVE contextual assessment via cargo-audit)
   # ---------------------------------------------------------------------------
   patch-bridge-triage:
     name: Patch Bridge CVE triage
@@ -316,68 +316,85 @@ jobs:
         uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
-      - name: Report that this capability does not exist
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: stable
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@v2.87.28
+        with:
+          tool: cargo-audit
+      - name: Audit Cargo.lock files against RustSec advisory database
         run: |
-          # FAIL CLOSED. There is nothing to fix in place here, because the
-          # thing this job invokes is not a feature of the tool.
-          #
-          # Verified 2026-09-24 against a build of panic-attack at
-          # 27b3d93b11fbfc03cee695e791904d741ce2b24b (main HEAD, v2.5.5):
-          #
-          #   $ panic-attack bridge triage --format json .
-          #   error: unrecognized subcommand 'bridge'
-          #   exit 2
-          #
-          # `panic-attack --help` lists 24 subcommands and `bridge` is not
-          # among them. The nearest relative is `assay` ("survey a target for
-          # proven-library substitution candidates"), which is dependency
-          # substitution, not CVE triage — repointing this job at it would
-          # rename the gap rather than close it.
-          #
-          # Previously this job downloaded a binary from a URL that 404s, so
-          # `installed` was always false, the triage step never ran, a stub
-          # `{"unmitigable":0}` was written, and the job reported SUCCESS
-          # having triaged nothing. Worse, even had the subcommand existed,
-          # the final step only echoed `::warning::` — a step named "Fail on
-          # unmitigable CVEs in critical paths" that contained no `exit 1`
-          # and so could never fail.
-          #
-          # So this check has never executed. It is now red on purpose: a
-          # permanently-green check that never ran is worse than an absent
-          # one, because it is read as coverage.
-          #
-          # To clear this, an owner must pick one:
-          #   1. implement CVE triage in panic-attack and repoint this job;
-          #   2. delete this job and the `patch_bridge` field that
-          #      deposit-findings reads from its artifact;
-          #   3. replace it with the real CVE source (OSV / cargo-audit),
-          #      which is a different tool and a different schema.
-          echo "::error::patch-bridge-triage invokes 'panic-attack bridge triage', a subcommand that does not exist in panic-attack 2.5.5. This check has never executed. See the comment in this step for the three ways to clear it."
+          set -euo pipefail
+          mkdir -p reports "$RUNNER_TEMP/audit"
+          echo "[]" > "$RUNNER_TEMP/audit/cves.json"
+          MITIGATED=0
+          UNMITIGABLE=0
+          INFORMATIONAL=0
+
+          AUDITED_COUNT=0
+          while IFS= read -r -d '' lockfile; do
+            OUT="$RUNNER_TEMP/audit/one.json"
+            ERR="$RUNNER_TEMP/audit/err.log"
+            set +e
+            cargo audit --json -f "$lockfile" > "$OUT" 2> "$ERR"
+            AUDIT_RC=$?
+            set -e
+            if ! jq -e '.database and .vulnerabilities' "$OUT" >/dev/null 2>&1; then
+              echo "::error::cargo-audit failed to produce valid JSON report for $lockfile (rc=$AUDIT_RC)"
+              cat "$ERR" >&2 || true
+              exit 1
+            fi
+            AUDITED_COUNT=$((AUDITED_COUNT + 1))
+            V_MIT=$(jq '[.vulnerabilities.list[]? | select((.versions.patched | length) > 0)] | length' "$OUT")
+            V_UNM=$(jq '[.vulnerabilities.list[]? | select((.versions.patched | length) == 0)] | length' "$OUT")
+            W_INF=$(jq '[.warnings[]?[]?] | length' "$OUT")
+            MITIGATED=$((MITIGATED + V_MIT))
+            UNMITIGABLE=$((UNMITIGABLE + V_UNM))
+            INFORMATIONAL=$((INFORMATIONAL + W_INF))
+            jq --arg lf "$lockfile" \
+              '[.vulnerabilities.list[]? | {lockfile: $lf, id: .advisory.id, package: .package.name, version: .package.version, patched: .versions.patched}]' \
+              "$OUT" > "$RUNNER_TEMP/audit/add.json"
+            jq -s '.[0] + .[1]' "$RUNNER_TEMP/audit/cves.json" "$RUNNER_TEMP/audit/add.json" \
+              > "$RUNNER_TEMP/audit/next.json"
+            mv "$RUNNER_TEMP/audit/next.json" "$RUNNER_TEMP/audit/cves.json"
+          done < <(find src tools -name Cargo.lock -print0 | sort -z)
+
+          if [ "$AUDITED_COUNT" -eq 0 ]; then
+            echo "::error::No Cargo.lock files were audited"
+            exit 1
+          fi
+
+          jq -n \
+            --arg status "completed" \
+            --arg scanner "cargo-audit" \
+            --slurpfile cves "$RUNNER_TEMP/audit/cves.json" \
+            --argjson mitigated "$MITIGATED" \
+            --argjson unmitigable "$UNMITIGABLE" \
+            --argjson informational "$INFORMATIONAL" \
+            '{
+              status: $status,
+              scanner: $scanner,
+              cves: $cves[0],
+              mitigated: $mitigated,
+              unmitigable: $unmitigable,
+              concatenative: 0,
+              informational: $informational
+            }' > reports/bridge-report.json
+
           {
-            echo "## Patch Bridge CVE Triage"
+            echo "## Patch Bridge CVE Triage (\`cargo-audit\`)"
             echo ""
-            echo "**Not run.** \`panic-attack bridge triage\` is not a real"
-            echo "subcommand — \`panic-attack --help\` lists 24 subcommands and"
-            echo "\`bridge\` is not one of them (verified at 27b3d93, v2.5.5)."
-            echo ""
-            echo "This job previously reported success by downloading a binary"
-            echo "from a URL that 404s, skipping the scan, and writing a stub"
-            echo "report with \`unmitigable: 0\`. No CVE triage has ever run on"
-            echo "this repository."
+            echo "- **Upgrade-mitigable advisories:** $MITIGATED"
+            echo "- **Unmitigable advisories:** $UNMITIGABLE"
+            echo "- **Informational warnings:** $INFORMATIONAL"
           } >> "$GITHUB_STEP_SUMMARY"
-          mkdir -p reports
-          cat > reports/bridge-report.json <<'JSON'
-          {
-            "status": "not_implemented",
-            "reason": "panic-attack has no 'bridge' subcommand as of v2.5.5 (27b3d93)",
-            "cves": [],
-            "mitigated": null,
-            "unmitigable": null,
-            "concatenative": null,
-            "informational": null
-          }
-          JSON
-          exit 1
+
+          if [ "$UNMITIGABLE" -gt 0 ]; then
+            echo "::error::cargo-audit detected $UNMITIGABLE unpatched vulnerability advisory/advisories"
+            exit 1
+          fi
       - name: Upload bridge report
         if: always()
         uses: actions/upload-artifact@v7.0.2

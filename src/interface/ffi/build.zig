@@ -121,6 +121,17 @@ pub fn build(b: *std.Build) void {
     });
     const run_unit_tests = b.addRunArtifact(unit_tests);
 
+    const hexadeca_test_module = b.createModule(.{
+        .root_source_file = b.path("src/hexadeca.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    const hexadeca_tests = b.addTest(.{
+        .root_module = hexadeca_test_module,
+    });
+    const run_hexadeca_tests = b.addRunArtifact(hexadeca_tests);
+
     //--------------------------------------------------------------------------
     // Integration tests (in test/integration_test.zig, linked to static libpt)
     //--------------------------------------------------------------------------
@@ -143,6 +154,7 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Run unit and integration tests");
     test_step.dependOn(&run_unit_tests.step);
+    test_step.dependOn(&run_hexadeca_tests.step);
     test_step.dependOn(&run_integration_tests.step);
 
     //--------------------------------------------------------------------------
@@ -168,4 +180,4 @@ pub fn build(b: *std.Build) void {
 
     const bench_step = b.step("bench", "Run performance benchmarks");
     bench_step.dependOn(&run_bench.step);
-    }
+}

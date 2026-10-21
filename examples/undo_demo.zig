@@ -85,6 +85,7 @@ pub fn main() !void {
     const green_state = dispatcher.BrushStateC{ .radius = 14.0, .hardness = 0.7, .opacity = 1.0, .spacing = 0.1, .profile = 1 };
 
     // t0 — initial blank state.
+    std.fs.cwd().makePath("examples/images") catch {};
     try savePng(canvas, "examples/images/undo_t0_blank.png");
     std.debug.print("t0 blank        -> examples/images/undo_t0_blank.png\n", .{});
 

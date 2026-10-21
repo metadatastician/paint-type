@@ -87,23 +87,23 @@ log() {
 # Function to fix \n artifacts in a file
 fix_newline_artifacts() {
     local file="$1"
-    
+
     # Check if file has literal \n artifacts (backslash followed by n)
     if grep -q '\\n' "$file" 2>/dev/null; then
         log "Fixing \\n artifacts in $file"
-        
+
         # Use sed to replace literal \n with actual newlines
         # We use a two-step process to avoid sed interpretation issues
         local tmp_file="${file}.tmp"
-        
+
         # First, replace \n with a placeholder that won't appear in the file
         sed 's/\\n/___NEWLINE___/g' "$file" > "$tmp_file"
-        
+
         # Then replace the placeholder with actual newlines
         # Note: echo interprets \n, so we use printf to output a literal newline
         sed 's/___NEWLINE___/\n/g' "$tmp_file" > "$file"
         rm -f "$tmp_file"
-        
+
         echo "  Fixed: $file"
         FIXED_MANIFESTS=$((FIXED_MANIFESTS + 1))
     fi
@@ -113,7 +113,7 @@ fix_newline_artifacts() {
 determine_depth() {
     local dir="$1"
     local rel_path="${dir#$REPO_ROOT/}"
-    
+
     if [ -z "$rel_path" ] || [ "$rel_path" = "." ]; then
         echo 0
     else
@@ -138,9 +138,9 @@ generate_directory_manifests() {
     local dir="$1"
     local depth=$(determine_depth "$dir")
     local display_name=$(dir_display_name "$dir")
-    
+
     TOTAL=$((TOTAL + 1))
-    
+
     # Determine manifest filename based on depth
     local manifest_name
     if [ "$depth" -eq 0 ]; then
@@ -148,31 +148,31 @@ generate_directory_manifests() {
     else
         manifest_name="0.${depth}-AI-MANIFEST.a2ml"
     fi
-    
+
     local manifest_path="$dir/$manifest_name"
     local readme_path="$dir/README.adoc"
-    
+
     # Check if manifest already exists
     local manifest_exists=false
     local readme_exists=false
-    
+
     if [ -f "$manifest_path" ]; then
         manifest_exists=true
     fi
-    
+
     if [ -f "$readme_path" ]; then
         readme_exists=true
     fi
-    
+
     # Check if we should generate for this directory
     local should_generate=false
-    
+
     if [ "$GENERATE_ALL" = true ]; then
         should_generate=true
     elif [ "$manifest_exists" = false ] || [ "$readme_exists" = false ]; then
         should_generate=true
     fi
-    
+
     # If in fix mode, check for \n artifacts in existing manifests
     # This should be done regardless of whether we're generating new files
     if [ "$FIX_MODE" = true ]; then
@@ -183,20 +183,20 @@ generate_directory_manifests() {
             fix_newline_artifacts "$readme_path"
         fi
     fi
-    
+
     # If we should generate and (force or not exists)
     if [ "$should_generate" = true ]; then
         local create_manifest=false
         local create_readme=false
-        
+
         if [ "$FORCE" = true ] || [ "$manifest_exists" = false ]; then
             create_manifest=true
         fi
-        
+
         if [ "$FORCE" = true ] || [ "$readme_exists" = false ]; then
             create_readme=true
         fi
-        
+
         # Only create if not dry run
         if [ "$DRY_RUN" = false ]; then
             # Create manifest
@@ -206,7 +206,7 @@ generate_directory_manifests() {
             else
                 log "Skipping existing manifest: $manifest_path"
             fi
-            
+
             # Create README
             if [ "$create_readme" = true ]; then
                 generate_readme_file "$dir" "$depth" "$readme_path"
@@ -234,14 +234,14 @@ generate_manifest_file() {
     local dir="$1"
     local depth="$2"
     local manifest_path="$3"
-    
+
     local display_name=$(dir_display_name "$dir")
     local basename=$(basename "$dir")
-    
+
     # Get subdirectories
     local subdirs=()
     local subdir_purposes=()
-    
+
     if [ -d "$dir" ]; then
         while IFS= read -r -d '' subdir; do
             # Skip hidden directories
@@ -249,14 +249,14 @@ generate_manifest_file() {
             if [[ "$subdir_name" == .* ]]; then
                 continue
             fi
-            
+
             # Skip common non-content directories
             case "$subdir_name" in
                 target|node_modules|.git|.DS_Store|build|dist|__pycache__|*.egg-info|.venv)
                     continue
                     ;;
             esac
-            
+
             subdirs+=("$subdir_name")
             # Try to get purpose from existing README or manifest
             local purpose=""
@@ -273,17 +273,17 @@ generate_manifest_file() {
             subdir_purposes+=("$purpose")
         done < <(find "$dir" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
     fi
-    
+
     # Get canonical files
     local canonical_files=()
     local common_files=(Cargo.toml Cargo.lock build.rs .gitignore README.adoc LICENSE)
-    
+
     for f in "${common_files[@]}"; do
         if [ -f "$dir/$f" ]; then
             canonical_files+=("$f")
         fi
     done
-    
+
     # If no specific files found, look for any non-hidden files
     if [ ${#canonical_files[@]} -eq 0 ]; then
         while IFS= read -r -d '' f; do
@@ -293,7 +293,7 @@ generate_manifest_file() {
             fi
         done < <(find "$dir" -maxdepth 1 -type f -print0 2>/dev/null)
     fi
-    
+
     # Determine purpose based on directory name and contents
     local purpose=""
     case "$basename" in
@@ -367,11 +367,11 @@ generate_manifest_file() {
             fi
             ;;
     esac
-    
+
     # Escape special characters for echo
     local safe_display_name=$(echo "$display_name" | sed 's/\//\\\//g')
     local safe_purpose=$(echo "$purpose" | sed 's/\//\\\//g')
-    
+
     # Create the manifest file
     {
         echo "# SPDX-License-Identifier: AGPL-3.0-or-later"
@@ -389,7 +389,7 @@ generate_manifest_file() {
         echo "- **Central protocol authority:** \`standards/\` repository"
         echo "- **Local integration authority (this directory):** ${display_name}/ specific configuration"
         echo ""
-        
+
         if [ ${#subdirs[@]} -gt 0 ]; then
             echo "## Subdirectories"
             echo ""
@@ -405,7 +405,7 @@ generate_manifest_file() {
             done
             echo ""
         fi
-        
+
         if [ ${#canonical_files[@]} -gt 0 ]; then
             echo "## Canonical Files"
             echo ""
@@ -414,7 +414,7 @@ generate_manifest_file() {
             done
             echo ""
         fi
-        
+
         echo "## Invariants"
         echo ""
         echo "1. All A2ML state files must live in \`.machine_readable/\` ONLY, never in the repo root."
@@ -433,7 +433,7 @@ generate_manifest_file() {
         echo "3. For subdirectories, navigate to their respective manifest files."
         echo "4. Never edit \`.machine_readable/\` files directly."
     } > "$manifest_path"
-    
+
     echo "  Created: $manifest_path"
 }
 
@@ -466,13 +466,13 @@ generate_readme_file() {
     local dir="$1"
     local depth="$2"
     local readme_path="$3"
-    
+
     local display_name=$(dir_display_name "$dir")
     local basename=$(basename "$dir")
-    
+
     # Get subdirectories
     local subdirs=()
-    
+
     if [ -d "$dir" ]; then
         while IFS= read -r -d '' subdir; do
             local subdir_name=$(basename "$subdir")
@@ -487,7 +487,7 @@ generate_readme_file() {
             subdirs+=("$subdir_name")
         done < <(find "$dir" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
     fi
-    
+
     # Determine description based on directory
     local description=""
     case "$basename" in
@@ -549,9 +549,9 @@ generate_readme_file() {
             description="This directory is part of the paint.type project."
             ;;
     esac
-    
+
     local parent_dir=$(dirname "$dir")
-    
+
     # Create the README file
     {
         echo "// SPDX-License-Identifier: CC-BY-SA-4.0"
@@ -568,7 +568,7 @@ generate_readme_file() {
         echo "As a Level ${depth} directory (\`${display_name}/\`), it supports the overall"
         echo "project structure."
         echo ""
-        
+
         if [ ${#subdirs[@]} -gt 0 ]; then
             echo "== Subdirectories"
             echo ""
@@ -581,7 +581,7 @@ generate_readme_file() {
             echo "|==="
             echo ""
         fi
-        
+
         echo "== Purpose of Each Component"
         echo ""
         echo ""
@@ -606,7 +606,7 @@ generate_readme_file() {
         fi
         echo "* link:../../.machine_readable/[Machine Readable Metadata]"
     } > "$readme_path"
-    
+
     echo "  Created: $readme_path"
 }
 
@@ -616,27 +616,27 @@ walk_and_generate() {
     echo "Repository: $REPO_ROOT"
     echo "Options: dry-run=$DRY_RUN, force=$FORCE, all=$GENERATE_ALL, fix=$FIX_MODE"
     echo ""
-    
+
     # Prune list - directories to skip
     local prune_dirs=(".git" ".machine_readable" "node_modules" "target" "dist" "build" ".zig-cache" ".venv" ".cache" ".local" ".mypy_cache" ".pytest_cache" ".tox" ".nox" ".idea" ".vscode" "__pycache__" ".egg-info" "third_party")
-    
+
     # Build find command to skip pruned directories
-    local find_cmd="find \"$REPO_ROOT\""
+    local find_args=("$REPO_ROOT")
     for prune_dir in "${prune_dirs[@]}"; do
-        find_cmd+=" -path \"*/${prune_dir}/*\" -prune -o"
+        find_args+=(-path "*/${prune_dir}/*" -prune -o)
     done
-    find_cmd+=" -type d -print0"
-    
+    find_args+=(-type d -print0)
+
     # Process each directory
     while IFS= read -r -d '' dir; do
         # Skip the repo root if we're not generating all (it has special handling)
         if [ "$dir" = "$REPO_ROOT" ] && [ "$GENERATE_ALL" = false ]; then
             continue
         fi
-        
+
         generate_directory_manifests "$dir"
-    done < <(eval "$find_cmd")
-    
+    done < <(find "${find_args[@]}")
+
     # Summary
     echo ""
     echo "=== Generation Summary ==="
