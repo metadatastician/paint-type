@@ -152,9 +152,7 @@ pub fn f32_to_f16_bits(value: f32) -> u16 {
         let lower_mask = (1u32 << shift) - 1;
         let lower_bits = mant_with_lead & lower_mask;
         let mut rounded = shifted;
-        if lower_bits > half_bit
-            || (lower_bits == half_bit && (shifted & 1) == 1)
-        {
+        if lower_bits > half_bit || (lower_bits == half_bit && (shifted & 1) == 1) {
             rounded += 1;
         }
         return (sign << 15) | (rounded as u16);
@@ -165,9 +163,7 @@ pub fn f32_to_f16_bits(value: f32) -> u16 {
     let lower_mask = (1u32 << 13) - 1;
     let mut new_mant = mant >> 13;
     let lower_bits = mant & lower_mask;
-    if lower_bits > half_bit
-        || (lower_bits == half_bit && (new_mant & 1) == 1)
-    {
+    if lower_bits > half_bit || (lower_bits == half_bit && (new_mant & 1) == 1) {
         new_mant += 1;
         if new_mant == 0x400 {
             // Mantissa overflowed back to 1.0 — bump the exponent.
@@ -386,7 +382,7 @@ mod tests {
         for i in 0..512 {
             let t = Tile::alloc(i, i).expect("alloc");
             t.fill_bits(0x3C00, 0x0000, 0x0000, 0x3C00).expect("fill"); // f16 1.0, 0.0, 0.0, 1.0
-            // Drop t.
+                                                                        // Drop t.
         }
     }
 

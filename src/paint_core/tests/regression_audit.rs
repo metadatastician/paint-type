@@ -5,10 +5,10 @@
 // its exact two-test output asserted by `tests/e2e/scenario_pipeline_dogfood.sh`.
 
 use paint_core::{
-    Tile,
     brush::{Brush, BrushTip, Stroke},
     layer::{BlendMode, Layer, LayerStack, TileCoord},
     render::{render_region, try_render_region},
+    Tile,
 };
 
 #[test]
@@ -82,7 +82,9 @@ fn b14_b17_flatten_honours_opacity_and_blend_modes_with_bulk_buffers() {
 
     let flat = stack.flatten("merged").expect("flatten");
     let merged_tile = flat.tile(coord).expect("flattened tile at (5, 7)");
-    let px = merged_tile.read_pixel_f32(16, 16).expect("read merged pixel");
+    let px = merged_tile
+        .read_pixel_f32(16, 16)
+        .expect("read merged pixel");
     assert!((px[0] - 1.0).abs() < 1e-2, "R = {}", px[0]);
     assert!((px[1] - 0.5).abs() < 1e-2, "G = {}", px[1]);
     assert!((px[2] - 0.5).abs() < 1e-2, "B = {}", px[2]);

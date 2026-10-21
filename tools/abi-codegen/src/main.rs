@@ -406,7 +406,7 @@ mod tests {
         let expected_layer = fs::read_to_string(bridges_dir().join("paint-type-layer.twasm"))
             .expect("read paint-type-layer.twasm");
 
-        assert_eq!(generate_tile_twasm(64, 4, 0x5054_4C45), expected_tile);
+        assert_eq!(generate_tile_twasm(64, 4, 0x504C_5400), expected_tile);
         assert_eq!(generate_layer_twasm(256, 256, 0x504C_5354), expected_layer);
     }
 }

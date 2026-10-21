@@ -77,8 +77,10 @@ jobs:
           done
       - name: Cargo clippy
         run: |
-          set -uo pipefail
+          set +e
           CLIPPY_FAIL=0
+          ALL_LOG="$RUNNER_TEMP/clippy-all.log"
+          : > "$ALL_LOG"
           for crate in \
             src/ephapax \
             src/ptype_format \
@@ -89,14 +91,19 @@ jobs:
             tools/abi-codegen
           do
             LOG="$RUNNER_TEMP/clippy-$(echo "$crate" | tr '/' '_').log"
-            if ! cargo clippy --manifest-path "$crate/Cargo.toml" --all-targets -- -D warnings >"$LOG" 2>&1; then
+            cargo clippy --manifest-path "$crate/Cargo.toml" --all-targets -- -D warnings >"$LOG" 2>&1
+            RC=$?
+            if [ "$RC" -ne 0 ]; then
               cat "$LOG"
-              MSG="$(grep -E 'error(\[|:)|warning:' -A 3 "$LOG" | tr '\n' ' ' | cut -c1-3500)"
-              echo "::error title=clippy-${crate}::${MSG}"
+              { echo "=== $crate ==="; cat "$LOG"; } >> "$ALL_LOG"
               CLIPPY_FAIL=1
             fi
           done
-          exit "$CLIPPY_FAIL"
+          if [ "$CLIPPY_FAIL" -ne 0 ]; then
+            B64="$(gzip -c "$ALL_LOG" | base64 -w0)"
+            echo "::error title=clippy-b64::${B64}"
+            exit 1
+          fi
       - name: Cargo fmt check
         if: always()
         run: |

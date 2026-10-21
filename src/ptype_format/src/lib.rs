@@ -415,7 +415,8 @@ impl<'a> Reader<'a> {
     fn opt_bytes(&mut self, context: &'static str) -> Result<Option<Vec<u8>>, DecodeError> {
         if self.bool_strict(context)? {
             let len_u32 = self.u32(context)?;
-            let len = usize::try_from(len_u32).map_err(|_| DecodeError::UnexpectedEof { context })?;
+            let len =
+                usize::try_from(len_u32).map_err(|_| DecodeError::UnexpectedEof { context })?;
             Ok(Some(self.take(len, context)?.to_vec()))
         } else {
             Ok(None)
@@ -468,10 +469,11 @@ pub fn decode(bytes: &[u8]) -> Result<Canvas, DecodeError> {
     let layer_count = r.u32("layer_count")?;
     let mut layers = Vec::new();
     for _ in 0..layer_count {
-        let name_len = usize::try_from(r.u32("layer name length")?)
-            .map_err(|_| DecodeError::UnexpectedEof {
+        let name_len = usize::try_from(r.u32("layer name length")?).map_err(|_| {
+            DecodeError::UnexpectedEof {
                 context: "layer name length",
-            })?;
+            }
+        })?;
         let name_bytes = r.take(name_len, "layer name")?;
         let name = std::str::from_utf8(name_bytes)
             .map_err(|_| DecodeError::InvalidUtf8 {
@@ -517,11 +519,9 @@ pub fn decode(bytes: &[u8]) -> Result<Canvas, DecodeError> {
         let active = r.opt_u32("meta.active_layer")?;
         let author = match r.opt_bytes("meta.author")? {
             None => None,
-            Some(b) => Some(
-                String::from_utf8(b).map_err(|_| DecodeError::InvalidUtf8 {
-                    context: "meta.author",
-                })?,
-            ),
+            Some(b) => Some(String::from_utf8(b).map_err(|_| DecodeError::InvalidUtf8 {
+                context: "meta.author",
+            })?),
         };
         let icc = r.opt_bytes("meta.icc_profile")?;
         for layer in &mut layers {
