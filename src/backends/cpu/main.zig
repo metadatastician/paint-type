@@ -431,6 +431,7 @@ fn newMask(alloc: std.mem.Allocator, w: u32, h: u32) !*SelectionMask {
 }
 
 const Clipboard = struct {
+    refs: std.atomic.Value(usize) = .init(1),
     w: u32,
     h: u32,
     ox: u32,
@@ -439,21 +440,37 @@ const Clipboard = struct {
     has: []u8,
 };
 
+fn releaseClipboard(alloc: std.mem.Allocator, cb: *Clipboard) void {
+    if (cb.refs.fetchSub(1, .acq_rel) == 1) {
+        alloc.free(cb.px);
+        alloc.free(cb.has);
+        alloc.destroy(cb);
+    }
+}
+
 const State = struct {
     alloc: std.mem.Allocator,
     canvases: std.AutoHashMapUnmanaged(u64, *Canvas) = .empty,
     masks: std.AutoHashMapUnmanaged(u64, *SelectionMask) = .empty,
     next_canvas_id: u64 = 1,
     next_mask_id: u64 = 1,
-    clipboard: ?Clipboard = null,
+    clipboard: ?*Clipboard = null,
     lock: dispatcher.SpinMutex = .{},
 
-    fn replaceClipboard(self: *State, cb: Clipboard) void {
-        if (self.clipboard) |old| {
-            self.alloc.free(old.px);
-            self.alloc.free(old.has);
-        }
+    fn replaceClipboard(self: *State, cb: *Clipboard) void {
+        self.lock.lock();
+        const old = self.clipboard;
         self.clipboard = cb;
+        self.lock.unlock();
+        if (old) |prev| releaseClipboard(self.alloc, prev);
+    }
+
+    fn acquireClipboard(self: *State) ?*Clipboard {
+        self.lock.lock();
+        defer self.lock.unlock();
+        const cb = self.clipboard orelse return null;
+        _ = cb.refs.fetchAdd(1, .acq_rel);
+        return cb;
     }
 
     fn deinit(self: *State) void {
@@ -472,8 +489,7 @@ const State = struct {
         self.masks.deinit(self.alloc);
 
         if (self.clipboard) |old| {
-            self.alloc.free(old.px);
-            self.alloc.free(old.has);
+            releaseClipboard(self.alloc, old);
             self.clipboard = null;
         }
     }
@@ -1144,6 +1160,8 @@ fn copyMaskedRegion(s: *State, c: *Canvas, l: *Layer, m: *SelectionMask) Selecti
     const px = try s.alloc.alloc([4]f32, cnt);
     errdefer s.alloc.free(px);
     const has = try s.alloc.alloc(u8, cnt);
+    errdefer s.alloc.free(has);
+    const cb = try s.alloc.create(Clipboard);
     @memset(has, 0);
 
     var yy: u32 = miny;
@@ -1159,7 +1177,8 @@ fn copyMaskedRegion(s: *State, c: *Canvas, l: *Layer, m: *SelectionMask) Selecti
             }
         }
     }
-    s.replaceClipboard(.{ .w = bw, .h = bh, .ox = minx, .oy = miny, .px = px, .has = has });
+    cb.* = .{ .w = bw, .h = bh, .ox = minx, .oy = miny, .px = px, .has = has };
+    s.replaceClipboard(cb);
 }
 
 //==============================================================================
@@ -1750,11 +1769,12 @@ fn cpu_selection_paste(canvas: u64, layer: u64, dx: f64, dy: f64) callconv(.c) u
     const s = requireState();
     const c = s.acquire(canvas) orelse return rcode(.invalid_param);
     defer releaseCanvas(s.alloc, c);
+    const cb = s.acquireClipboard() orelse return rcode(.invalid_param);
+    defer releaseClipboard(s.alloc, cb);
     c.lock.lock();
     defer c.lock.unlock();
     const idx = c.findLayerIndex(layer) orelse return rcode(.invalid_param);
     const l = c.layers.items[idx];
-    const cb = s.clipboard orelse return rcode(.invalid_param);
     if (!std.math.isFinite(dx) or !std.math.isFinite(dy)) return rcode(.invalid_param);
 
     const base_x: f64 = @round(@as(f64, @floatFromInt(cb.ox)) + dx);
