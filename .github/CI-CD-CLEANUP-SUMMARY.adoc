@@ -101,7 +101,7 @@ host.yml                 # Host-related checks
 idris-ci.yml             # Idris2 CI
 instant-sync.yml         # Instant sync checks
 mirror.yml               # Mirror workflow
-runtime-policy.yml      # Block npm/bun usage
+runtime-policy.yml      # JS runtime tier policy (Bun > Deno > pnpm > npm; no mixed lockfiles)
 openssf-compliance.yml   # OpenSSF compliance checks
 quality.yml              # Code quality (updated)
 release.yml              # Release workflow
