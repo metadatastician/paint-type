@@ -62,9 +62,7 @@ jobs:
           tw-verify "$RUNNER_TEMP/layer.wasm"
       - name: Assert emit matches committed artifacts (no drift)
         run: |
-          cargo run --manifest-path tools/abi-codegen/Cargo.toml -- "$RUNNER_TEMP/codegen"
-          cmp "$RUNNER_TEMP/codegen/paint-type-tile.twasm"  src/bridges/paint-type-tile.twasm
-          cmp "$RUNNER_TEMP/codegen/paint-type-layer.twasm" src/bridges/paint-type-layer.twasm
+          cargo test --manifest-path tools/abi-codegen/Cargo.toml
           tw build src/bridges/paint-type-tile.twasm  -o "$RUNNER_TEMP/tile-recheck.wasm"
           tw build src/bridges/paint-type-layer.twasm -o "$RUNNER_TEMP/layer-recheck.wasm"
           cmp "$RUNNER_TEMP/tile.wasm"  "$RUNNER_TEMP/tile-recheck.wasm"
