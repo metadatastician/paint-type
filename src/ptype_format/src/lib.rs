@@ -539,6 +539,12 @@ pub fn decode(bytes: &[u8]) -> Result<Canvas, DecodeError> {
         });
     }
 
+    if let Some(active_idx) = active_layer {
+        if (active_idx as usize) >= layers.len() {
+            return Err(DecodeError::NonCanonicalMetadata);
+        }
+    }
+
     let canvas = Canvas {
         width,
         height,
@@ -571,9 +577,16 @@ pub fn decode_from_file(path: &str) -> Result<Canvas, String> {
     decode(&bytes).map_err(|e| e.to_string())
 }
 
-/// Encode and write a `.ptype` file atomically/cleanly to disk.
+/// Encode and write a `.ptype` file bounded by [`MAX_PTYPE_FILE_BYTES`].
 pub fn encode_to_file(path: &str, canvas: &Canvas) -> Result<(), String> {
     let bytes = encode(canvas);
+    if bytes.len() as u64 > MAX_PTYPE_FILE_BYTES {
+        return Err(format!(
+            "ptype file exceeds MAX_PTYPE_FILE_BYTES ({} > {})",
+            bytes.len(),
+            MAX_PTYPE_FILE_BYTES
+        ));
+    }
     std::fs::write(path, &bytes).map_err(|e| e.to_string())
 }
 

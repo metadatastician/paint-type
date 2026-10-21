@@ -12,12 +12,37 @@ use paint_core::render::render_region;
 use paint_core::undo::{RevId, UndoGraph};
 use paint_core::{f16_bits_to_f32, f32_to_f16_bits, Tile, TILE_SCALARS, TILE_SIZE};
 use paint_type_plugins::effect::EffectPlugin;
+use paint_type_plugins::PluginRegistry;
 use ptype_format::{
     BlendMode as PtypeBlendMode, Canvas as PtypeCanvas, Layer as PtypeLayer, Tile as PtypeTile,
     TileKey,
 };
 
 use crate::protocol::{LayerInfo, ToolKind};
+
+const MAX_HISTORY_REVS: usize = 64;
+const MAX_HISTORY_BYTES: usize = 256 * 1024 * 1024;
+
+fn snapshot_byte_cost(canvas: &PtypeCanvas) -> usize {
+    let mut bytes = core::mem::size_of::<PtypeCanvas>();
+    if let Some(author) = &canvas.author {
+        bytes = bytes.saturating_add(author.len());
+    }
+    if let Some(icc) = &canvas.icc_profile {
+        bytes = bytes.saturating_add(icc.len());
+    }
+    for layer in &canvas.layers {
+        let tile_bytes = layer
+            .tiles
+            .len()
+            .saturating_mul(TILE_SCALARS * core::mem::size_of::<u16>());
+        bytes = bytes
+            .saturating_add(core::mem::size_of::<PtypeLayer>())
+            .saturating_add(layer.name.len())
+            .saturating_add(tile_bytes);
+    }
+    bytes
+}
 
 /// An axis-aligned dirty rectangle in canvas pixels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -68,6 +93,7 @@ pub struct Document {
     author: Option<String>,
     icc_profile: Option<Vec<u8>>,
     stack: LayerStack,
+    layer_meta: HashMap<LayerId, (Option<u32>, bool)>,
     active: LayerId,
     colour: [f32; 4],
     diameter: u32,
@@ -77,8 +103,10 @@ pub struct Document {
     brush: Brush,
     tool: ToolKind,
     history: UndoGraph<PtypeCanvas>,
+    history_bytes: usize,
     current_rev: RevId,
     redo_stack: Vec<RevId>,
+    plugins: PluginRegistry,
 }
 
 impl Document {
@@ -95,6 +123,7 @@ impl Document {
 
         let mut initial = PtypeCanvas::new(width, height);
         initial.layers.push(PtypeLayer::new("Layer 1"));
+        let initial_cost = snapshot_byte_cost(&initial);
 
         Self {
             width,
@@ -103,6 +132,7 @@ impl Document {
             author: None,
             icc_profile: None,
             stack,
+            layer_meta: HashMap::new(),
             active,
             colour,
             diameter,
@@ -112,8 +142,10 @@ impl Document {
             brush: build_brush(diameter, hardness, colour),
             tool: ToolKind::Brush,
             history: UndoGraph::new(initial),
+            history_bytes: initial_cost,
             current_rev: RevId::ROOT,
             redo_stack: Vec::new(),
+            plugins: PluginRegistry::new(),
         }
     }
 
@@ -129,6 +161,14 @@ impl Document {
         self.history.len()
     }
 
+    pub fn plugins(&self) -> &PluginRegistry {
+        &self.plugins
+    }
+
+    pub fn plugins_mut(&mut self) -> &mut PluginRegistry {
+        &mut self.plugins
+    }
+
     fn flush_pending_stroke(&mut self) {
         if self.stroke_in_progress {
             self.stroke_in_progress = false;
@@ -138,7 +178,51 @@ impl Document {
 
     fn record_revision(&mut self) {
         let snapshot = self.to_ptype_canvas();
-        self.current_rev = self.history.commit(self.current_rev, snapshot);
+        let new_cost = snapshot_byte_cost(&snapshot);
+
+        if self.history.len() >= MAX_HISTORY_REVS
+            || self.history_bytes.saturating_add(new_cost) > MAX_HISTORY_BYTES
+        {
+            let budget = MAX_HISTORY_BYTES.saturating_sub(new_cost);
+            let mut kept: Vec<PtypeCanvas> = Vec::new();
+            let mut kept_bytes: usize = 0;
+            let mut cursor = Some(self.current_rev);
+            while let Some(rev) = cursor {
+                if kept.len() >= MAX_HISTORY_REVS - 1 {
+                    break;
+                }
+                let Some(entry) = self.history.checkout(rev) else {
+                    break;
+                };
+                let c = snapshot_byte_cost(entry);
+                if kept_bytes.saturating_add(c) > budget {
+                    break;
+                }
+                kept_bytes = kept_bytes.saturating_add(c);
+                kept.push(entry.clone());
+                cursor = self.history.parent_of(rev);
+            }
+            kept.reverse();
+            let mut iter = kept.into_iter();
+            if let Some(root) = iter.next() {
+                let mut compacted = UndoGraph::new(root);
+                let mut cur = RevId::ROOT;
+                for item in iter {
+                    cur = compacted.commit(cur, item);
+                }
+                self.current_rev = compacted.commit(cur, snapshot);
+                self.history = compacted;
+                self.history_bytes = kept_bytes.saturating_add(new_cost);
+            } else {
+                self.history = UndoGraph::new(snapshot);
+                self.current_rev = RevId::ROOT;
+                self.history_bytes = new_cost;
+            }
+        } else {
+            self.current_rev = self.history.commit(self.current_rev, snapshot);
+            self.history_bytes = self.history_bytes.saturating_add(new_cost);
+        }
+
         self.redo_stack.clear();
     }
 
@@ -149,6 +233,7 @@ impl Document {
         self.author = ptype_canvas.author.clone();
         self.icc_profile = ptype_canvas.icc_profile.clone();
         self.stack = LayerStack::new();
+        self.layer_meta.clear();
 
         let mut layer_ids: Vec<LayerId> = Vec::with_capacity(ptype_canvas.layers.len());
 
@@ -169,7 +254,12 @@ impl Document {
                 layer.put_tile(coord, tile);
             }
 
-            layer_ids.push(self.stack.push(layer));
+            let pushed_id = self.stack.push(layer);
+            if ptype_layer.layer_id.is_some() || ptype_layer.locked {
+                self.layer_meta
+                    .insert(pushed_id, (ptype_layer.layer_id, ptype_layer.locked));
+            }
+            layer_ids.push(pushed_id);
         }
 
         self.active = match ptype_canvas.active_layer {
@@ -417,6 +507,13 @@ impl Document {
             let transformed = effect
                 .apply(&rgba8, TILE_SIZE, TILE_SIZE)
                 .map_err(|e| e.to_string())?;
+            let expected_len = TILE_SIZE as usize * TILE_SIZE as usize * 4;
+            if transformed.len() != expected_len {
+                return Err(format!(
+                    "effect output byte length mismatch: expected {expected_len}, got {}",
+                    transformed.len()
+                ));
+            }
 
             for px_i in 0..(TILE_SIZE as usize * TILE_SIZE as usize) {
                 let o = px_i * 4;
@@ -772,6 +869,10 @@ impl Document {
             ptype_layer.visible = layer.visible;
             ptype_layer.opacity = layer.opacity() as f64;
             ptype_layer.blend = core_to_ptype_blend(layer.blend);
+            if let Some(&(ext_id, locked)) = self.layer_meta.get(&layer_id) {
+                ptype_layer.layer_id = ext_id;
+                ptype_layer.locked = locked;
+            }
 
             for (coord, tile) in layer.tiles() {
                 let mut buf = [0u16; TILE_SCALARS];

@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
-#
 # Validate Groove capability discovery manifests (.well-known/groove/manifest.json
 # and www/.well-known/groove/manifest.json) for JSON validity, required Groove v1
 # fields, and exact parity.
@@ -21,16 +18,19 @@ for f in "$ROOT_MANIFEST" "$WWW_MANIFEST"; do
     fi
 done
 
-if command -v jq >/dev/null 2>&1; then
-    jq -e '
-        type == "object" and
-        (.groove_version == "1") and
-        (.service_id == "paint-type") and
-        (.service_version | type == "string" and length > 0) and
-        (.capabilities | type == "object" and has("collab-canvas") and has("edit-stream")) and
-        (.consumes | type == "array")
-    ' "$ROOT_MANIFEST" >/dev/null
+if ! command -v jq >/dev/null 2>&1; then
+    echo "FAIL: jq is required to validate Groove manifests" >&2
+    exit 1
 fi
+
+jq -e '
+    type == "object" and
+    (.groove_version == "1") and
+    (.service_id == "paint-type") and
+    (.service_version | type == "string" and length > 0) and
+    (.capabilities | type == "object" and has("collab-canvas") and has("edit-stream")) and
+    (.consumes | type == "array")
+' "$ROOT_MANIFEST" >/dev/null
 
 if ! cmp -s "$ROOT_MANIFEST" "$WWW_MANIFEST"; then
     echo "FAIL: $ROOT_MANIFEST and $WWW_MANIFEST have drifted" >&2

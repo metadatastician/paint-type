@@ -87,6 +87,7 @@ const Layer = struct {
 
 const Canvas = struct {
     lock: dispatcher.SpinMutex = .{},
+    refs: std.atomic.Value(usize) = .init(1),
     width: u32,
     height: u32,
     format: u32, // 0=RGBA16F, 1=RGBA8, ...
@@ -398,17 +399,26 @@ const PT_MASK_DEAD: u32 = 0x44454144;
 
 const SelectionMask = struct {
     magic: u32,
+    refs: std.atomic.Value(usize) = .init(1),
     w: u32,
     h: u32,
     /// w*h bytes; 1 = selected, 0 = unselected. Row-major.
     sel: []u8,
 };
 
-fn liveMask(handle: u64) ?*SelectionMask {
-    if (handle == 0) return null;
-    const m: *SelectionMask = @ptrFromInt(handle);
-    if (m.magic != PT_MASK_MAGIC) return null;
-    return m;
+fn releaseCanvas(alloc: std.mem.Allocator, c: *Canvas) void {
+    if (c.refs.fetchSub(1, .acq_rel) == 1) {
+        c.deinit(alloc);
+        alloc.destroy(c);
+    }
+}
+
+fn releaseMask(alloc: std.mem.Allocator, m: *SelectionMask) void {
+    if (m.refs.fetchSub(1, .acq_rel) == 1) {
+        m.magic = PT_MASK_DEAD;
+        alloc.free(m.sel);
+        alloc.destroy(m);
+    }
 }
 
 fn newMask(alloc: std.mem.Allocator, w: u32, h: u32) !*SelectionMask {
@@ -434,6 +444,7 @@ const State = struct {
     canvases: std.AutoHashMapUnmanaged(u64, *Canvas) = .empty,
     masks: std.AutoHashMapUnmanaged(u64, *SelectionMask) = .empty,
     next_canvas_id: u64 = 1,
+    next_mask_id: u64 = 1,
     clipboard: ?Clipboard = null,
     lock: dispatcher.SpinMutex = .{},
 
@@ -450,16 +461,13 @@ const State = struct {
         defer self.lock.unlock();
         var cit = self.canvases.valueIterator();
         while (cit.next()) |cp| {
-            cp.*.deinit(self.alloc);
-            self.alloc.destroy(cp.*);
+            releaseCanvas(self.alloc, cp.*);
         }
         self.canvases.deinit(self.alloc);
 
         var mit = self.masks.valueIterator();
         while (mit.next()) |mp| {
-            mp.*.magic = PT_MASK_DEAD;
-            self.alloc.free(mp.*.sel);
-            self.alloc.destroy(mp.*);
+            releaseMask(self.alloc, mp.*);
         }
         self.masks.deinit(self.alloc);
 
@@ -479,10 +487,12 @@ const State = struct {
         return id;
     }
 
-    fn get(self: *State, id: u64) ?*Canvas {
+    fn acquire(self: *State, id: u64) ?*Canvas {
         self.lock.lock();
         defer self.lock.unlock();
-        return self.canvases.get(id);
+        const c = self.canvases.get(id) orelse return null;
+        _ = c.refs.fetchAdd(1, .acq_rel);
+        return c;
     }
 
     fn removeCanvas(self: *State, id: u64) ?*Canvas {
@@ -495,9 +505,20 @@ const State = struct {
     fn trackMask(self: *State, m: *SelectionMask) !u64 {
         self.lock.lock();
         defer self.lock.unlock();
-        const handle: u64 = @intFromPtr(m);
+        const handle = self.next_mask_id;
+        self.next_mask_id += 1;
         try self.masks.put(self.alloc, handle, m);
         return handle;
+    }
+
+    fn acquireMask(self: *State, handle: u64) ?*SelectionMask {
+        if (handle == 0) return null;
+        self.lock.lock();
+        defer self.lock.unlock();
+        const m = self.masks.get(handle) orelse return null;
+        if (m.magic != PT_MASK_MAGIC) return null;
+        _ = m.refs.fetchAdd(1, .acq_rel);
+        return m;
     }
 
     fn removeMask(self: *State, handle: u64) ?*SelectionMask {
@@ -720,10 +741,11 @@ fn cpu_canvas_new(width: u32, height: u32, fmt: u32, bg_r: f32, bg_g: f32, bg_b:
 fn cpu_canvas_resize(canvas: u64, w: u32, h: u32, _ax: f64, _ay: f64) callconv(.c) u32 {
     _ = _ax;
     _ = _ay;
-    const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
     if (w == 0 or h == 0 or w > MAX_CANVAS_DIM or h > MAX_CANVAS_DIM)
         return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const s = requireState();
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     c.width = w;
@@ -734,8 +756,7 @@ fn cpu_canvas_resize(canvas: u64, w: u32, h: u32, _ax: f64, _ay: f64) callconv(.
 fn cpu_canvas_free(canvas: u64) callconv(.c) u32 {
     const s = requireState();
     const c = s.removeCanvas(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
-    c.deinit(s.alloc);
-    s.alloc.destroy(c);
+    releaseCanvas(s.alloc, c);
     return @intFromEnum(dispatcher.ResultCode.ok);
 }
 
@@ -745,7 +766,8 @@ fn cpu_canvas_free(canvas: u64) callconv(.c) u32 {
 
 fn cpu_layer_new(canvas: u64, after: u64, has_after: u32, name: [*:0]const u8, out_layer: *u64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
 
@@ -773,7 +795,8 @@ fn cpu_layer_new(canvas: u64, after: u64, has_after: u32, name: [*:0]const u8, o
 
 fn cpu_layer_delete(canvas: u64, layer: u64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     const idx = c.findLayerIndex(layer) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
@@ -785,7 +808,8 @@ fn cpu_layer_delete(canvas: u64, layer: u64) callconv(.c) u32 {
 
 fn cpu_layer_reorder(canvas: u64, layer: u64, new_index: u32) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     const old_idx = c.findLayerIndex(layer) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
@@ -803,7 +827,8 @@ fn cpu_layer_reorder(canvas: u64, layer: u64, new_index: u32) callconv(.c) u32 {
 
 fn cpu_layer_set_visible(canvas: u64, layer: u64, visible: u32) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     const idx = c.findLayerIndex(layer) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
@@ -813,7 +838,8 @@ fn cpu_layer_set_visible(canvas: u64, layer: u64, visible: u32) callconv(.c) u32
 
 fn cpu_layer_set_opacity(canvas: u64, layer: u64, opacity: f64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     const idx = c.findLayerIndex(layer) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
@@ -825,7 +851,8 @@ fn cpu_layer_set_opacity(canvas: u64, layer: u64, opacity: f64) callconv(.c) u32
 
 fn cpu_layer_set_blend(canvas: u64, layer: u64, mode: u32) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     const idx = c.findLayerIndex(layer) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
@@ -868,7 +895,8 @@ fn cpu_canvas_render_rgba8_internal(c: *const Canvas, x: u32, y: u32, w: u32, h:
 
 fn cpu_canvas_render_rgba8(canvas: u64, x: u32, y: u32, w: u32, h: u32, out_buf: [*]u8, out_buf_len: usize) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     return cpu_canvas_render_rgba8_internal(c, x, y, w, h, out_buf, out_buf_len);
@@ -885,7 +913,8 @@ fn cpu_viewport_set(canvas: u64, zoom: f64, px: f64, py: f64, rot: f64) callconv
         return @intFromEnum(dispatcher.ResultCode.invalid_param);
     }
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     c.viewport = .{ .zoom = zoom, .pan_x = px, .pan_y = py, .rotation = rot };
@@ -894,7 +923,8 @@ fn cpu_viewport_set(canvas: u64, zoom: f64, px: f64, py: f64, rot: f64) callconv
 
 fn cpu_viewport_fit(canvas: u64, oz: *f64, opx: *f64, opy: *f64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     oz.* = 1.0;
@@ -909,7 +939,8 @@ fn cpu_viewport_fit(canvas: u64, oz: *f64, opx: *f64, opy: *f64) callconv(.c) u3
 
 fn cpu_tool_stroke_pencil(canvas: u64, layer: u64, n: u32, points: [*]const f64, points_len: usize, colour: *const [4]f32) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     const idx = c.findLayerIndex(layer) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
@@ -1320,9 +1351,10 @@ fn cpu_io_open(_path: [*:0]const u8, _fmt: ?[*:0]const u8, _out: *u64) callconv(
 
 fn cpu_io_save(canvas: u64, path: [*:0]const u8, fmt: [*:0]const u8, _opts: [*:0]const u8) callconv(.c) u32 {
     _ = _opts;
-    const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
     if (std.mem.span(path).len == 0) return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const s = requireState();
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
 
     c.lock.lock();
     const w = c.width;
@@ -1361,7 +1393,8 @@ fn cpu_tool_stroke_brush(
     colour: *const [4]f32,
 ) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     const idx = c.findLayerIndex(layer) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
@@ -1425,7 +1458,8 @@ fn cpu_tool_stroke_eraser(
     mode: u32,
 ) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return rcode(.invalid_param);
+    const c = s.acquire(canvas) orelse return rcode(.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     const idx = c.findLayerIndex(layer) orelse return rcode(.invalid_param);
@@ -1490,7 +1524,8 @@ fn cpu_tool_sample_colour(_c: u64, _x: f64, _y: f64, _a: u32, _out: *[4]f32) cal
 
 fn cpu_tool_fill(canvas: u64, layer: u64, sx: f64, sy: f64, colour: *const [4]f32, tol: f64, contig: u32) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return rcode(.invalid_param);
+    const c = s.acquire(canvas) orelse return rcode(.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     const layer_idx = c.findLayerIndex(layer) orelse return rcode(.invalid_param);
@@ -1555,7 +1590,8 @@ fn cpu_tool_fill(canvas: u64, layer: u64, sx: f64, sy: f64, colour: *const [4]f3
 
 fn cpu_selection_rect(canvas: u64, x0: u32, y0: u32, x1: u32, y1: u32, out_mask: *u64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return rcode(.invalid_param);
+    const c = s.acquire(canvas) orelse return rcode(.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     const m = newMask(s.alloc, c.width, c.height) catch return rcode(.out_of_memory);
@@ -1581,7 +1617,8 @@ fn cpu_selection_rect(canvas: u64, x0: u32, y0: u32, x1: u32, y1: u32, out_mask:
 
 fn cpu_selection_lasso(canvas: u64, n: u32, pts: [*]const f64, out_mask: *u64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return rcode(.invalid_param);
+    const c = s.acquire(canvas) orelse return rcode(.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     if (n < 3) return rcode(.invalid_param);
@@ -1631,10 +1668,12 @@ fn cpu_selection_lasso(canvas: u64, n: u32, pts: [*]const f64, out_mask: *u64) c
 
 fn cpu_selection_invert(canvas: u64, mask: u64, out_mask: *u64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return rcode(.invalid_param);
+    const c = s.acquire(canvas) orelse return rcode(.invalid_param);
+    defer releaseCanvas(s.alloc, c);
+    const src = s.acquireMask(mask) orelse return rcode(.invalid_param);
+    defer releaseMask(s.alloc, src);
     c.lock.lock();
     defer c.lock.unlock();
-    const src = liveMask(mask) orelse return rcode(.invalid_param);
     if (src.w != c.width or src.h != c.height) return rcode(.invalid_param);
     const m = newMask(s.alloc, c.width, c.height) catch return rcode(.out_of_memory);
     var i: usize = 0;
@@ -1653,21 +1692,20 @@ fn cpu_selection_invert(canvas: u64, mask: u64, out_mask: *u64) callconv(.c) u32
 fn cpu_selection_free(mask: u64) callconv(.c) u32 {
     const s = requireState();
     const m = s.removeMask(mask) orelse return rcode(.invalid_param);
-    if (m.magic != PT_MASK_MAGIC) return rcode(.invalid_param);
-    m.magic = PT_MASK_DEAD;
-    s.alloc.free(m.sel);
-    s.alloc.destroy(m);
+    releaseMask(s.alloc, m);
     return rcode(.ok);
 }
 
 fn cpu_selection_cut(canvas: u64, layer: u64, mask: u64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return rcode(.invalid_param);
+    const c = s.acquire(canvas) orelse return rcode(.invalid_param);
+    defer releaseCanvas(s.alloc, c);
+    const m = s.acquireMask(mask) orelse return rcode(.invalid_param);
+    defer releaseMask(s.alloc, m);
     c.lock.lock();
     defer c.lock.unlock();
     const idx = c.findLayerIndex(layer) orelse return rcode(.invalid_param);
     const l = c.layers.items[idx];
-    const m = liveMask(mask) orelse return rcode(.invalid_param);
     if (m.w != c.width or m.h != c.height) return rcode(.invalid_param);
 
     copyMaskedRegion(s, c, l, m) catch |e| return switch (e) {
@@ -1691,12 +1729,14 @@ fn cpu_selection_cut(canvas: u64, layer: u64, mask: u64) callconv(.c) u32 {
 
 fn cpu_selection_copy(canvas: u64, layer: u64, mask: u64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return rcode(.invalid_param);
+    const c = s.acquire(canvas) orelse return rcode(.invalid_param);
+    defer releaseCanvas(s.alloc, c);
+    const m = s.acquireMask(mask) orelse return rcode(.invalid_param);
+    defer releaseMask(s.alloc, m);
     c.lock.lock();
     defer c.lock.unlock();
     const idx = c.findLayerIndex(layer) orelse return rcode(.invalid_param);
     const l = c.layers.items[idx];
-    const m = liveMask(mask) orelse return rcode(.invalid_param);
     if (m.w != c.width or m.h != c.height) return rcode(.invalid_param);
 
     copyMaskedRegion(s, c, l, m) catch |e| return switch (e) {
@@ -1708,7 +1748,8 @@ fn cpu_selection_copy(canvas: u64, layer: u64, mask: u64) callconv(.c) u32 {
 
 fn cpu_selection_paste(canvas: u64, layer: u64, dx: f64, dy: f64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return rcode(.invalid_param);
+    const c = s.acquire(canvas) orelse return rcode(.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     const idx = c.findLayerIndex(layer) orelse return rcode(.invalid_param);
@@ -1810,7 +1851,8 @@ fn cpu_history_record(canvas: u64, opcode: [*:0]const u8, _n: u32, _p: [*]const 
     _ = _p;
     _ = _rc;
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     ensureHistoryInit(s.alloc, c) catch return @intFromEnum(dispatcher.ResultCode.out_of_memory);
@@ -1857,7 +1899,8 @@ fn cpu_history_record(canvas: u64, opcode: [*:0]const u8, _n: u32, _p: [*]const 
 
 fn cpu_history_undo(canvas: u64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     ensureHistoryInit(s.alloc, c) catch return @intFromEnum(dispatcher.ResultCode.out_of_memory);
@@ -1873,7 +1916,8 @@ fn cpu_history_undo(canvas: u64) callconv(.c) u32 {
 
 fn cpu_history_redo(canvas: u64) callconv(.c) u32 {
     const s = requireState();
-    const c = s.get(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    const c = s.acquire(canvas) orelse return @intFromEnum(dispatcher.ResultCode.invalid_param);
+    defer releaseCanvas(s.alloc, c);
     c.lock.lock();
     defer c.lock.unlock();
     ensureHistoryInit(s.alloc, c) catch return @intFromEnum(dispatcher.ResultCode.out_of_memory);
@@ -2122,7 +2166,8 @@ test "pointInPoly: square containment" {
 test "eraser lowers destination alpha and preserves rgb" {
     const canvas = testNewCanvas(64, 64);
     defer _ = cpu_canvas_free(canvas);
-    const c = requireState().get(canvas).?;
+    const c = requireState().acquire(canvas).?;
+    defer releaseCanvas(requireState().alloc, c);
     const l = c.layers.items[0];
     try writePixelF16(l, requireState().alloc, 10, 10, .{ 0.25, 0.5, 0.75, 1.0 });
 
@@ -2142,7 +2187,8 @@ test "eraser lowers destination alpha and preserves rgb" {
 test "fill flood fills a uniform layer (contiguous)" {
     const canvas = testNewCanvas(8, 8);
     defer _ = cpu_canvas_free(canvas);
-    const c = requireState().get(canvas).?;
+    const c = requireState().acquire(canvas).?;
+    defer releaseCanvas(requireState().alloc, c);
     const l = c.layers.items[0];
     const red = [4]f32{ 1, 0, 0, 1 };
     try std.testing.expectEqual(rcode(.ok), cpu_tool_fill(canvas, 1, 0, 0, &red, 0.0, 1));
@@ -2160,7 +2206,8 @@ test "fill flood fills a uniform layer (contiguous)" {
 test "fill (contiguous) stops at a colour boundary" {
     const canvas = testNewCanvas(8, 8);
     defer _ = cpu_canvas_free(canvas);
-    const c = requireState().get(canvas).?;
+    const c = requireState().acquire(canvas).?;
+    defer releaseCanvas(requireState().alloc, c);
     const l = c.layers.items[0];
     const alloc = requireState().alloc;
     var yy: u32 = 0;
@@ -2176,7 +2223,8 @@ test "fill (contiguous) stops at a colour boundary" {
 test "selection rect -> cut -> paste -> free round-trips" {
     const canvas = testNewCanvas(16, 16);
     defer _ = cpu_canvas_free(canvas);
-    const c = requireState().get(canvas).?;
+    const c = requireState().acquire(canvas).?;
+    defer releaseCanvas(requireState().alloc, c);
     const l = c.layers.items[0];
     try writePixelF16(l, requireState().alloc, 2, 2, .{ 1, 0, 0, 1 });
 
@@ -2198,9 +2246,13 @@ test "selection rect -> cut -> paste -> free round-trips" {
     try std.testing.expectEqual(rcode(.ok), cpu_selection_invert(canvas, mask, &inv));
     try std.testing.expect(inv != 0 and inv != mask);
 
-    // Free masks and verify double-free is cleanly rejected.
+    // Free masks and verify stale and forged handles are cleanly rejected without UAF.
     try std.testing.expectEqual(rcode(.ok), cpu_selection_free(mask));
     try std.testing.expectEqual(rcode(.invalid_param), cpu_selection_free(mask));
+    try std.testing.expectEqual(rcode(.invalid_param), cpu_selection_copy(canvas, 1, mask));
+    try std.testing.expectEqual(rcode(.invalid_param), cpu_selection_cut(canvas, 1, mask));
+    try std.testing.expectEqual(rcode(.invalid_param), cpu_selection_invert(canvas, mask, &inv));
+    try std.testing.expectEqual(rcode(.invalid_param), cpu_selection_copy(canvas, 1, 0xDEAD_BEEF));
     try std.testing.expectEqual(rcode(.ok), cpu_selection_free(inv));
 }
 
@@ -2210,9 +2262,10 @@ test "selection lasso selects a triangle interior and rejects NaN vertices" {
     const poly = [_]f64{ 1, 1, 14, 1, 1, 14 };
     var mask: u64 = 0;
     try std.testing.expectEqual(rcode(.ok), cpu_selection_lasso(canvas, 3, &poly, &mask));
-    const m = liveMask(mask).?;
+    const m = requireState().acquireMask(mask).?;
     try std.testing.expect(m.sel[@as(usize, 3) * 16 + 3] != 0);
     try std.testing.expect(m.sel[@as(usize, 12) * 16 + 12] == 0);
+    releaseMask(requireState().alloc, m);
     try std.testing.expectEqual(rcode(.ok), cpu_selection_free(mask));
 
     try std.testing.expectEqual(rcode(.invalid_param), cpu_selection_lasso(canvas, 2, &poly, &mask));
@@ -2232,7 +2285,8 @@ test "selection rect -> cut -> paste round-trips" {
     defer _ = cpu_selection_free(mask);
 
     try std.testing.expectEqual(rcode(.ok), cpu_selection_cut(canvas, 1, mask));
-    const c_after_cut = requireState().get(canvas).?;
+    const c_after_cut = requireState().acquire(canvas).?;
+    defer releaseCanvas(requireState().alloc, c_after_cut);
     try std.testing.expectApproxEqAbs(@as(f32, 0.0), readPixelF32(c_after_cut.layers.items[0], 5, 5)[3], 0.001);
     try std.testing.expectApproxEqAbs(@as(f32, 1.0), readPixelF32(c_after_cut.layers.items[0], 1, 1)[3], 0.001);
 
@@ -2260,7 +2314,8 @@ test "layer ids stay stable across new, after-insert, reorder, and delete (B-02)
     try std.testing.expectEqual(rcode(.ok), cpu_layer_new(canvas, 1, 1, "Midground", &mid_id));
     try std.testing.expectEqual(@as(u64, 3), mid_id);
 
-    const c = requireState().get(canvas).?;
+    const c = requireState().acquire(canvas).?;
+    defer releaseCanvas(requireState().alloc, c);
     try std.testing.expectEqual(@as(u64, 1), c.layers.items[0].id);
     try std.testing.expectEqual(@as(u64, 3), c.layers.items[1].id);
     try std.testing.expectEqual(@as(u64, 2), c.layers.items[2].id);
@@ -2310,10 +2365,34 @@ test "NaN and Inf parameters do not corrupt canvas or panic (B-03, B-08)" {
     try std.testing.expectEqual(rcode(.ok), cpu_canvas_resize(canvas, 32, 24, 0, 0));
     _ = cpu_history_record(canvas, "resize", 0, &[_]u8{}, 0);
     try std.testing.expectEqual(rcode(.ok), cpu_history_undo(canvas));
-    const c = requireState().get(canvas).?;
+    const c = requireState().acquire(canvas).?;
+    defer releaseCanvas(requireState().alloc, c);
     try std.testing.expectEqual(@as(u32, 16), c.width);
     try std.testing.expectEqual(@as(u32, 16), c.height);
     try std.testing.expectEqual(rcode(.ok), cpu_history_redo(canvas));
     try std.testing.expectEqual(@as(u32, 32), c.width);
     try std.testing.expectEqual(@as(u32, 24), c.height);
+}
+
+test "concurrent canvas operations synchronize safely with cpu_canvas_free" {
+    const canvas = testNewCanvas(16, 16);
+    const Worker = struct {
+        fn run(id: u64) void {
+            var rgba: [16 * 16 * 4]u8 = undefined;
+            const pt = [_]f64{ 4, 4 };
+            const col = [4]f32{ 1, 0.5, 0.25, 1 };
+            var i: usize = 0;
+            while (i < 64) : (i += 1) {
+                _ = cpu_tool_stroke_pencil(id, 1, 1, &pt, pt.len, &col);
+                _ = cpu_canvas_render_rgba8(id, 0, 0, 16, 16, &rgba, rgba.len);
+            }
+        }
+    };
+    var threads: [4]std.Thread = undefined;
+    for (&threads) |*t| {
+        t.* = try std.Thread.spawn(.{}, Worker.run, .{canvas});
+    }
+    try std.testing.expectEqual(rcode(.ok), cpu_canvas_free(canvas));
+    try std.testing.expectEqual(rcode(.invalid_param), cpu_canvas_free(canvas));
+    for (threads) |t| t.join();
 }

@@ -108,7 +108,7 @@ impl PluginRegistry {
         manifest_path: impl AsRef<Path>,
         wasm_path: impl AsRef<Path>,
     ) -> PluginResult<PluginId> {
-        let manifest = PluginManifest::from_json_file(&manifest_path)?;
+        let manifest = load_manifest_file(manifest_path.as_ref())?;
 
         if manifest.plugin_type != PluginType::Effect {
             return Err(PluginError::manifest_validation(
@@ -142,7 +142,7 @@ impl PluginRegistry {
         manifest_path: impl AsRef<Path>,
         wasm_path: impl AsRef<Path>,
     ) -> PluginResult<PluginId> {
-        let manifest = PluginManifest::from_json_file(&manifest_path)?;
+        let manifest = load_manifest_file(manifest_path.as_ref())?;
 
         if manifest.plugin_type != PluginType::Tool {
             return Err(PluginError::manifest_validation(
@@ -236,6 +236,11 @@ impl PluginRegistry {
         self.manifests.get(id)
     }
 
+    /// Iterate over all loaded plugin manifests
+    pub fn manifests(&self) -> impl Iterator<Item = &PluginManifest> {
+        self.manifests.values()
+    }
+
     /// Get granted capabilities for a plugin
     pub fn get_granted_capabilities(&self, id: &PluginId) -> Option<&[PluginCapability]> {
         self.granted_caps.get(id).map(Vec::as_slice)
@@ -290,6 +295,14 @@ impl PluginRegistry {
     /// Check if there are no plugins loaded
     pub fn is_empty(&self) -> bool {
         self.plugins.is_empty()
+    }
+}
+
+fn load_manifest_file(path: &Path) -> PluginResult<PluginManifest> {
+    if path.extension().and_then(|s| s.to_str()) == Some("toml") {
+        PluginManifest::from_toml_file(path)
+    } else {
+        PluginManifest::from_json_file(path)
     }
 }
 

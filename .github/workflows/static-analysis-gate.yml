@@ -333,24 +333,38 @@ jobs:
           UNMITIGABLE=0
           INFORMATIONAL=0
 
+          AUDITED_COUNT=0
           while IFS= read -r -d '' lockfile; do
             OUT="$RUNNER_TEMP/audit/one.json"
-            cargo audit --json -f "$lockfile" > "$OUT" || true
-            if jq empty "$OUT" 2>/dev/null; then
-              V_MIT=$(jq '[.vulnerabilities.list[]? | select((.versions.patched | length) > 0)] | length' "$OUT")
-              V_UNM=$(jq '[.vulnerabilities.list[]? | select((.versions.patched | length) == 0)] | length' "$OUT")
-              W_INF=$(jq '[.warnings[]?[]?] | length' "$OUT")
-              MITIGATED=$((MITIGATED + V_MIT))
-              UNMITIGABLE=$((UNMITIGABLE + V_UNM))
-              INFORMATIONAL=$((INFORMATIONAL + W_INF))
-              jq --arg lf "$lockfile" \
-                '[.vulnerabilities.list[]? | {lockfile: $lf, id: .advisory.id, package: .package.name, version: .package.version, patched: .versions.patched}]' \
-                "$OUT" > "$RUNNER_TEMP/audit/add.json"
-              jq -s '.[0] + .[1]' "$RUNNER_TEMP/audit/cves.json" "$RUNNER_TEMP/audit/add.json" \
-                > "$RUNNER_TEMP/audit/next.json"
-              mv "$RUNNER_TEMP/audit/next.json" "$RUNNER_TEMP/audit/cves.json"
+            ERR="$RUNNER_TEMP/audit/err.log"
+            set +e
+            cargo audit --json -f "$lockfile" > "$OUT" 2> "$ERR"
+            AUDIT_RC=$?
+            set -e
+            if ! jq -e '.database and .vulnerabilities' "$OUT" >/dev/null 2>&1; then
+              echo "::error::cargo-audit failed to produce valid JSON report for $lockfile (rc=$AUDIT_RC)"
+              cat "$ERR" >&2 || true
+              exit 1
             fi
+            AUDITED_COUNT=$((AUDITED_COUNT + 1))
+            V_MIT=$(jq '[.vulnerabilities.list[]? | select((.versions.patched | length) > 0)] | length' "$OUT")
+            V_UNM=$(jq '[.vulnerabilities.list[]? | select((.versions.patched | length) == 0)] | length' "$OUT")
+            W_INF=$(jq '[.warnings[]?[]?] | length' "$OUT")
+            MITIGATED=$((MITIGATED + V_MIT))
+            UNMITIGABLE=$((UNMITIGABLE + V_UNM))
+            INFORMATIONAL=$((INFORMATIONAL + W_INF))
+            jq --arg lf "$lockfile" \
+              '[.vulnerabilities.list[]? | {lockfile: $lf, id: .advisory.id, package: .package.name, version: .package.version, patched: .versions.patched}]' \
+              "$OUT" > "$RUNNER_TEMP/audit/add.json"
+            jq -s '.[0] + .[1]' "$RUNNER_TEMP/audit/cves.json" "$RUNNER_TEMP/audit/add.json" \
+              > "$RUNNER_TEMP/audit/next.json"
+            mv "$RUNNER_TEMP/audit/next.json" "$RUNNER_TEMP/audit/cves.json"
           done < <(find src tools -name Cargo.lock -print0 | sort -z)
+
+          if [ "$AUDITED_COUNT" -eq 0 ]; then
+            echo "::error::No Cargo.lock files were audited"
+            exit 1
+          fi
 
           jq -n \
             --arg status "completed" \

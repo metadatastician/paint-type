@@ -36,6 +36,26 @@ fn builtin_plugins() -> Vec<PluginInfo> {
     ]
 }
 
+fn resolve_plugin_wasm_path(
+    manifest_path: &str,
+    manifest: &paint_type_plugins::PluginManifest,
+) -> Result<std::path::PathBuf, String> {
+    let mp = std::path::Path::new(manifest_path);
+    let mut candidates = Vec::new();
+    candidates.push(mp.with_extension("wasm"));
+    let parent = mp.parent().unwrap_or_else(|| std::path::Path::new("."));
+    candidates.push(parent.join(format!("{}.wasm", manifest.id.as_str())));
+    candidates.push(parent.join("plugin.wasm"));
+    for candidate in candidates {
+        if candidate.is_file() {
+            return Ok(candidate);
+        }
+    }
+    Err(format!(
+        "plugin WASM module not found alongside manifest '{manifest_path}'"
+    ))
+}
+
 fn loaded_response(document: &Document, full: Rect) -> Response {
     let pixels = document.render_all();
     let rgba_base64 = base64::engine::general_purpose::STANDARD.encode(&pixels);
@@ -209,20 +229,77 @@ pub fn dispatch(doc: &mut Option<Document>, cmd: Command) -> Response {
             } else {
                 paint_type_plugins::manifest::PluginManifest::from_toml_file(&path)
             };
-            match manifest_res {
-                Ok(m) => Response::PluginLoaded {
-                    plugin_id: m.id.as_str().to_string(),
+            let manifest = match manifest_res {
+                Ok(m) => m,
+                Err(e) => {
+                    return Response::Error {
+                        message: e.to_string(),
+                    }
+                }
+            };
+            let wasm_path = match resolve_plugin_wasm_path(&path, &manifest) {
+                Ok(p) => p,
+                Err(message) => return Response::Error { message },
+            };
+            let load_res = match manifest.plugin_type {
+                paint_type_plugins::PluginType::Effect => {
+                    document.plugins_mut().load_effect_plugin(&path, &wasm_path)
+                }
+                paint_type_plugins::PluginType::Tool => {
+                    document.plugins_mut().load_tool_plugin(&path, &wasm_path)
+                }
+            };
+            match load_res {
+                Ok(id) => Response::PluginLoaded {
+                    plugin_id: id.as_str().to_string(),
                 },
                 Err(e) => Response::Error {
                     message: e.to_string(),
                 },
             }
         }
-        Command::UnloadPlugin { plugin_id } => Response::PluginUnloaded { plugin_id },
-        Command::ListPlugins => Response::PluginList {
-            plugins: builtin_plugins(),
-        },
+        Command::UnloadPlugin { plugin_id } => {
+            let id = paint_type_plugins::PluginId::new(plugin_id.clone());
+            if !document.plugins().is_loaded(&id) {
+                return Response::Error {
+                    message: format!("plugin not loaded: {plugin_id}"),
+                };
+            }
+            match document.plugins_mut().unload(&id) {
+                Ok(()) => Response::PluginUnloaded { plugin_id },
+                Err(e) => Response::Error {
+                    message: e.to_string(),
+                },
+            }
+        }
+        Command::ListPlugins => {
+            let mut plugins = builtin_plugins();
+            for m in document.plugins().manifests() {
+                let plugin_type = match m.plugin_type {
+                    paint_type_plugins::PluginType::Effect => "effect",
+                    paint_type_plugins::PluginType::Tool => "tool",
+                };
+                plugins.push(PluginInfo {
+                    id: m.id.as_str().to_string(),
+                    name: m.name.clone(),
+                    description: m.description.clone(),
+                    plugin_type: plugin_type.to_string(),
+                    version: m.version.to_string(),
+                });
+            }
+            Response::PluginList { plugins }
+        }
         Command::InvokePlugin { invocation } => {
+            let custom_entry = document
+                .plugins()
+                .get(&paint_type_plugins::PluginId::new(invocation.plugin_id.clone()))
+                .cloned();
+            if let Some(paint_type_plugins::registry::PluginEntry::Effect(effect)) = custom_entry {
+                return match document.apply_effect(effect.as_ref()) {
+                    Ok(rect) => paint(document, rect),
+                    Err(message) => Response::Error { message },
+                };
+            }
             let effect_box: Box<dyn EffectPlugin> = match invocation.plugin_id.as_str() {
                 "com.paint-type.effects.invert" | "invert" => Box::new(InvertColourEffect::new()),
                 "com.paint-type.effects.grayscale" | "grayscale" => {
@@ -632,5 +709,69 @@ mod tests {
         let bytes1 = std::fs::read(path_str).expect("read first ptype");
         let bytes2 = std::fs::read(path2_str).expect("read second ptype");
         assert_eq!(bytes1, bytes2, "ptype round-trip must be byte-identical");
+    }
+
+    #[test]
+    fn extended_ptype_layer_id_and_lock_survive_host_roundtrip() {
+        let mut src = ptype_format::Canvas::new(64, 64);
+        let mut layer = ptype_format::Layer::new("Locked Ink");
+        layer.layer_id = Some(42);
+        layer.locked = true;
+        src.layers.push(layer);
+
+        let mut doc = Document::new(64, 64);
+        let _ = doc.load_ptype(&src);
+        let saved = doc.to_ptype_canvas();
+        assert_eq!(saved.layers[0].layer_id, Some(42));
+        assert!(saved.layers[0].locked);
+    }
+
+    #[test]
+    fn truncated_effect_output_returns_error_instead_of_panicking() {
+        #[derive(Debug)]
+        struct ShortEffect {
+            id: paint_type_plugins::PluginId,
+        }
+        impl EffectPlugin for ShortEffect {
+            fn id(&self) -> &paint_type_plugins::PluginId {
+                &self.id
+            }
+            fn name(&self) -> &str {
+                "Short"
+            }
+            fn description(&self) -> &str {
+                "Returns fewer bytes than expected"
+            }
+            fn required_capabilities(&self) -> &[paint_type_plugins::manifest::PluginCapability] {
+                &[]
+            }
+            fn apply(
+                &self,
+                _input: &[u8],
+                _width: u32,
+                _height: u32,
+            ) -> paint_type_plugins::error::PluginResult<Vec<u8>> {
+                Ok(vec![0u8; 16])
+            }
+        }
+
+        let mut doc = Document::new(64, 64);
+        let _ = doc.pointer_down(8.0, 8.0);
+        doc.pointer_up();
+        let bad = ShortEffect {
+            id: paint_type_plugins::PluginId::new("test.short"),
+        };
+        assert!(doc.apply_effect(&bad).is_err());
+    }
+
+    #[test]
+    fn undo_history_compacts_cleanly_past_revision_cap() {
+        let mut doc = Document::new(64, 64);
+        for i in 0..80 {
+            let _ = doc.pointer_down((i % 60) as f32 + 1.0, 10.0);
+            doc.pointer_up();
+        }
+        assert!(doc.history_len() <= 64);
+        assert!(doc.undo().is_some());
     }
 }

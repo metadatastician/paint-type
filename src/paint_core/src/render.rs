@@ -49,7 +49,9 @@ pub fn try_render_region(
         return Some(Vec::new());
     }
 
-    let mut acc = vec![[0u16; 4]; width as usize * height as usize];
+    let mut out = Vec::new();
+    out.try_reserve_exact(buf_len).ok()?;
+    out.resize(buf_len, 0);
 
     let x_end = (x as u64).saturating_add(width as u64);
     let y_end = (y as u64).saturating_add(height as u64);
@@ -61,6 +63,7 @@ pub fn try_render_region(
     let tile_y1 = ((y_end - 1) / tile_size_u64) as u32;
 
     let mut tile_buf = [0u16; TILE_SCALARS];
+    let mut tile_acc = [[0u16; 4]; TILE_SCALARS / 4];
 
     for ty in tile_y0..=tile_y1 {
         let tile_origin_y = (ty as u64) * tile_size_u64;
@@ -72,6 +75,8 @@ pub fn try_render_region(
             let px_start = x_or_max(x as u64, tile_origin_x);
             let px_end = x_end.min(tile_origin_x + tile_size_u64);
             let coord = TileCoord::new(tx, ty);
+            tile_acc.fill([0u16; 4]);
+            let mut any_visible = false;
 
             for (_, layer) in stack.iter() {
                 if !layer.visible {
@@ -87,13 +92,15 @@ pub fn try_render_region(
                 if tile.read_buffer(&mut tile_buf).is_err() {
                     continue;
                 }
+                any_visible = true;
 
                 for py in py_start..py_end {
                     let ly = (py - tile_origin_y) as usize;
-                    let dst_row = ((py - y as u64) as usize) * width as usize;
+                    let row_base = ly * TILE_SIZE as usize;
                     for px in px_start..px_end {
                         let lx = (px - tile_origin_x) as usize;
-                        let src_i = (ly * TILE_SIZE as usize + lx) * 4;
+                        let px_idx = row_base + lx;
+                        let src_i = px_idx * 4;
                         let src = scale_premultiplied(
                             [
                                 tile_buf[src_i],
@@ -103,31 +110,37 @@ pub fn try_render_region(
                             ],
                             opacity,
                         );
-                        let dst_i = dst_row + (px - x as u64) as usize;
-                        acc[dst_i] = blend_premultiplied(src, acc[dst_i], layer.blend);
+                        let dst = tile_acc[px_idx];
+                        tile_acc[px_idx] = blend_premultiplied(src, dst, layer.blend);
+                    }
+                }
+            }
+
+            if !any_visible {
+                continue;
+            }
+
+            for py in py_start..py_end {
+                let ly = (py - tile_origin_y) as usize;
+                let row_base = ly * TILE_SIZE as usize;
+                let dst_row = ((py - y as u64) as usize) * width as usize;
+                for px in px_start..px_end {
+                    let lx = (px - tile_origin_x) as usize;
+                    let p = tile_acc[row_base + lx];
+                    let a = f16_bits_to_f32(p[3]).clamp(0.0, 1.0);
+                    if a > 0.0 {
+                        let inv = 1.0 / a;
+                        let o = (dst_row + (px - x as u64) as usize) * 4;
+                        out[o] = to_u8(f16_bits_to_f32(p[0]) * inv);
+                        out[o + 1] = to_u8(f16_bits_to_f32(p[1]) * inv);
+                        out[o + 2] = to_u8(f16_bits_to_f32(p[2]) * inv);
+                        out[o + 3] = to_u8(a);
                     }
                 }
             }
         }
     }
 
-    let mut out = vec![0u8; buf_len];
-    for (px_i, &p) in acc.iter().enumerate() {
-        let r = f16_bits_to_f32(p[0]);
-        let g = f16_bits_to_f32(p[1]);
-        let b = f16_bits_to_f32(p[2]);
-        let a = f16_bits_to_f32(p[3]).clamp(0.0, 1.0);
-        let o = px_i * 4;
-        if a <= 0.0 {
-            out[o..o + 4].copy_from_slice(&[0, 0, 0, 0]);
-        } else {
-            let inv = 1.0 / a;
-            out[o] = to_u8(r * inv);
-            out[o + 1] = to_u8(g * inv);
-            out[o + 2] = to_u8(b * inv);
-            out[o + 3] = to_u8(a);
-        }
-    }
     Some(out)
 }
 

@@ -165,11 +165,15 @@ jobs:
       - name: Publish to Codecov (optional)
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          CODECOV_URL: https://github.com/codecov/codecov-cli/releases/download/v11.3.1/codecovcli_linux
+          CODECOV_SHA256: ca1d64196d2d34771084afe76ea657d581bf628e31d993ff8e52ea09cc88a56d
         run: |
+          set -euo pipefail
           if [ -z "${CODECOV_TOKEN:-}" ] || [ ! -f src/paint_core/lcov.info ]; then
             echo "CODECOV_TOKEN not configured or lcov.info missing — skipping Codecov upload."
             exit 0
           fi
-          curl -fsSL https://cli.codecov.io/latest/linux/codecov -o "$RUNNER_TEMP/codecov" || exit 0
+          curl -fsSL "$CODECOV_URL" -o "$RUNNER_TEMP/codecov" || exit 0
+          echo "${CODECOV_SHA256}  ${RUNNER_TEMP}/codecov" | sha256sum -c -
           chmod +x "$RUNNER_TEMP/codecov"
           "$RUNNER_TEMP/codecov" upload-process -t "$CODECOV_TOKEN" -f src/paint_core/lcov.info || true

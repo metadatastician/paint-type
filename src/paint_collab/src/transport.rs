@@ -28,6 +28,8 @@
 // paint-type would open a dedicated `paint-edit` DataChannel alongside the
 // existing AI channel and frame `Op`s onto it.
 
+use std::collections::VecDeque;
+
 use crate::session::{Op, Transport};
 
 /// Connection parameters for a Burble-brokered WebRTC session.
@@ -83,7 +85,7 @@ pub const MAX_PENDING_OPS: usize = 65_536;
 /// part.
 pub struct BurbleTransport {
     config: BurbleConfig,
-    pending_out: Vec<Op>,
+    pending_out: VecDeque<Op>,
 }
 
 impl BurbleTransport {
@@ -92,7 +94,7 @@ impl BurbleTransport {
     pub fn new(config: BurbleConfig) -> BurbleTransport {
         BurbleTransport {
             config,
-            pending_out: Vec::new(),
+            pending_out: VecDeque::new(),
         }
     }
 
@@ -117,7 +119,7 @@ impl BurbleTransport {
     }
 
     /// Ops that were broadcast while disconnected (would be flushed on connect).
-    pub fn pending(&self) -> &[Op] {
+    pub fn pending(&self) -> &VecDeque<Op> {
         &self.pending_out
     }
 }
@@ -125,9 +127,9 @@ impl BurbleTransport {
 impl Transport for BurbleTransport {
     fn broadcast(&mut self, op: Op) {
         if self.pending_out.len() >= MAX_PENDING_OPS {
-            self.pending_out.remove(0);
+            let _ = self.pending_out.pop_front();
         }
-        self.pending_out.push(op);
+        self.pending_out.push_back(op);
     }
 
     fn drain_inbox(&mut self) -> Vec<Op> {
