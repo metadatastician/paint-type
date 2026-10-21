@@ -46,6 +46,9 @@ pass_gate() {
 }
 
 # Collect repository-relative paths touched in the requested mode.
+# Print one path per line, excluding deletions. MODE selects the index (--staged),
+# branch delta from origin/main with HEAD~1 fallback (--push), or working tree,
+# index, untracked files, and branch delta (default). Git errors are suppressed.
 collect_changed_files() {
   case "$MODE" in
     --staged)
@@ -71,7 +74,9 @@ collect_changed_files() {
   esac
 }
 
-# Collect newly added file paths relative to HEAD / origin/main for freeze gates.
+# Print staged additions for MODE=--staged; otherwise print the unique union of
+# staged additions, untracked paths, and branch additions relative to origin/main
+# when available. Git errors are suppressed.
 collect_added_files() {
   case "$MODE" in
     --staged)
@@ -90,6 +95,8 @@ collect_added_files() {
 }
 
 # Gate 1: Verify .github/workflows/actions.lock is closed and synchronized.
+# Increment ERRORS if the selected checker fails, or WARNINGS if neither checker
+# is available. A failed gawk check does not fall back to Bun.
 check_actions_lock() {
   if command -v gawk >/dev/null 2>&1 && [ -x ./scripts/check-lock-sync.sh ]; then
     if ./scripts/check-lock-sync.sh >/dev/null; then
@@ -300,7 +307,10 @@ check_invisible_unicode() {
   pass_gate "invisible-character check passed ($checked text file(s))"
 }
 
-# Gate 6: Validate DEED SHA-256 fields and coordination.k9 ABNF v1.2 grammar.
+# Gate 6: Check DEED canon fields for 64 lowercase hex digits and validate
+# coordination.k9 grammar when the corresponding files and helpers exist.
+# Invalid values increment ERRORS; missing Bun skips K9 validation with a warning.
+# DEED field-reader failures propagate under errexit.
 check_deed_and_k9() {
   if [ -f paint-type_chora.deed ] && [ -f scripts/deed-field.sh ]; then
     local csha gsha

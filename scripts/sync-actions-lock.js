@@ -20,6 +20,7 @@ import path from "node:path";
  * @param {string} raw Raw JSON string from an API response.
  * @param {string} context Human-readable description of the source endpoint.
  * @returns {any} Parsed value.
+ * @throws {Error} If parsing fails, with the source context and parse error.
  */
 function parseJsonSafe(raw, context) {
   try {
@@ -31,10 +32,11 @@ function parseJsonSafe(raw, context) {
 }
 
 /**
- * Perform an authenticated GET against `api.github.com` without spawning any
- * external process.
+ * GET JSON from `api.github.com`, using GH_TOKEN or GITHUB_TOKEN when available.
  * @param {string} apiPath Relative REST endpoint under `https://api.github.com/`.
  * @returns {Promise<any>} Parsed JSON response body.
+ * @throws {Error} If the request or response read fails, the HTTP status is not
+ * successful, or the response is invalid JSON.
  */
 async function fetchGitHubJson(apiPath) {
   const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "";
@@ -55,7 +57,7 @@ async function fetchGitHubJson(apiPath) {
 }
 
 /**
- * Compare two strings in strict ASCII / POSIX `LC_ALL=C` byte order.
+ * Compare strings by UTF-16 code units, matching `LC_ALL=C` for ASCII inputs.
  * @param {string} a First string.
  * @param {string} b Second string.
  * @returns {number} Negative if a < b, positive if a > b, 0 if equal.
@@ -88,7 +90,8 @@ function stripConflictMarkers(raw) {
  * Normalize an external `uses:` value into canonical `owner/repo@ref` form,
  * discarding action subpaths while ignoring local `./` or `$/` references.
  * @param {string} raw Raw `uses:` value from a workflow step or job.
- * @returns {string} Normalized `owner/repo@ref`, or `""` for local refs.
+ * @returns {string} Normalized `owner/repo@ref`, or `""` for empty, local, or
+ * unrecognized refs. Does not validate the repository slug or ref.
  */
 function normalizeUses(raw) {
   const cleaned = raw.trim().replace(/^['"]|['"]$/g, "").trim();
@@ -118,6 +121,8 @@ function foldKey(ref) {
 
 /**
  * Parse header, workflow mappings, and dependency records from `actions.lock`.
+ * Duplicate dependency keys keep the record with the most body lines (first on
+ * ties). An absent header is replaced with the default lockfile header.
  * @param {string} lockText Raw text of `actions.lock`.
  * @param {boolean} healConflicts Whether to strip git conflict markers first.
  * @returns {{ headerLines: string[], wfMap: Map<string, string[]>, deps: Map<string, { displayKey: string, bodyLines: string[] }> }}
@@ -134,6 +139,7 @@ function parseLock(lockText, healConflicts) {
   let currentKey = null;
   let currentBody = [];
 
+  /** Store a nonempty pending dependency if it has more body lines, then reset it. */
   const flushDep = () => {
     if (currentKey !== null && currentBody.length > 0) {
       const fk = foldKey(currentKey);
@@ -213,6 +219,7 @@ function parseLock(lockText, healConflicts) {
  * the identical comment-stripping and normalization rules as `check-lock-sync.sh`.
  * @param {string} filePath Path to `.yml` / `.yaml` workflow file.
  * @returns {string[]} Sorted unique external `owner/repo@ref` pins.
+ * @throws {Error} If the workflow file cannot be read.
  */
 function extractWorkflowUses(filePath) {
   const text = fs.readFileSync(filePath, "utf8");
@@ -235,9 +242,11 @@ function extractWorkflowUses(filePath) {
  *   2. Every lock entry under a workflow is still referenced by that workflow.
  *   3. Every workflow file has a lock key (including `[]` for zero-`uses:`).
  *   4. Every locked/nested ref resolves to a top-level `dependencies:` record.
+ * Also rejects conflict markers and lock entries for deleted workflows.
  * @param {string} wfDir Path to `.github/workflows`.
  * @param {string} lockText Raw text of `actions.lock`.
- * @returns {boolean} True when all four clauses hold.
+ * @returns {boolean} Whether validation passes; violations are written to stderr.
+ * @throws {Error} If the workflow directory or a workflow file cannot be read.
  */
 function verifyLockSync(wfDir, lockText) {
   if (/^(<<<<<<<|=======|>>>>>>>)/m.test(lockText)) {
@@ -310,8 +319,13 @@ function verifyLockSync(wfDir, lockText) {
 /**
  * Resolve metadata for an unlisted `owner/repo@ref` dependency via native HTTPS
  * requests against the GitHub REST API.
+ * For a commit SHA, use a matching tag from the first 100 tags as the display
+ * ref, falling back to the default branch when available. Tag lookup failures
+ * use the same fallback; other request and parsing errors propagate.
  * @param {string} spec Normalized `owner/repo@ref`.
  * @returns {Promise<{ displayKey: string, bodyLines: string[] }>} Resolved record.
+ * @throws {Error} If the repository slug is invalid, required GitHub requests
+ * fail, or their responses cannot be parsed or used as metadata.
  */
 async function resolveMissingDependency(spec) {
   const atIdx = spec.lastIndexOf("@");
@@ -362,8 +376,14 @@ async function resolveMissingDependency(spec) {
 }
 
 /**
- * CLI entry point supporting `--verify`, `--check`, and `--write`.
+ * Synchronize actions.lock relative to the current working directory.
+ * `--verify` checks sync without writes or API calls and takes precedence over
+ * `--check`, which compares canonical bytes without writing. Check and write
+ * modes may fetch missing dependency metadata. With neither flag, write the
+ * canonical lockfile, then verify it; a failed verification leaves it written.
+ * Validation failures or a canonical-byte mismatch exit the process with 1.
  * @returns {Promise<void>}
+ * @throws {Error} If filesystem access or required dependency resolution fails.
  */
 async function main() {
   const args = new Set(process.argv.slice(2));
