@@ -1,42 +1,348 @@
 ;; SPDX-License-Identifier: AGPL-3.0-or-later
+;
+; The repo deed of paint-type: one-deed-per-repo doctrine (standards#837,
+; owner ruling 2026-09-19, Option A). Authoritative descriptive manifest
+; ("what is") paired with the six K9 v1.0.0 contractiles under
+; .machine_readable/contractiles/<verb>/<verb>.k9.ncl ("what must hold") and
+; the root coordination nerve receptor coordination.k9.
+; Read any field deterministically with: bash scripts/deed-field.sh
 (repo-deed
-  :schema-version  "1.0.0"
-  :canonical-name  "paint-type"
+  :schema-version "1.0.0"
+  :canonical-name "paint-type"
   :beholding-chora #u5"estate/chora"
+  :repo-uuid #u5"github.com/metadatastician/paint-type"
 
-  :repo-uuid       #u5"github.com/metadatastician/paint-type"
+  ; Canon lockstep binding against hyperpolymath/standards/canon.lock (v2.1.2).
+  ; Verified on every PR and push by .github/workflows/dogfood-gate.yml
+  ; (`canon-lockstep` job).
+  (canon
+    :version "2.1.2"
+    :criteria-sha256 "6a5aa8857bd0d0d58ef48827938ca17c251b6b854dacf59d306388d61694d82a"
+    :gates-sha256 "e70efd2f53c9445e30da4baf770366f04a4a84ffd844a01426e587e565b53e6a"
+    :lockstep-since "2026-10-21"
+    :order "spine-adopts-then-canon-releases")
 
-  (identity :primary-forge github
-            :owner          "metadatastician"
-            :prefixed-name  "ap-paint-type")
+  (identity
+    :primary-forge github
+    :owner "metadatastician"
+    :prefixed-name "ap-paint-type")
 
-  (clade    :primary       ap
-            :primary-name  "Applications"
-            :secondary     ()
-            :assigned      "2026-07-17"
-            :rationale     "Applications (`ap`): \"end-user applications, web apps, desktop apps, services\". The core value proposition is a cross-platform image editor people run — \"the open, cross-platform image editor Paint.NET users are actually asking for\". Per the spec the primary clade reflects the value proposition, not implementation details, so the Rust/Zig/Idris2 inside does not make it `fv` or `nl`.")
+  (clade
+    :primary ap
+    :primary-name "Applications"
+    :secondary ()
+    :assigned "2026-07-17"
+    :rationale "Applications (`ap`): \"end-user applications, web apps, desktop apps, services\". The core value proposition is a cross-platform image editor people run — \"the open, cross-platform image editor Paint.NET users are actually asking for\". Per the spec the primary clade reflects the value proposition, not implementation details, so the Rust/Zig/Idris2 inside does not make it `fv` or `nl`.")
 
-  (forges   :github    "metadatastician/paint-type"
-            :gitlab    ""
-            :bitbucket "")
+  (forges
+    :github "metadatastician/paint-type"
+    :gitlab ""
+    :bitbucket "")
 
-  (lineage  :type              standalone
-            :parent            "palimpsest ecosystem"
-            :born              "2026-05-11"
-            :previous-names    ()
-            :instantiated-from "")
+  (lineage
+    :type standalone
+    :parent "palimpsest ecosystem"
+    :born "2026-05-11"
+    :previous-names ()
+    :instantiated-from "")
 
-  (status   :phase         active
-            :since         "2026-05-11"
-            :present       #t
-            :aliases       ()
-            :merged-into   ""
-            :superseded-by ""
-            :successors    ()
-            :ended         ""
-            (history
-              (entry :phase active
-                     :since "2026-05-11"
-                     :note  "Born standalone in the palimpsest ecosystem; clade re-assigned pt -> ap on 2026-07-17 (see [clade] rationale).")
-            ))
+  (status
+    :phase active
+    :since "2026-05-11"
+    :present #t
+    :aliases ()
+    :merged-into ""
+    :superseded-by ""
+    :successors ()
+    :ended ""
+    (history
+      (entry :phase active
+             :since "2026-05-11"
+             :note "Born standalone in the palimpsest ecosystem; clade re-assigned pt -> ap on 2026-07-17 (see (clade) rationale).")
+      (entry :phase active
+             :since "2026-10-21"
+             :note "Adopted canon 2.1.2 DEED + K9 v1.0.0 contractiles + K9/Hypatia verdict grids and Bun-first JS runtime posture.")))
+
+  (maturity
+    :level pre-alpha)
+
+  (ecosystem
+    :project "paint-type"
+    :ecosystem "hyperpolymath"
+    :position-type "application"
+    :purpose "Open, cross-platform raster image editor with formally verified Idris2 ABI tile invariants, zero-copy Zig C-ABI seam, linear-resource Rust paint core, Groove discovery, and real-time collaboration."
+    :not ("a GIMP or Photoshop clone"
+          "an AI-first generative canvas that paints unprompted"
+          "a browser-only SaaS editor")
+    :pipeline-position "application"
+    :chain "standards -> paint-type (Idris2 ABI -> Zig FFI -> Rust paint_core -> Gossamer WebKitGTK shell)"
+    :pipeline-notes "Consumes canonical grammars and reusable CI lanes from hyperpolymath/standards and deposits unified static-analysis findings for gitbot-fleet."
+    :coordination standards
+    (related :name "standards" :relationship standard-source :notes "Canonical ABNF grammars, K9 contract v1.0.0, DEED linter, and reusable conformance/security workflows.")
+    (related :name "hypatia" :relationship verification-tooling :notes "Deterministic neurosymbolic CI/CD scanner feeding SARIF + the Hypatia verdict grid.")
+    (related :name "panic-attack" :relationship verification-tooling :notes "Static weak-point and taint analyzer (`assail`) gating critical findings and feeding the verdict grid.")
+    (related :name "pons-asinorum" :relationship verification-tooling :notes "CFG and linear-typestate analyzer (`pons scan`) feeding tier + evidence-class findings into CI.")
+    (related :name "gitbot-fleet" :relationship automation-tooling :notes "9-bot autonomous fleet consuming unified findings and writing `.gitbot-fleet/report-backs/*.json`.")
+    (related :name "cicd-squabbler" :relationship governance-tooling :notes "Formal argumentation dialogue CLI for multi-repo CI triage with optional boj-server consultation.")
+    (related :name "boj-server" :relationship mcp-gateway :notes "Sole host-side MCP cartridge gateway (`echidna-llm-mcp`, `model-router-mcp`, `claude-ai-mcp`).")
+    (related :name "burble" :relationship runtime-peer :notes "Peer-to-peer real-time voice/state collaboration discovered via Groove.")
+    (related :name "gossamer" :relationship shell-substrate :notes "Cross-platform native WebView shell substrate vendored under third_party/gossamer.")
+    (related :name "typed-wasm" :relationship plugin-substrate :notes "Verified WASM bridge used by paint-type tile and layer bridges."))
+
+  (meta
+    :version "0.2.0"
+    :last-updated "2026-10-21"
+    :type application
+    :languages (rust zig idris2 javascript nickel bash)
+    :license AGPL-3.0-or-later
+    :js-runtime bun
+    :author "Jonathan D.A. Jewell (hyperpolymath)"
+    :build-tool just
+    :container-runtime podman
+    :ci-platform github-actions
+    :package-manager guix
+    :scoping-first #t
+    :execution-order "axis-1 > axis-2 > axis-3"
+    :axis-1 "must > intend > like"
+    :axis-2 "corrective > adaptive > perfective"
+    :axis-3 "systems > compliance > effects"
+    (scoping
+      :sources "README.adoc, ROADMAP.adoc, OPERATIONAL-STATUS.adoc, AUDIT.adoc, Justfile"
+      :marker-scan "TODO/FIXME/XXX/HACK/STUB/PARTIAL"
+      :idris-unsound-scan "believe_me/assert_total")
+    :corrective-first #t
+    :adaptive-second #t
+    :adaptive-focus "canon 2.1.2 alignment, Bun > Deno runtime ordering, DEED + K9 v1.0.0 migration"
+    :perfective-third #t
+    :perfective-source "axis-1 honest state after corrective/adaptive updates"
+    (axis-3
+      :audit-focus "verified Idris2/Zig/Rust seam, deterministic CI gates, live K9 + Hypatia verdict grids"
+      :compliance-focus "actions.lock closure, zero raw UUID literals, bounded .hypatia-ignore exemptions"
+      :drift-risk-example "unpinned external action or unvalidated contractile drifting behind standards v1.0.0"
+      :effects-evidence "cargo test, zig build test, shell e2e, fuzz smoke, and live verdict grid baselines"))
+
+  (agentic
+    :version "1.0.0"
+    :last-updated "2026-10-21"
+    (permissions :source #t :tests #t :docs #t :config #t :create-files #t)
+    (integrity
+      :fail-closed #t
+      :require-evidence-per-step #t
+      :allow-silent-skip #f
+      :require-rerun-after-fix #t
+      :release-claim-requires-hard-pass #t)
+    (runtime-policy
+      :js-preference ("bun" "deno" "pnpm" "npm")
+      :primary-js-runtime "bun")
+    (methodology :instructions-clause "bot-directives" :default-mode hybrid))
+
+  (manifest
+    :version "1.0.0"
+    :last-updated "2026-10-21"
+    :project "paint-type"
+    :purpose "Cross-platform image editor with Idris2 ABI proofs, Zig C-ABI FFI, Rust linear tile engine, and Gossamer desktop shell."
+    (agent :name CLAUDE :role "Idris2 ABI proofs, Zig FFI, Rust paint_core, CI/CD gates, K9/DEED conformance")
+    (agent :name CHATGPT :role "specifications, function documentation, release prose, review synthesis")
+    (agent :name GEMINI :role "estate-wide standards sweeps, cross-repo parity audits, long-context triage")
+    (agent :name VIBE :role "src/ui canvas controls, keyboard shortcuts, accessibility tokens, shell UX")
+    (policy :rules (
+      "Bun is preferred over Deno across all scripts, tests, and workflows (bun > deno)."
+      "Keep all K9 contracts valid at L0-L2 under k9_contract.ncl v1.0.0 and keep actions.lock synchronized."
+      "Never introduce believe_me, assert_total, or .unwrap() in production Paint Core paths."))
+    (work :agent CLAUDE :task "Maintain Idris2/Zig/Rust tile + layer pipeline and DEED/K9/Hypatia CI gates")
+    (work :agent CHATGPT :task "Maintain API/function documentation and architectural specifications")
+    (work :agent GEMINI :task "Audit cross-repo alignment against hyperpolymath/standards canon 2.1.2")
+    (work :agent VIBE :task "Advance Gossamer shell canvas UI and WCAG 2.1 AA accessibility checks"))
+
+  (contractiles
+    :spec-version "1.0.0"
+    :base ".machine_readable/contractiles/_base.ncl"
+    :coordination-contract "coordination.k9.ncl"
+    :coordination-receptor "coordination.k9"
+    (trident :verb intend :contract ".machine_readable/contractiles/intend/intend.k9.ncl" :runner ".machine_readable/contractiles/intend/intend.ncl")
+    (trident :verb must   :contract ".machine_readable/contractiles/must/must.k9.ncl"     :runner ".machine_readable/contractiles/must/must.ncl")
+    (trident :verb trust  :contract ".machine_readable/contractiles/trust/trust.k9.ncl"   :runner ".machine_readable/contractiles/trust/trust.ncl")
+    (trident :verb adjust :contract ".machine_readable/contractiles/adjust/adjust.k9.ncl" :runner ".machine_readable/contractiles/adjust/adjust.ncl")
+    (trident :verb dust   :contract ".machine_readable/contractiles/dust/dust.k9.ncl"     :runner ".machine_readable/contractiles/dust/dust.ncl")
+    (trident :verb bust   :contract ".machine_readable/contractiles/bust/bust.k9.ncl"     :runner ".machine_readable/contractiles/bust/bust.ncl"))
+
+  (ply
+    (directory :ply 1 :path ".github" :description "GitHub Actions workflows, lockfile, and PR governance.")
+    (directory :ply 1 :path ".gitbot-fleet" :description "Fleet enrolment manifest (`enrolment.json`) and bot report-back envelopes (`report-backs/`).")
+    (directory :id "machine-readable-pillar" :ply 1 :path ".machine_readable" :description "Contractiles, transitional descriptiles, and root hygiene allowlists."
+      (directory :id "contractiles-unit" :ply 2 :path ".machine_readable/contractiles" :description "Six canonical K9 v1.0.0 verb tridents (`intend`, `must`, `trust`, `adjust`, `dust`, `bust`)."))
+    (directory :id "docs-pillar" :ply 1 :path "docs" :description "Architecture, function documentation, developer guides, and governance records.")
+    (directory :id "scripts-pillar" :ply 1 :path "scripts" :description "Deterministic shell verification and DEED query helpers (`deed-field.sh`, `check-lock-sync.sh`).")
+    (directory :id "source-pillar" :ply 1 :path "src" :description "Idris2 ABI (`interface/Abi`), Zig FFI (`interface/ffi`), Rust `paint_core`, Gossamer C shell (`shell`), and WebView UI (`ui`).")
+    (directory :id "tests-pillar" :ply 1 :path "tests" :description "Aspect tests, workflow unit tests, and end-to-end canvas/shell harnesses.")
+    (directory :id "tools-pillar" :ply 1 :path "tools" :description "Plugin harness and developer verification utilities.")
+    (directory :id "verification-pillar" :ply 1 :path "verification" :description "Formal proofs, fuzz targets, benchmarks, and safety artifacts."))
+
+  (anchor
+    :schema "hyperpolymath.anchor/1"
+    :repo "metadatastician/paint-type"
+    :authority "upstream-canonical"
+    :purpose (
+      "Define canonical RGBA16F 64x64 tile semantics, compositing invariants, and `.ptype` file format guarantees."
+      "Bind repository CI gates to `hyperpolymath/standards` canon 2.1.2 (`DEED`, `K9` v1.0.0, `Hypatia` verdict grid)."
+      "Maintain strict fail-closed verification across Idris2 ABI, Zig FFI, Rust `paint_core`, and WebKitGTK shell.")
+    (metadata :version "1.0.0" :last-updated "2026-10-21")
+    (identity
+      :project "paint-type"
+      :kind "application"
+      :one-sentence "The open, cross-platform image editor Paint.NET users are actually asking for."
+      :domain "graphics-editor")
+    (semantic-authority
+      :policy "canonical"
+      :owns (
+        "64x64 RGBA16F tile memory layout and Idris2 ABI proofs"
+        "Porter-Duff compositing + persistent UndoGraph invariants"
+        "`.ptype` lossless container format with SHA-256 tile checksums"))
+    (implementation-policy
+      :allowed ("Rust" "Zig" "Idris2" "JavaScript" "Nickel" "Shell" "Just" "AsciiDoc" "Markdown")
+      :forbidden ("Python" "TypeScript" "Go" "Kotlin"))
+    (golden-path
+      :smoke-test-command ("bash tests/aspect_tests.sh" "bash tests/workflows/dogfood_gate_test.sh" "bash tests/workflows/verdict_grids_conformance_test.sh")
+      :success-criteria (
+        "Aspect invariants pass with zero soundness escapes"
+        "DEED, K9 v1.0.0, and Hypatia verdict lanes pass with synchronized actions.lock"
+        "All Rust, Zig, Idris2, and WebKitGTK E2E checks pass")))
+
+  (neurosym
+    (metadata :version "1.0.0" :last-updated "2026-10-21")
+    (hypatia-config
+      :scan-enabled #t
+      :scan-depth "standard"
+      :verdict-grid #t
+      :companion-scanners ("panic-attack" "pons-asinorum")
+      :fleet-enrolment ".gitbot-fleet/enrolment.json"
+      :fleet-report-backs ".gitbot-fleet/report-backs"))
+
+  (playbook
+    (metadata :version "1.0.0" :last-updated "2026-10-21")
+    (rsr-repo-skeleton
+      :skeleton-version "1.0"
+      :last-updated "2026-10-21"
+      :authority-allowlist ".machine_readable/root-allow.txt"
+      :enforcement-workflow ".github/workflows/governance.yml"))
+
+  (ensaid
+    :version "1.0.0"
+    :tool "panll"
+    (workspace :mode "rhodium" :protection "open" :execution "live")
+    (preferences :humidity "medium" :default-arrangement "default-3-panel" :auto-connect #t)
+    (panels :version "1.0.0")
+    (workflows :version "1.0.0")
+    (clades :version "1.0.0")
+    (portfolios :version "1.0.0"))
+
+  (bot-directives
+    (methodology
+      (metadata :version "1.0.0" :last-updated "2026-10-21")
+      (methodology
+        :default-mode "hybrid"
+        :ring-ceiling 2
+        :wave-cap 2
+        :spike-required #t
+        (priority-weights :must 3 :should 2 :could 1)
+        (convergent-budget :structural 70 :corrective 20 :perfective 10)
+        (unique-strength
+          :description "Formally verified Idris2 ABI + zero-copy Zig C-ABI + linear-resource Rust RGBA16F tile engine inside a lightweight native shell."
+          :deepen-not-broaden #t)
+        (divergent-invariants
+          :rules (
+            "Idris2 only for ABI layout/alignment proofs; zero believe_me or assert_total"
+            "FFI seam strictly Idris2 ABI -> Zig FFI -> C ABI -> Rust paint_core"
+            "Bun preferred over Deno (bun > deno) across all JS/TS tooling"))
+        (known-constraints
+          :constraints (
+            "Keep transitional .a2ml bridge files intact until legacy manifest scripts cut over to scripts/deed-field.sh"))
+        (state-validation
+          :reject-if-matches ("\\{\\{[A-Z][A-Z0-9_]*\\}\\}")
+          :reject-if-project-name-mismatch #t
+          :staleness-threshold-days 90
+          :fallback-files ("ROADMAP.adoc" "OPERATIONAL-STATUS.adoc" "README.adoc"))))
+    (coverage
+      (metadata :version "1.0.0" :last-updated "2026-10-21")
+      (coverage :total-components 6 :visited-components 6 :coverage-percent 100))
+    (debt
+      (metadata :version "1.0.0" :last-updated "2026-10-21"))
+    (rra
+      :target "robot-repo-automaton"
+      (module
+        :name "root-cleaner"
+        (policy :mode "putative" :strictness "high")
+        (allow-list
+          :files ("README.adoc" "README.md" "CHANGELOG.md" "Justfile" "LICENSE" "paint-type_chora.deed" "coordination.k9" "coordination.k9.ncl" "CITATION.cff" "CLAUDE.md" "AGENTS.md")
+          :patterns (".*"))
+        (ignores :dirs ("src/" "tests/" "tools/" "verification/" ".git/" "docs/" ".machine_readable/" ".gitbot-fleet/")))))
+
+  (integrations
+    (verisimdb
+      (integration
+        :name "verisimdb"
+        :type "data-feed"
+        :repository "https://github.com/hyperpolymath/nextgen-databases"
+        :data-store "verisimdb-data")
+      (feed-config
+        :emit-scan-results #t
+        :emit-build-metrics #t
+        :emit-dependency-graph #t
+        :format "hexad"
+        :destination "verisimdb-data/feeds/"))
+    (groove
+      :version "1.0"
+      :service "paint-type"
+      :service-version "0.2.0"
+      :port 0
+      :health "/health"
+      :capabilities ("raster-canvas" "ptype-document" "collab-session")
+      :dependencies ("burble")
+      (api-surfaces
+        (groove :enabled #t :path "/.well-known/groove"))))
+
+  (policies
+    (maintenance-axes
+      (metadata :version "1.0.0" :last-updated "2026-10-21" :scope "repo")
+      (axes
+        :axis-1 "must > intend > like"
+        :axis-2 "corrective > adaptive > perfective"
+        :axis-3 "systems > compliance > effects"
+        :execution-order "axis-1 > axis-2 > axis-3"))
+    (tsdm
+      :id "tsdm-standard"
+      :version "1.0.0"
+      (axes
+        (axis :ordinal 1 :name "Planning" :levels ("must" "should" "could"))
+        (axis :ordinal 2 :name "Maintenance" :levels ("corrective" "adaptive" "perfective"))
+        (axis :ordinal 3 :name "Audit" :levels ("systems" "compliance" "effects")))
+      :invariants (
+        "Every task MUST map to at least one TSDM coordinate"
+        "Axis 1 priority governs resource allocation"
+        "Axis 2 type governs commit categorisation"
+        "Axis 3 focus governs audit depth")))
+
+  (rsr-profile
+    :version "1.0.0"
+    :spec "rsr-criteria-v2"
+    :declares-against "2.1.2"
+    :role "application"
+    :capabilities (
+      "rust"
+      "zig"
+      "idris2"
+      "bash"
+      "cli"
+      "library"
+      "ffi"
+      "abi"
+      "formal-proofs"
+      "web-ui"
+      "docs-site"
+      "container"
+      "reproducible-build"
+      "benchmarks"
+      "governance-tier")
+    (notes
+      :omitted-rationale "Capabilities not carried by paint-type (`affinescript`, `mobile`, `api-service`, `published-package`) are omitted per 0-canon/TEMPLATE-APPLICABILITY-POLICY.adoc."))
 )
