@@ -3,7 +3,7 @@
 //
 // Deterministic synchronizer, verifier, and conflict-healer for
 // `.github/workflows/actions.lock` (portable across Linux, macOS, and Windows
-// without requiring GNU `gawk`).
+// without requiring GNU `gawk` or shell subprocesses).
 //
 // Usage:
 //   bun scripts/sync-actions-lock.js           # Rewrite actions.lock in canonical LC_ALL=C order
@@ -13,7 +13,46 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+
+/**
+ * Parse a JSON payload with explicit error context rather than throwing an
+ * opaque syntax exception at an input boundary.
+ * @param {string} raw Raw JSON string from an API response.
+ * @param {string} context Human-readable description of the source endpoint.
+ * @returns {any} Parsed value.
+ */
+function parseJsonSafe(raw, context) {
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    throw new Error(`Invalid JSON payload from ${context}: ${reason}`);
+  }
+}
+
+/**
+ * Perform an authenticated GET against `api.github.com` without spawning any
+ * external process.
+ * @param {string} apiPath Relative REST endpoint under `https://api.github.com/`.
+ * @returns {Promise<any>} Parsed JSON response body.
+ */
+async function fetchGitHubJson(apiPath) {
+  const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "";
+  const headers = {
+    Accept: "application/vnd.github+json",
+    "User-Agent": "paint-type-sync-actions-lock",
+  };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  const url = `https://api.github.com/${apiPath}`;
+  const resp = await fetch(url, { headers });
+  const text = await resp.text();
+  if (!resp.ok) {
+    throw new Error(`GitHub API ${resp.status} for ${apiPath}: ${text.slice(0, 200)}`);
+  }
+  return parseJsonSafe(text, apiPath);
+}
 
 /**
  * Compare two strings in strict ASCII / POSIX `LC_ALL=C` byte order.
@@ -269,37 +308,28 @@ function verifyLockSync(wfDir, lockText) {
 }
 
 /**
- * Resolve metadata for an unlisted `owner/repo@ref` dependency via GitHub API.
+ * Resolve metadata for an unlisted `owner/repo@ref` dependency via native HTTPS
+ * requests against the GitHub REST API.
  * @param {string} spec Normalized `owner/repo@ref`.
- * @returns {{ displayKey: string, bodyLines: string[] }} Resolved dependency record.
+ * @returns {Promise<{ displayKey: string, bodyLines: string[] }>} Resolved record.
  */
-function resolveMissingDependency(spec) {
+async function resolveMissingDependency(spec) {
   const atIdx = spec.lastIndexOf("@");
   const ownerRepo = spec.slice(0, atIdx);
   const ref = spec.slice(atIdx + 1);
-
-  const repoRes = spawnSync("gh", ["api", `repos/${ownerRepo}`], {
-    encoding: "utf8",
-  });
-  if (repoRes.status !== 0) {
-    throw new Error(
-      `Cannot resolve metadata for '${spec}' via gh api: ${(repoRes.stderr || "").trim()}`,
-    );
+  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(ownerRepo)) {
+    throw new Error(`Invalid repository slug in action spec: ${spec}`);
   }
-  const repoMeta = JSON.parse(repoRes.stdout);
+
+  const repoMeta = await fetchGitHubJson(`repos/${ownerRepo}`);
   const ownerId = repoMeta.owner.id;
   const repoId = repoMeta.id;
 
   let commitSha = ref;
   let tagRef = ref;
   if (/^[0-9a-f]{40}$/i.test(ref)) {
-    const tagsRes = spawnSync(
-      "gh",
-      ["api", `repos/${ownerRepo}/tags?per_page=100`],
-      { encoding: "utf8" },
-    );
-    if (tagsRes.status === 0) {
-      const tags = JSON.parse(tagsRes.stdout);
+    try {
+      const tags = await fetchGitHubJson(`repos/${ownerRepo}/tags?per_page=100`);
       const matched = Array.isArray(tags)
         ? tags.find((t) => t?.commit?.sha?.toLowerCase() === ref.toLowerCase())
         : null;
@@ -308,19 +338,16 @@ function resolveMissingDependency(spec) {
       } else if (repoMeta.default_branch) {
         tagRef = repoMeta.default_branch;
       }
+    } catch {
+      if (repoMeta.default_branch) {
+        tagRef = repoMeta.default_branch;
+      }
     }
   } else {
-    const commitRes = spawnSync(
-      "gh",
-      ["api", `repos/${ownerRepo}/commits/${encodeURIComponent(ref)}`],
-      { encoding: "utf8" },
+    const commitMeta = await fetchGitHubJson(
+      `repos/${ownerRepo}/commits/${encodeURIComponent(ref)}`,
     );
-    if (commitRes.status !== 0) {
-      throw new Error(
-        `Cannot resolve commit SHA for '${spec}': ${(commitRes.stderr || "").trim()}`,
-      );
-    }
-    commitSha = JSON.parse(commitRes.stdout).sha;
+    commitSha = commitMeta.sha;
   }
 
   return {
@@ -336,9 +363,9 @@ function resolveMissingDependency(spec) {
 
 /**
  * CLI entry point supporting `--verify`, `--check`, and `--write`.
- * @returns {void}
+ * @returns {Promise<void>}
  */
-function main() {
+async function main() {
   const args = new Set(process.argv.slice(2));
   const verifyOnly = args.has("--verify");
   const checkOnly = args.has("--check");
@@ -378,7 +405,7 @@ function main() {
     const item = queue.shift();
     const fk = foldKey(item);
     if (!deps.has(fk)) {
-      deps.set(fk, resolveMissingDependency(item));
+      deps.set(fk, await resolveMissingDependency(item));
     }
     const rec = deps.get(fk);
     for (const line of rec.bodyLines) {
@@ -434,4 +461,4 @@ function main() {
   }
 }
 
-main();
+await main();

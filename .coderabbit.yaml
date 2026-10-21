@@ -1,21 +1,23 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #
-# CodeRabbit configuration for metadatastician/paint-type.
-# Tuned for org rulesets 18225024 (EstateBranching: squash-merge, required
-# commit signatures, required review-thread resolution, dismiss stale reviews)
-# and 24634124 (Branch-Signatures).
+# Repository-root CodeRabbit v2 configuration for metadatastician/paint-type.
+# Tuned for org rulesets 18225024 (EstateBranching: squash-merge only, required
+# signatures, required review-thread resolution, dismiss stale reviews on push),
+# 24634124 (Branch-Signatures / owner ruling D324), and the Kautz-Ladder spec
+# in hyperpolymath/standards (docs/ULTRAPLAN-KAUTZ-LADDER-2026-10-19.adoc).
 
 language: "en-GB"
 early_access: false
 tone_instructions: >-
-  Be direct, technical, and concise without emoji or filler. Report only
-  concrete correctness defects, security hazards, ABI/FFI soundness bugs, or
-  violations of documented repository gates.
+  Be direct, technical, and concise without emoji or filler. Focus strictly on
+  architectural intent, Idris2 ABI <-> Zig FFI <-> Rust compositing invariants,
+  memory/thread safety, and security defects not already enforced by Hypatia,
+  panic-attack, workflow-linter, and K9/DEED CI gates.
 
 reviews:
-  # Keep threads limited to genuine defects so nitpicks do not block merges
-  # under EstateBranching (required_review_thread_resolution: true).
+  # Keep threads restricted to genuine defects so stylistic nitpicks never block
+  # merges under EstateBranching (`required_review_thread_resolution: true`).
   profile: "chill"
   request_changes_workflow: false
   high_level_summary: true
@@ -29,8 +31,13 @@ reviews:
   suggested_reviewers: false
   auto_apply_labels: false
 
+  # Exclude paths owned by deterministic estate validators (Hypatia, K9, lock
+  # gates, manifest checks) and vendored/lock trees.
   path_filters:
     - "!third_party/**"
+    - "!.machine_readable/**"
+    - "!.github/workflows/**"
+    - "!docs/**"
     - "!Cargo.lock"
     - "!**/*.lock"
 
@@ -42,19 +49,8 @@ reviews:
         Never suggest emoji in code, comments, commit messages, or docs.
         JS runtime order is Bun (preferred) > Deno > pnpm > npm with a single
         lockfile only. Never suggest introducing TypeScript (.ts/.tsx), Go
-        (.go), Python (.py), Makefiles, Dockerfiles, or new .a2ml files (use
-        .deed or .k9.ncl instead). Every newly added function should carry a
-        concise doc comment above its signature.
-    - path: ".github/workflows/**"
-      instructions: >-
-        Workflow hygiene gates: pin every third-party action uses: to a full
-        40-character hex commit SHA synchronized with .github/workflows/actions.lock
-        in LC_ALL=C byte order (verified via ./scripts/check-lock-sync.sh and
-        regenerated via `just sync-lock`). Prefer `${{ github.token }}` over
-        `secrets.GITHUB_TOKEN`. Declare an explicit `timeout-minutes:` on every
-        job with `runs-on:`. Avoid exit-masking `|| true`, literal `/tmp` paths
-        (use `$RUNNER_TEMP`), and `python3`/`node`/`npm` inside `run:` steps
-        (use POSIX bash, `jq`, and `bun`).
+        (.go), Python (.py), Makefiles, Dockerfiles, literal `/tmp/` paths, or
+        new `.a2ml` files (use `.deed` or `.k9.ncl` instead).
     - path: "src/interface/ffi/**"
       instructions: >-
         Windows MSVC dual-library invariant: both `.dynamic` (DLL import
@@ -71,14 +67,14 @@ reviews:
 
   auto_review:
     enabled: true
-    # Work in Draft PRs freely without burning review quota or accumulating
-    # premature threads; flip `gh pr ready` once CI is green.
+    # Iterate freely in Draft PRs without burning review quota or accumulating
+    # premature threads; run `gh pr ready` once CI checks pass.
     drafts: false
     ignore_title_keywords:
       - "WIP"
       - "DO NOT MERGE"
       - "[skip-review]"
-    # Only review PRs targeting main — never stack reviews onto ephemeral bot
+    # Review only PRs targeting `main` — never stack reviews onto ephemeral bot
     # or agent branches.
     base_branches:
       - "main"
@@ -87,23 +83,49 @@ reviews:
     # Disable stacked `coderabbit/document-changed-functions/*` and unit-test
     # child branches: squash-merging parent PRs into `main` turns every stacked
     # bot PR into an immediate merge conflict (see closed PRs #132 and #138),
-    # and unsigned bot commits trip `required_signatures` on `main`. Local
-    # `.githooks/pre-commit` (`just preflight`) checks docstrings pre-commit.
+    # and bot pushes are refused under owner ruling D324. Local `.githooks/`
+    # and `just preflight` enforce docstrings pre-commit instead.
     docstrings:
       enabled: false
     unit_tests:
       enabled: false
 
+  # Handled by estate symbolic gates rather than CodeRabbit's vendor check.
   pre_merge_checks:
     docstrings:
-      mode: "warning"
-      threshold: 80
+      mode: "off"
     title:
       mode: "warning"
     description:
       mode: "off"
     issue_assessment:
       mode: "off"
+
+  # Disable bundled symbolic linters duplicated by Hypatia, clippy, gitleaks,
+  # workflow-linter, and K9/DEED CI gates (ULTRAPLAN-KAUTZ-LADDER-2026-10-19).
+  tools:
+    actionlint:
+      enabled: false
+    biome:
+      enabled: false
+    eslint:
+      enabled: false
+    gitleaks:
+      enabled: false
+    hadolint:
+      enabled: false
+    languagetool:
+      enabled: false
+    markdownlint:
+      enabled: false
+    ruff:
+      enabled: false
+    semgrep:
+      enabled: false
+    shellcheck:
+      enabled: false
+    yamllint:
+      enabled: false
 
 chat:
   auto_reply: true

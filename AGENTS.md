@@ -610,7 +610,23 @@ Focus on DEP-01: create gossamer#69 design document for service-handle region mo
 - Working notes
 - Intermediate results
 
-**Scratchpad location:** `/tmp/vibe-scratchpad-*/` (provided at session start)
+**Scratchpad location:** `${TMPDIR:-$HOME/.cache}/vibe-scratchpad` (`mktemp -d` + `trap 'rm -rf' EXIT`; never hardcode shared temp paths)
+
+== Git Flow & Local Preflight
+
+* **One-time hook installation:** `just install-hooks` (`git config core.hooksPath .githooks`).
+* **Local preflight gate (<2s):** Run `just preflight` before pushing to validate `.github/workflows/actions.lock` sync, Hypatia workflow/static rules, `panic-attack` weak-point rules, `Bun > Deno` lockfile discipline, ruling D43 `.a2ml` freeze, invisible Unicode, DEED/K9 grammar, and function docstrings.
+* **Lockfile auto-heal:** Run `just sync-lock` (`bun ./scripts/sync-actions-lock.js`) whenever workflows change or `.github/workflows/actions.lock` hits a merge conflict.
+* **Verified signed commits (rulesets `18225024` & `24634124`, ruling D324):** Stage intended files explicitly with `git add <files>`, then push with `just push-signed "type(scope): summary"` so commits carry a GitHub-verified `web-flow` signature.
+* **Draft-first PR cadence:** Open PRs as Draft (`gh pr create --draft`), wait for green CI, then flip `gh pr ready` once so follow-up fixes do not dismiss CODEOWNERS approvals (`dismiss_stale_reviews_on_push: true`).
+
+== Code Review Guidance (Codex / AI Reviewers)
+
+Per the estate Kautz-Ladder specification (`hyperpolymath/standards`):
+
+* **What to review:** Architectural soundness, Idris2 ABI <-> Zig FFI <-> Rust tile/compositing invariants, memory/thread safety, platform ABI ordering (e.g., Windows MSVC `zig-out/lib/pt.lib`), and genuine logic or security bugs.
+* **What to leave to estate checks:** SPDX headers, licence identifiers (`AGPL-3.0-or-later` code / `CC-BY-SA-4.0` docs), `.github/workflows/**` action pinning and `actions.lock`, `.machine_readable/**`, `.deed` / `.k9` grammar checks, formatting, and docstring counts.
+* **Trigger policy:** Prefer explicit `@codex review` on ready PRs rather than automated review on draft updates.
 
 == Open Questions Protocol
 

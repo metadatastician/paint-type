@@ -2,17 +2,17 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #
 # Regression suite for paint-type git-flow fluidity tooling:
-#   - .github/.coderabbit.yaml schema and anti-conflict settings
+#   - Root .coderabbit.yaml + .machine_readable/root-allow.txt registration
 #   - .githooks/{install.sh,pre-commit,commit-msg,pre-push}
-#   - scripts/preflight.sh positive and negative controls
+#   - scripts/preflight.sh positive and negative controls (Hypatia + panic-attack)
 #   - scripts/sync-actions-lock.js check mode + conflict-marker auto-healing
-#   - Justfile SD024 descriptile path alignment
+#   - AGENTS.md review guidance and Justfile SD024 descriptile path alignment
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_ROOT"
-export PATH="$HOME/.bun/bin:/tmp/tools-bin:/usr/local/bin:$PATH"
+export PATH="$HOME/.bun/bin:/usr/local/bin:$PATH"
 
 PASS=0
 FAIL=0
@@ -31,19 +31,21 @@ fail() {
 
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
+SLASH_TMP="$(printf '\057tmp\057')"
 
 printf '=== Git Fluidity & Preflight Regression Suite ===\n'
 
-# 1. Verify .github/.coderabbit.yaml guards against stacked conflict PRs & nitpick blocks
-CR_CFG=".github/.coderabbit.yaml"
-if [ -f "$CR_CFG" ] \
+# 1. Verify root .coderabbit.yaml + root-allow.txt guard against stacked conflict PRs & nitpicks
+CR_CFG=".coderabbit.yaml"
+if [ -f "$CR_CFG" ] && [ ! -f ".github/.coderabbit.yaml" ] \
+  && grep -qxF '.coderabbit.yaml' .machine_readable/root-allow.txt \
   && grep -q 'profile: "chill"' "$CR_CFG" \
   && grep -q 'request_changes_workflow: false' "$CR_CFG" \
   && grep -q 'drafts: false' "$CR_CFG" \
   && grep -A3 'docstrings:' "$CR_CFG" | grep -q 'enabled: false'; then
-  ok ".github/.coderabbit.yaml disables stacked docstring PRs and chill-tunes review threads"
+  ok "Root .coderabbit.yaml is registered in root-allow.txt and chill-tuned"
 else
-  fail ".github/.coderabbit.yaml missing required anti-friction settings"
+  fail "Root .coderabbit.yaml missing required registration or anti-friction settings"
 fi
 
 # 2. Verify all .githooks scripts and workflow helpers exist and parse cleanly
@@ -58,14 +60,29 @@ for req in .githooks/install.sh .githooks/pre-commit .githooks/commit-msg .githo
   fi
 done
 
-# 3. Verify live repository passes `./scripts/preflight.sh` cleanly
+# 3. Verify zero hardcoded shared temp paths or child_process calls across new scripts
+if grep -rnF "$SLASH_TMP" .githooks/ scripts/preflight.sh scripts/git-push-signed.sh \
+  scripts/sync-actions-lock.js tests/workflows/git_fluidity_test.sh \
+  tests/workflows/verdict_grids_conformance_test.sh AGENTS.md; then
+  fail "Hardcoded shared temp path detected in workflow/hook/test artifacts"
+else
+  ok "Zero hardcoded shared temp paths across hooks, preflight, helpers, tests, and AGENTS.md"
+fi
+
+if grep -nE 'child_process|\b(execSync|spawnSync|execFileSync)\b' scripts/sync-actions-lock.js; then
+  fail "scripts/sync-actions-lock.js still uses child_process synchronous execution"
+else
+  ok "scripts/sync-actions-lock.js uses pure native fetch + fs with try/catch JSON boundaries"
+fi
+
+# 4. Verify live repository passes `./scripts/preflight.sh` cleanly
 if bash ./scripts/preflight.sh >/dev/null; then
   ok "Live repository passes ./scripts/preflight.sh with zero errors"
 else
   fail "Live repository failed ./scripts/preflight.sh"
 fi
 
-# 4. Verify `commit-msg` hook accepts valid Conventional Commits and rejects bad subjects
+# 5. Verify `commit-msg` hook accepts valid Conventional Commits and rejects bad subjects
 printf 'feat(ci): add preflight hooks\n' > "$TMP_DIR/good_msg"
 printf 'WIP bad message\n' > "$TMP_DIR/bad_msg"
 if bash ./.githooks/commit-msg "$TMP_DIR/good_msg"; then
@@ -79,14 +96,21 @@ else
   ok "commit-msg hook rejects non-Conventional Commit subject"
 fi
 
-# 5. Verify `Justfile` carries zero retired root `.machine_readable/STATE.a2ml` path checks
+# 6. Verify `Justfile` carries zero retired root `.machine_readable/STATE.a2ml` path checks
 if grep -nE '\.machine_readable/(STATE|META|ECOSYSTEM|AGENTIC|NEUROSYM|PLAYBOOK|ANCHOR)\.a2ml' Justfile; then
   fail "Justfile still references retired top-level .machine_readable/*.a2ml path"
 else
   ok "Justfile uses canonical .machine_readable/descriptiles/ paths throughout (0 SD024 findings)"
 fi
 
-# 6. Verify `sync-actions-lock.js` matches live `actions.lock` and heals git conflict markers
+# 7. Verify `AGENTS.md` scopes Codex / AI reviewers per Kautz-Ladder guidance
+if grep -q 'Code Review Guidance (Codex / AI Reviewers)' AGENTS.md; then
+  ok "AGENTS.md includes Codex / AI code-review scoping guidance"
+else
+  fail "AGENTS.md missing Codex / AI code-review scoping guidance"
+fi
+
+# 8. Verify `sync-actions-lock.js` matches live `actions.lock` and heals git conflict markers
 if command -v bun >/dev/null 2>&1; then
   if bun ./scripts/sync-actions-lock.js --check >/dev/null; then
     ok "sync-actions-lock.js --check agrees 100% with .github/workflows/actions.lock"
