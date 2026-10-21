@@ -17,6 +17,11 @@ bash "$REPO_ROOT/scripts/preflight.sh" --push
 
 if [ "${ALLOW_UNSIGNED_PUSH:-0}" != "1" ] && git rev-parse --verify origin/main >/dev/null 2>&1; then
   UNSIGNED_COUNT=0
+  BRANCH="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+  SIGNATURE_RANGE="origin/main..HEAD"
+  if [ -n "$BRANCH" ] && git rev-parse --verify "origin/$BRANCH" >/dev/null 2>&1; then
+    SIGNATURE_RANGE="origin/$BRANCH..HEAD"
+  fi
   while IFS=' ' read -r sha sig_status; do
     [ -n "$sha" ] || continue
     case "$sig_status" in
@@ -26,7 +31,7 @@ if [ "${ALLOW_UNSIGNED_PUSH:-0}" != "1" ] && git rev-parse --verify origin/main 
         UNSIGNED_COUNT=$((UNSIGNED_COUNT + 1))
         ;;
     esac
-  done < <(git log --pretty='%H %G?' origin/main..HEAD 2>/dev/null || true)
+  done < <(git log --pretty='%H %G?' "$SIGNATURE_RANGE" 2>/dev/null || true)
 
   if [ "$UNSIGNED_COUNT" -gt 0 ]; then
     printf '[pre-push] BLOCKED: %d unsigned commit(s) would block merging into main under ruleset 18225024.\n' "$UNSIGNED_COUNT" >&2
