@@ -1,4 +1,5 @@
 .hypatia-ignore
+coordination.k9
 
 PROOF-NEEDS.adoc           # (Estate drift remediation #83)
 PROOF-STATUS.adoc          # (Estate drift remediation #83)

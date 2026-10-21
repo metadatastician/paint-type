@@ -15,7 +15,7 @@ if grep -Eiq 'a2ml' "$WORKFLOW" || grep -Fiq 'hyperpolymath/a2ml-ecosystem@main'
 fi
 
 jobs="$(awk '/^jobs:/{inside=1; next} inside && /^  [a-z0-9-]+:/{print $1}' "$WORKFLOW")"
-expected_jobs=$'k9-validate:\nempty-lint:\ngroove-check:\neclexiaiser-validate:\ndogfood-summary:'
+expected_jobs=$'deed-validate:\nk9-validate:\nk9-verdict:\nk9-coordination-validate:\nbadges:\nempty-lint:\ngroove-check:\neclexiaiser-validate:\ncanon-lockstep:\ndogfood-summary:'
 if [ "$jobs" != "$expected_jobs" ]; then
   echo "FAIL: unexpected dogfood jobs: $jobs" >&2
   exit 1

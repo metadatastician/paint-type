@@ -1,0 +1,198 @@
+K9!
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# coordination.k9 - AI Coordination Nerve Receptor for paint-type
+# Conforms strictly to hyperpolymath/standards
+# 2-protocols/k9-coordination/spec/abnf/coordination-k9-grammar_v1.2.abnf.
+
+metadata:
+  schema: k9-coordination
+  schema_version: 1.2.0
+  generated_by: manual
+  last_updated: 2026-10-21
+
+project:
+  name: "paint-type"
+  description: "Open, cross-platform raster image editor with formally verified Idris2 ABI tile invariants, zero-copy Zig C-ABI seam, linear-resource Rust paint core, and Gossamer desktop shell."
+  license: AGPL-3.0-or-later
+  repo: metadatastician/paint-type
+  deed_ref: paint-type_chora.deed
+  languages:
+    - Rust
+    - Zig
+    - Idris2
+    - JavaScript
+    - Nickel
+    - Shell
+  build_system: just
+  runtime: bun
+
+build_commands:
+  - command: "just test"
+    purpose: "Run Rust paint_core, Zig FFI, Idris2 ABI, and shell verification suites"
+  - command: "bash tests/aspect_tests.sh"
+    purpose: "Verify SPDX headers, Idris2 soundness, ABI/FFI parity, and 64x64 RGBA16F tile invariants"
+  - command: "bash tests/workflows/dogfood_gate_test.sh"
+    purpose: "Verify Dogfood Gate job topology, actions.lock sync, and 6/6 dogfood scorecard"
+  - command: "bash tests/workflows/verdict_grids_conformance_test.sh"
+    purpose: "Verify DEED, K9 v1.0.0 grid, coordination.k9 ABNF, and Hypatia verdict grid locally"
+  - command: "bash scripts/deed-field.sh paint-type_chora.deed canon version"
+    purpose: "Read canon lockstep pin from paint-type_chora.deed"
+
+invariants:
+  - id: verified-abi-ffi-seam
+    rule: "All cross-language canvas and layer calls MUST flow Idris2 ABI -> Zig FFI -> C ABI -> Rust paint_core with zero believe_me or assert_total"
+    reason: "Guarantees memory layout and alignment safety across every platform shell without soundness escapes"
+    severity: critical
+  - id: no-unwrap-in-paint-core
+    rule: "Production Rust code in src/paint_core/ MUST return typed Result errors and NEVER call .unwrap()"
+    reason: "Prevents unrecoverable panics while editing live user documents"
+    severity: critical
+  - id: bun-over-deno
+    rule: "Bun is the tier-1 JavaScript runtime and package manager across all scripts, harnesses, and workflows (bun > deno)"
+    reason: "Aligns paint-type with hyperpolymath/standards 3-practice/LANGUAGE-POLICY.adoc section 1"
+    severity: critical
+  - id: canonical-deed-and-k9-conformance
+    rule: "paint-type_chora.deed MUST match canon.lock and every *.k9.ncl file MUST pass k9_contract.ncl v1.0.0 at layers L0-L2"
+    reason: "Enforced on every PR via deed-conformance.yml, k9-conformance.yml, canon-lockstep, and sticky verdict grids"
+    severity: critical
+  - id: actions-lock-closed
+    rule: "Every external GitHub Actions reference in .github/workflows/*.yml MUST be synchronized and transitively closed in .github/workflows/actions.lock"
+    reason: "Prevents unpinned supply-chain drift and startup failures across required CI gates"
+    severity: high
+
+protected:
+  - path: paint-type_chora.deed
+    reason: "Canonical repository descriptile and canon 2.1.2 lockstep pin"
+  - path: coordination.k9
+    reason: "Repository coordination nerve receptor governed by coordination-k9-grammar_v1.2.abnf"
+  - path: coordination.k9.ncl
+    reason: "K9 v1.0.0 session-management command and signal contract"
+  - path: .machine_readable/contractiles/
+    reason: "Six canonical K9 v1.0.0 verb tridents (intend, must, trust, adjust, dust, bust)"
+  - path: .gitbot-fleet/
+    reason: "Fleet reporter enrolment manifest and report-back envelope directory"
+  - path: src/interface/Abi/
+    reason: "Formally verified Idris2 ABI specifications for 64x64 RGBA16F tiles and layers"
+  - path: src/interface/ffi/
+    reason: "Zig C-ABI bridge linking Idris2 proofs to Rust paint_core and Gossamer shell"
+
+architecture:
+  - id: three-layer-verified-canvas
+    decision: "Represent raster documents as immutable 64x64 RGBA16F tiles backed by a persistent UndoGraph in Rust, bridged through Zig C-ABI exports proven in Idris2"
+    reason: "Delivers bounded-memory unlimited undo, SIMD-friendly compositing, and formally verified ABI layout"
+    alternatives_rejected:
+      - "Mutable full-canvas RGBA8 bitmap (unbounded undo memory and banding in blends)"
+      - "Direct unverified FFI without Idris2 layout proofs"
+  - id: dual-verdict-grids
+    decision: "Separate CI reporting into two sticky PR verdict grids: conformance family (DEED + K9 L0-L2) in dogfood-gate.yml and findings family (Hypatia + panic-attack + pons-asinorum + gitbot-fleet) in hypatia-scan.yml"
+    reason: "Preserves worst-of grading clarity without conflating grammar conformance failures with static-analysis findings"
+  - id: host-only-optional-llm
+    decision: "Zero LLMs execute inside CI scanners or contract validators; optional human consultation routes exclusively through boj-server cartridges"
+    reason: "Guarantees deterministic, reproducible, zero-hallucination CI gates across the estate"
+
+# Innervation wiring across standards, hypatia, panic-attack, pons-asinorum, and gitbot-fleet
+
+innervation:
+  afferent:
+    - signal: "abi.seam.changed"
+      description: "Idris2 ABI definitions or Zig C-ABI exports were modified"
+      triggers_on: "push or pull_request touching src/interface/"
+      consumers:
+        - echidna
+        - hypatia
+        - verisimdb
+    - signal: "findings.unified.deposited"
+      description: "Combined panic-attack, hypatia, pons-asinorum, and cargo-audit findings artifact published"
+      triggers_on: "Static Analysis Gate completion"
+      consumers:
+        - gitbot-fleet
+        - hypatia
+        - verisimdb
+    - signal: "verdict.grid.rendered"
+      description: "K9 L0-L2 conformance grid and Hypatia findings grid posted to PR"
+      triggers_on: "Dogfood Gate and Hypatia Security Scan completion"
+      consumers:
+        - panll
+        - verisimdb
+  efferent:
+    - signal: "standards.canon.released"
+      action: "Update canon version and sha256 pins in paint-type_chora.deed and re-verify canon-lockstep"
+      auto_fix: false
+    - signal: "gitbot.report_back.deposited"
+      action: "Ingest .gitbot-fleet/report-backs/*.json into the next Hypatia verdict grid revision"
+      auto_fix: true
+    - signal: "squabbler.triage.verdict"
+      action: "Route cross-repo CI contention through cicd-squabbler formal dialogue before escalating to boj-server"
+      auto_fix: false
+  reflex:
+    - trigger: "pre-commit"
+      guard: "tests/aspect_tests.sh and scripts/check-lock-sync.sh"
+      action: "Block commit on missing SPDX headers, believe_me/unwrap regressions, or unlocked workflow refs"
+    - trigger: "pull-request"
+      guard: "deed-conformance.yml, k9-conformance.yml, and canon-lockstep"
+      action: "Block merge if paint-type_chora.deed or any *.k9.ncl violates canonical grammar or contract v1.0.0"
+    - trigger: "file-create"
+      guard: "No banned languages (*.ts, *.py, *.go, *.kt) or unpinned GitHub Actions"
+      action: "Reject in governance.yml language-policy and actions-lock-verify"
+
+do_not_create:
+  - pattern: **/*.py
+    reason: "Python is banned estate-wide per hyperpolymath/standards LANGUAGE-POLICY.adoc"
+  - pattern: **/*.ts
+    reason: "TypeScript is banned in source trees; use JavaScript under Bun or AffineScript"
+  - pattern: Dockerfile
+    reason: "Use Containerfile with Podman"
+  - pattern: package-lock.json
+    reason: "Use bun.lock under Bun (tier-1 runtime)"
+
+terminology:
+  - correct: paint.type
+    incorrect:
+      - PaintType
+      - Paint.Type
+    context: "User-facing product name is paint.type; repository slug and crate prefix is paint-type."
+  - correct: coordination.k9
+    incorrect:
+      - coordination.yaml
+      - agent-config.json
+    context: "Repository nerve receptor governed by coordination-k9-grammar_v1.2.abnf."
+  - correct: verdict-grid
+    incorrect:
+      - composite-score
+    context: "Each lane renders its own worst-of verdict grid per VERDICT-GRID-SPEC.adoc."
+
+ecosystem:
+  depends_on:
+    - name: standards
+      role: "Canonical ABNF grammars, K9 contract v1.0.0, canon.lock, and reusable conformance/security workflows"
+    - name: hypatia
+      role: "Deterministic Elixir + 8-model classical neurosymbolic scanner"
+    - name: panic-attack
+      role: "Rust/Zig/miniKanren static weak-point analyzer (assail)"
+    - name: pons-asinorum
+      role: "Rust CFG and linear-typestate analyzer emitting tiered evidence classes"
+  consumed_by:
+    - name: gitbot-fleet
+      role: "Ingests unified-findings artifacts and writes per-bot report-backs under .gitbot-fleet/report-backs/"
+    - name: verisimdb
+      role: "Stores CRG readiness, scan telemetry, and conformance baselines"
+  related:
+    - name: cicd-squabbler
+      role: "Formal multi-agent argumentation CLI with optional host-side boj-server consultation"
+    - name: boj-server
+      role: "Host-side MCP gateway housing echidna-llm-mcp, model-router-mcp, and claude-ai-mcp"
+    - name: burble
+      role: "Peer-to-peer real-time collaboration peer discovered over Groove"
+
+coordination:
+  completed:
+    - agent: claude
+      area: "Merged PR #131 maintenance, PR #133 Bun > Deno runtime alignment, and PR #134 30-file function documentation port"
+      completed: 2026-10-21
+    - agent: claude
+      area: "Installed canon 2.1.2 DEED, K9 v1.0.0 6-verb contractiles, coordination.k9 v1.2.0, and K9 + Hypatia verdict grids"
+      completed: 2026-10-21
+  available:
+    - "Implement v0.3.0 interactive tool palette wiring in Gossamer desktop shell"
+    - "Populate live gitbot-fleet report-backs under .gitbot-fleet/report-backs/ on scheduled fleet sweep"

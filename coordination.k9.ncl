@@ -2,35 +2,28 @@ K9!
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Thin coordination bindings for central session-management standards
 #
-# ADDED 2026-09-23. rsr-template-repo/.machine_readable/root-allow.txt requires
-# `coordination.k9.ncl` at the repo root ("repo-local session binding
-# (template-mandated)"). paint-type had `coordination.self-validating` instead —
-# the same bindings, but YAML rather than Nickel and under a name the allowlist
-# does not list.
+# Upgraded to K9 Contract Specification v1.0.0 (standards#1058, ruling D173)
+# while preserving all 12 canonical session commands and 12 signal bindings.
 #
-# This is a faithful conversion of that YAML: the same 12 canonical commands and
-# the same 12 signals, verified programmatically to be identical. One value was
-# corrected in the process:
-#
-#   source_of_truth was "standards/session-management-standards"
-#   now             "standards/3-practice/session-management-standards"
-#
-# The path in hyperpolymath/standards is under 3-practice/, so the old value
-# pointed at a directory that does not exist.
-#
-# The old `coordination.self-validating` is deliberately LEFT IN PLACE:
-# `session/dispatch.sh` may read it, and removing a file something reads is not
-# a rename. Retiring it is a separate change with its own check.
+# Companion files:
+#   - `coordination.k9` (repo-root K9 coordination nerve receptor, v1.2.0 ABNF)
+#   - `coordination.self-validating` (legacy YAML binding retained for session/dispatch.sh)
 
 {
   pedigree = {
     schema_version = "1.0.0",
+    component_type = "coordination:session",
+    semantics = "repo-local session-management command and signal bindings",
     metadata = {
-      name = "session-coordination",
-      version = "0.1.0",
+      name = "paint-type-session-coordination",
+      version = "1.0.0",
+      description = "Thin session-management bindings mapping the 12 canonical session lifecycle commands onto paint-type signals",
+      author = "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
     },
     security = {
       leash = 'Kennel,
+      capabilities = [],
+      side_effects = [],
     },
   },
 
