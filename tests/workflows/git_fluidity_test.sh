@@ -59,9 +59,10 @@ for req in .githooks/install.sh .githooks/pre-commit .githooks/commit-msg .githo
 done
 
 # Verify `.githooks/install.sh` applies +x inside an isolated temporary git repository
-mkdir -p "$TMP_DIR/hookrepo/.githooks"
+mkdir -p "$TMP_DIR/hookrepo/.githooks" "$TMP_DIR/hookrepo/scripts"
 cp .githooks/install.sh .githooks/pre-commit .githooks/commit-msg .githooks/pre-push "$TMP_DIR/hookrepo/.githooks/"
-chmod 0644 "$TMP_DIR/hookrepo/.githooks/"*
+cp scripts/preflight.sh scripts/git-push-signed.sh scripts/sync-actions-lock.js "$TMP_DIR/hookrepo/scripts/"
+chmod 0644 "$TMP_DIR/hookrepo/.githooks/"* "$TMP_DIR/hookrepo/scripts/"*
 git -C "$TMP_DIR/hookrepo" init -q
 if (cd "$TMP_DIR/hookrepo" && bash ./.githooks/install.sh >/dev/null) \
   && [ -x "$TMP_DIR/hookrepo/.githooks/pre-commit" ] \
