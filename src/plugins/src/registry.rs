@@ -298,11 +298,13 @@ impl PluginRegistry {
     }
 }
 
-fn load_manifest_file(path: &Path) -> PluginResult<PluginManifest> {
-    if path.extension().and_then(|s| s.to_str()) == Some("toml") {
-        PluginManifest::from_toml_file(path)
-    } else {
-        PluginManifest::from_json_file(path)
+pub fn load_manifest_file(path: &Path) -> PluginResult<PluginManifest> {
+    match path.extension().and_then(|s| s.to_str()) {
+        Some("toml") => PluginManifest::from_toml_file(path),
+        Some("json") => PluginManifest::from_json_file(path),
+        _ => Err(PluginError::manifest_validation(
+            "manifest path must end in .json or .toml".to_string(),
+        )),
     }
 }
 
