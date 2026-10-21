@@ -166,6 +166,10 @@ jobs:
             gh api "repos/$REPO/git/refs" -f "ref=refs/heads/$BRANCH" -f "sha=$COMMIT" >/dev/null
           fi
 
+          # Write badge content ($2) to repository-relative path ($1) in $REPO on $BRANCH.
+          # Return success without writing if the stored content, with trailing newlines
+          # removed, matches $2. Read/decode failures are tolerated; metadata parsing
+          # or write pipeline failures abort this strict-mode step.
           put() {
             local path="$1" body="$2" cur="" existing="" sha=""
             if cur="$(gh api "repos/$REPO/contents/$path?ref=$BRANCH" 2>/dev/null)"; then

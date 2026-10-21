@@ -20,6 +20,9 @@ const std = @import("std");
 
 /// Configure shared/static libpt libraries, unit and integration tests,
 /// Hexadeca connector tests, and the optional benchmark step.
+///
+/// The default install and `lib` steps install the static archive last, leaving
+/// Windows MSVC `pt.lib` as the static archive for Rust callers.
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
