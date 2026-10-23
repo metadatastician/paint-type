@@ -35,7 +35,7 @@ jobs:
           fetch-depth: 0
 
       - name: Cache panic-attack binary
-        uses: actions/cache@2f8e54208210a422b2efd51efaa6bd6d7ca8920f # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5.0.5
         with:
           path: ~/.panic-attack
           key: panic-attack-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.PA_SHA }}
@@ -180,7 +180,7 @@ jobs:
           otp-version: '28.3'
 
       - name: Cache built Hypatia scanner
-        uses: actions/cache@2f8e54208210a422b2efd51efaa6bd6d7ca8920f # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5.0.5
         with:
           path: ~/hypatia
           key: hypatia-scanner-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.HYPATIA_SHA }}
@@ -298,7 +298,7 @@ jobs:
           toolchain: stable
 
       - name: Cache built pons-asinorum binary
-        uses: actions/cache@2f8e54208210a422b2efd51efaa6bd6d7ca8920f # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5.0.5
         with:
           path: ~/.pons
           key: pons-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.PONS_SHA }}
@@ -393,7 +393,7 @@ jobs:
           toolchain: stable
 
       - name: Install cargo-audit
-        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
+        uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
         with:
           tool: cargo-audit
 
@@ -491,28 +491,28 @@ jobs:
     steps:
       - name: Download panic-attack findings
         continue-on-error: true
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.2
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: panic-attack-findings
           path: findings/
 
       - name: Download hypatia findings
         continue-on-error: true
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.2
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: hypatia-findings
           path: findings/
 
       - name: Download pons-asinorum findings
         continue-on-error: true
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.2
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: pons-findings
           path: findings/
 
       - name: Download bridge report
         continue-on-error: true
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.2
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: bridge-report
           path: findings/

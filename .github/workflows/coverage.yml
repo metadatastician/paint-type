@@ -44,7 +44,7 @@ jobs:
           toolchain: stable
           components: llvm-tools-preview
       - name: Cache cargo registry and build
-        uses: Swatinem/rust-cache@v2.9.2
+        uses: Swatinem/rust-cache@v2.9.3
         with:
           workspaces: src/paint_core
       - name: Install Zig 0.15
@@ -52,7 +52,7 @@ jobs:
         with:
           version: 0.15.1
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@v2.87.28
+        uses: taiki-e/install-action@v2.87.29
         with:
           tool: cargo-llvm-cov
       - name: Install kcov (best-effort, Zig coverage)

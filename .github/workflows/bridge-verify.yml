@@ -43,7 +43,7 @@ jobs:
         with:
           toolchain: stable
       - name: Cache cargo
-        uses: Swatinem/rust-cache@v2.9.2
+        uses: Swatinem/rust-cache@v2.9.3
       - name: Install tw + tw-verify (pinned to PR #165)
         run: |
           cargo install --locked --bin tw \
