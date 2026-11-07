@@ -197,18 +197,15 @@ impl EffectPlugin for BrightnessContrastEffect {
         let mut output = Vec::with_capacity(input.len());
 
         for pixel in input.chunks_exact(4) {
-            let r = ((pixel[0] as f32 / 255.0 - 0.5) * self.contrast
-                + 0.5
-                + self.brightness / 255.0)
-                .clamp(0.0, 1.0);
-            let g = ((pixel[1] as f32 / 255.0 - 0.5) * self.contrast
-                + 0.5
-                + self.brightness / 255.0)
-                .clamp(0.0, 1.0);
-            let b = ((pixel[2] as f32 / 255.0 - 0.5) * self.contrast
-                + 0.5
-                + self.brightness / 255.0)
-                .clamp(0.0, 1.0);
+            let r =
+                ((pixel[0] as f32 / 255.0 - 0.5) * self.contrast + 0.5 + self.brightness / 255.0)
+                    .clamp(0.0, 1.0);
+            let g =
+                ((pixel[1] as f32 / 255.0 - 0.5) * self.contrast + 0.5 + self.brightness / 255.0)
+                    .clamp(0.0, 1.0);
+            let b =
+                ((pixel[2] as f32 / 255.0 - 0.5) * self.contrast + 0.5 + self.brightness / 255.0)
+                    .clamp(0.0, 1.0);
 
             output.extend_from_slice(&[
                 (r * 255.0).round() as u8,
@@ -365,7 +362,10 @@ mod tests {
     #[test]
     fn test_invert_and_grayscale_effects() {
         let inv = InvertColourEffect::new();
-        assert_eq!(inv.apply(&[10, 20, 30, 255], 1, 1).unwrap(), vec![245, 235, 225, 255]);
+        assert_eq!(
+            inv.apply(&[10, 20, 30, 255], 1, 1).unwrap(),
+            vec![245, 235, 225, 255]
+        );
 
         let gray = GrayscaleEffect::new();
         let out = gray.apply(&[255, 0, 0, 200], 1, 1).unwrap();

@@ -18,8 +18,22 @@ fn headless_new_doc_stroke_save() {
         dispatch(&mut doc, Command::NewDoc { w: 128, h: 128 }),
         Response::Ack
     );
-    dispatch(&mut doc, Command::SetColour { r: 0.0, g: 0.4, b: 1.0, a: 1.0 });
-    dispatch(&mut doc, Command::SetBrush { diameter: 24, hardness: 0.0 });
+    dispatch(
+        &mut doc,
+        Command::SetColour {
+            r: 0.0,
+            g: 0.4,
+            b: 1.0,
+            a: 1.0,
+        },
+    );
+    dispatch(
+        &mut doc,
+        Command::SetBrush {
+            diameter: 24,
+            hardness: 0.0,
+        },
+    );
     dispatch(&mut doc, Command::PointerDown { x: 30.0, y: 30.0 });
     dispatch(&mut doc, Command::PointerMove { x: 90.0, y: 90.0 });
     dispatch(&mut doc, Command::PointerUp);

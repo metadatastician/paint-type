@@ -307,7 +307,9 @@ pub fn dispatch(doc: &mut Option<Document>, cmd: Command) -> Response {
         Command::InvokePlugin { invocation } => {
             let custom_entry = document
                 .plugins()
-                .get(&paint_type_plugins::PluginId::new(invocation.plugin_id.clone()))
+                .get(&paint_type_plugins::PluginId::new(
+                    invocation.plugin_id.clone(),
+                ))
                 .cloned();
             if let Some(paint_type_plugins::registry::PluginEntry::Effect(effect)) = custom_entry {
                 return match document.apply_effect(effect.as_ref()) {
@@ -413,9 +415,7 @@ mod tests {
         };
         let bytes = decode(&dirty.rgba_base64);
         assert_eq!(bytes.len() as u32, dirty.w * dirty.h * 4);
-        let has_opaque = bytes
-            .chunks_exact(4)
-            .any(|p| p[3] > 240 && p[0] > 200);
+        let has_opaque = bytes.chunks_exact(4).any(|p| p[3] > 240 && p[0] > 200);
         assert!(has_opaque, "expected a near-opaque red pixel in the dab");
 
         assert_eq!(dispatch(&mut doc, Command::PointerUp), Response::Ack);
@@ -449,10 +449,16 @@ mod tests {
         let painted = doc.as_ref().unwrap().render_all();
         assert_ne!(blank, painted);
 
-        assert!(matches!(dispatch(&mut doc, Command::Undo), Response::Loaded { .. }));
+        assert!(matches!(
+            dispatch(&mut doc, Command::Undo),
+            Response::Loaded { .. }
+        ));
         assert_eq!(doc.as_ref().unwrap().render_all(), blank);
 
-        assert!(matches!(dispatch(&mut doc, Command::Redo), Response::Loaded { .. }));
+        assert!(matches!(
+            dispatch(&mut doc, Command::Redo),
+            Response::Loaded { .. }
+        ));
         assert_eq!(doc.as_ref().unwrap().render_all(), painted);
     }
 
@@ -478,8 +484,20 @@ mod tests {
                 name: Some("Overlay".to_string()),
             },
         );
-        assert!(matches!(added, Response::LayerList { active_index: 1, .. }));
-        dispatch(&mut doc, Command::SetLayerOpacity { index: 1, opacity: 0.5 });
+        assert!(matches!(
+            added,
+            Response::LayerList {
+                active_index: 1,
+                ..
+            }
+        ));
+        dispatch(
+            &mut doc,
+            Command::SetLayerOpacity {
+                index: 1,
+                opacity: 0.5,
+            },
+        );
         dispatch(
             &mut doc,
             Command::SetColour {
@@ -583,9 +601,7 @@ mod tests {
             panic!("expected Painted, got {response:?}");
         };
         let bytes = decode(&dirty.rgba_base64);
-        let has_red = bytes
-            .chunks_exact(4)
-            .any(|p| p[0] > 200 && p[3] > 200);
+        let has_red = bytes.chunks_exact(4).any(|p| p[0] > 200 && p[3] > 200);
         assert!(has_red, "expected red pixels after fill");
     }
 

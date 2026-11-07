@@ -16,17 +16,17 @@
 
 #![forbid(unsafe_code)]
 
+pub mod effect;
 pub mod error;
 pub mod manifest;
-pub mod sandbox;
-pub mod effect;
-pub mod tool;
 pub mod registry;
+pub mod sandbox;
+pub mod tool;
 
 // Re-export main types
-pub use error::PluginError;
-pub use manifest::{PluginManifest, PluginId, PluginVersion, PluginType};
-pub use sandbox::WasmSandbox;
 pub use effect::EffectPlugin;
-pub use tool::ToolPlugin;
+pub use error::PluginError;
+pub use manifest::{PluginId, PluginManifest, PluginType, PluginVersion};
 pub use registry::PluginRegistry;
+pub use sandbox::WasmSandbox;
+pub use tool::ToolPlugin;

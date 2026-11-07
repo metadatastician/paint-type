@@ -157,7 +157,11 @@ pub trait ToolPlugin: std::fmt::Debug + Send + Sync {
     fn id(&self) -> &PluginId;
 
     /// Handle a tool event
-    fn handle_event(&mut self, event: ToolEvent, state: &mut ToolState) -> PluginResult<ToolResponse>;
+    fn handle_event(
+        &mut self,
+        event: ToolEvent,
+        state: &mut ToolState,
+    ) -> PluginResult<ToolResponse>;
 
     /// Get the tool name
     fn name(&self) -> &str;
@@ -274,7 +278,11 @@ impl ToolPlugin for WasmToolPlugin {
         self.sandbox.id()
     }
 
-    fn handle_event(&mut self, event: ToolEvent, state: &mut ToolState) -> PluginResult<ToolResponse> {
+    fn handle_event(
+        &mut self,
+        event: ToolEvent,
+        state: &mut ToolState,
+    ) -> PluginResult<ToolResponse> {
         if !self.sandbox.is_loaded() {
             return Err(PluginError::PluginError("Plugin not loaded".to_string()));
         }
@@ -294,12 +302,11 @@ impl ToolPlugin for WasmToolPlugin {
                 state.y = y;
                 state.pressure = pressure;
                 // Simulate painting a line from previous to current position
-                Ok(ToolResponse::new().with_modified(Some((
-                    state.x as u32,
-                    state.y as u32,
-                    1,
-                    1,
-                ))))
+                if state.is_active {
+                    Ok(ToolResponse::new().with_modified(Some((state.x as u32, state.y as u32, 1, 1))))
+                } else {
+                    Ok(ToolResponse::new())
+                }
             }
             ToolEvent::PointerUp { x, y } => {
                 state.x = x;
@@ -312,9 +319,7 @@ impl ToolPlugin for WasmToolPlugin {
                 state.reset();
                 Ok(ToolResponse::new())
             }
-            ToolEvent::ConfigChanged => {
-                Ok(ToolResponse::new())
-            }
+            ToolEvent::ConfigChanged => Ok(ToolResponse::new()),
         }
     }
 
@@ -378,7 +383,11 @@ impl BrushTool {
 }
 
 impl ToolPlugin for BrushTool {
-    fn handle_event(&mut self, event: ToolEvent, state: &mut ToolState) -> PluginResult<ToolResponse> {
+    fn handle_event(
+        &mut self,
+        event: ToolEvent,
+        state: &mut ToolState,
+    ) -> PluginResult<ToolResponse> {
         match event {
             ToolEvent::PointerDown { x, y } => {
                 state.x = x;
@@ -398,12 +407,7 @@ impl ToolPlugin for BrushTool {
 
                 // Simulate painting with the brush
                 // In real implementation, this would use the brush engine
-                Ok(ToolResponse::new().with_modified(Some((
-                    x as u32,
-                    y as u32,
-                    1,
-                    1,
-                ))))
+                Ok(ToolResponse::new().with_modified(Some((x as u32, y as u32, 1, 1))))
             }
             ToolEvent::PointerUp { x, y } => {
                 state.x = x;
@@ -416,9 +420,7 @@ impl ToolPlugin for BrushTool {
                 state.reset();
                 Ok(ToolResponse::new())
             }
-            ToolEvent::ConfigChanged => {
-                Ok(ToolResponse::new())
-            }
+            ToolEvent::ConfigChanged => Ok(ToolResponse::new()),
         }
     }
 

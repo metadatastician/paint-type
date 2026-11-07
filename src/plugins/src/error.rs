@@ -37,7 +37,9 @@ pub enum PluginError {
 impl fmt::Display for PluginError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            PluginError::ManifestValidation(msg) => write!(f, "Manifest validation failed: {}", msg),
+            PluginError::ManifestValidation(msg) => {
+                write!(f, "Manifest validation failed: {}", msg)
+            }
             PluginError::SignatureVerificationFailed => write!(f, "Signature verification failed"),
             PluginError::PluginNotFound(id) => write!(f, "Plugin not found: {}", id),
             PluginError::PluginAlreadyLoaded(id) => write!(f, "Plugin already loaded: {}", id),
@@ -48,13 +50,18 @@ impl fmt::Display for PluginError {
             PluginError::TypeMismatch(expected) => {
                 write!(f, "Type mismatch: expected {}", expected)
             }
-            PluginError::IoError(path, msg) => write!(f, "IO error for {}: {}", path.display(), msg),
+            PluginError::IoError(path, msg) => {
+                write!(f, "IO error for {}: {}", path.display(), msg)
+            }
             PluginError::PluginError(msg) => write!(f, "Plugin error: {}", msg),
             PluginError::UnsupportedVersion(v) => {
                 write!(f, "Unsupported plugin version: {}", v)
             }
             PluginError::MlDsaNotAvailable => {
-                write!(f, "ML-DSA signing not available (compile with --features ml-dsa)")
+                write!(
+                    f,
+                    "ML-DSA signing not available (compile with --features ml-dsa)"
+                )
             }
         }
     }

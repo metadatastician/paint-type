@@ -13,7 +13,7 @@ workflows:
         - 'actions/checkout@v7.0.1'
         - 'github/codeql-action@1fc58d04a4d4374f921bdac573c3811c240f9c26'
     '.github/workflows/collab-ci.yml':
-        - 'actions/checkout@v7.0.1'
+        - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
     '.github/workflows/coverage.yml':
         - 'actions/checkout@v7.0.1'
         - 'actions/upload-artifact@v7.0.2'
