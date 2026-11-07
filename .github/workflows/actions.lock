@@ -29,6 +29,7 @@ workflows:
     '.github/workflows/dogfood-gate.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
         - 'actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333'
+        - 'hyperpolymath/standards@01c9b0c9f2646ebea0b30a9588462642ac94aee9'
         - 'oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6'
     '.github/workflows/e2e.yml':
         - 'actions/checkout@v7.0.1'
@@ -51,6 +52,7 @@ workflows:
         - 'goto-bus-stop/setup-zig@v2.2.1'
     '.github/workflows/hypatia-scan.yml':
         - 'actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333'
+        - 'hyperpolymath/standards@01c9b0c9f2646ebea0b30a9588462642ac94aee9'
     '.github/workflows/idris-ci.yml':
         - 'actions/cache@v6.1.0'
         - 'actions/checkout@v7.0.1'
@@ -95,7 +97,7 @@ workflows:
     '.github/workflows/scorecard.yml':
         - 'hyperpolymath/standards@01c9b0c9f2646ebea0b30a9588462642ac94aee9'
     '.github/workflows/secret-scanner.yml':
-        - 'hyperpolymath/standards@01c9b0c9f2646ebea0b30a9588462642ac94aee9'
+        - 'metadatastician/standards@b8f60511e76c9015d86990317162dce653c92fe1'
     '.github/workflows/security-policy.yml':
         - 'actions/checkout@v7.0.1'
     '.github/workflows/shell-e2e.yml':
@@ -224,6 +226,11 @@ dependencies:
             - 'github/codeql-action@b96794f015dfd88f77b49b1c93e0fa7110f94c63'
             - 'ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e'
             - 'oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6'
+    'metadatastician/standards@b8f60511e76c9015d86990317162dce653c92fe1':
+        ref: 'main'
+        commit: 'sha1-b8f60511e76c9015d86990317162dce653c92fe1'
+        owner_id: 297579217
+        repo_id: 1116521501
     'mlugg/setup-zig@v2.2.1':
         ref: 'v2.2.1'
         commit: 'sha1-d1434d08867e3ee9daa34448df10607b98908d29'

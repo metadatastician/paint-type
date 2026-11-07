@@ -701,6 +701,12 @@ clean-all: clean
 # ═══════════════════════════════════════════════════════════════════════════════
 # TEST & QUALITY
 # ═══════════════════════════════════════════════════════════════════════════════
+# Match the required pre-commit commands in AGENTS.md.
+typecheck: proof-check-idris
+
+verify-ffi:
+    cd src/interface/ffi && zig build test
+
 
 # Run all tests (Zig unit + integration tests, then all standalone Rust crates)
 test *args:
