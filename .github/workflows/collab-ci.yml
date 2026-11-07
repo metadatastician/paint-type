@@ -118,7 +118,7 @@ jobs:
       # failing the verify step). SHA below was verified locally against the jar
       # that successfully model-checks BurbleSession (TLC2 2026.07.18).
       TLA_URL: 'https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar'
-  TLA_SHA256: 'e1f11b75c4b5bc4478ba0ac5cb6ae28e40a01b0016bc33e0aa97da22dfdbcd7f'
+      TLA_SHA256: 'e1f11b75c4b5bc4478ba0ac5cb6ae28e40a01b0016bc33e0aa97da22dfdbcd7f'
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
