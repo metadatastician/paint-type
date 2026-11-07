@@ -156,22 +156,38 @@ pub enum Response {
     /// Acknowledged, no pixels changed.
     Ack,
     /// One dirty rectangle to blit.
-    Painted { dirty: DirtyRect },
+    Painted {
+        dirty: DirtyRect,
+    },
     /// A file was written.
-    Saved { path: String },
+    Saved {
+        path: String,
+    },
     /// A PNG or `.ptype` document (or history revision) was loaded; the dirty
     /// rect covers the full canvas at its current `(w, h)` dimensions.
-    Loaded { dirty: DirtyRect },
+    Loaded {
+        dirty: DirtyRect,
+    },
     /// Layer stack metadata query result.
     LayerList {
         layers: Vec<LayerInfo>,
         active_index: usize,
     },
     /// Something failed; `message` is human-readable.
-    Error { message: String },
+    Error {
+        message: String,
+    },
     /// Plugin responses.
-    PluginLoaded { plugin_id: String },
-    PluginUnloaded { plugin_id: String },
-    PluginList { plugins: Vec<PluginInfo> },
-    PluginResult { result: String },
+    PluginLoaded {
+        plugin_id: String,
+    },
+    PluginUnloaded {
+        plugin_id: String,
+    },
+    PluginList {
+        plugins: Vec<PluginInfo>,
+    },
+    PluginResult {
+        result: String,
+    },
 }

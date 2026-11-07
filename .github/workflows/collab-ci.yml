@@ -52,7 +52,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Show Rust version
         run: cargo --version
       - name: Test (lib + convergence proptest + two-peer e2e)
@@ -77,7 +77,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install Agda (apt — prebuilt, GHC-compatible)
         # DO NOT revert to `cabal install Agda-2.8.0`: Agda 2.8.0 requires
         # base<4.22, but ubuntu-latest's pre-installed GHC now ships
@@ -118,10 +118,10 @@ jobs:
       # failing the verify step). SHA below was verified locally against the jar
       # that successfully model-checks BurbleSession (TLC2 2026.07.18).
       TLA_URL: 'https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar'
-      TLA_SHA256: '5bd7b64db99ae4c6c35f290de5e809c0ee41af43f8699cf696099ffb6452b1e2'
+  TLA_SHA256: 'e1f11b75c4b5bc4478ba0ac5cb6ae28e40a01b0016bc33e0aa97da22dfdbcd7f'
     steps:
       - name: Checkout
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Show Java version
         run: java -version
       - name: Fetch + verify tla2tools.jar
