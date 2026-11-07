@@ -302,7 +302,11 @@ impl ToolPlugin for WasmToolPlugin {
                 state.y = y;
                 state.pressure = pressure;
                 // Simulate painting a line from previous to current position
-                Ok(ToolResponse::new().with_modified(Some((state.x as u32, state.y as u32, 1, 1))))
+                if state.is_active {
+                    Ok(ToolResponse::new().with_modified(Some((state.x as u32, state.y as u32, 1, 1))))
+                } else {
+                    Ok(ToolResponse::new())
+                }
             }
             ToolEvent::PointerUp { x, y } => {
                 state.x = x;
