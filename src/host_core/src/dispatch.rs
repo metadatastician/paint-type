@@ -414,9 +414,7 @@ mod tests {
         let bytes = decode(&dirty.rgba_base64);
         assert_eq!(bytes.len() as u32, dirty.w * dirty.h * 4);
         let has_opaque = bytes
-            .as_chunks::<4>()
-            .0
-            .iter()
+            .chunks_exact(4)
             .any(|p| p[3] > 240 && p[0] > 200);
         assert!(has_opaque, "expected a near-opaque red pixel in the dab");
 
@@ -586,9 +584,7 @@ mod tests {
         };
         let bytes = decode(&dirty.rgba_base64);
         let has_red = bytes
-            .as_chunks::<4>()
-            .0
-            .iter()
+            .chunks_exact(4)
             .any(|p| p[0] > 200 && p[3] > 200);
         assert!(has_red, "expected red pixels after fill");
     }
