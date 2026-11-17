@@ -35,7 +35,7 @@ rather than the §2.1 profile.
 |----------|---------------|-------------------|
 | `idris-ci.yml` (Idris2 0.8.0) | ABI-1..5, TP-1, TP-3, INV-1 | 35948695247 (2026-09-24) |
 | `proofs.yml` (Lean 4.13.0, apt Agda) | TP-2, INV-2, INV-3; CONC-1/2 from 2026-11-17 | 36696604854 (2026-09-30) |
-| `collab-ci.yml` (apt Agda, TLC v1.8.0) | CONC-1, CONC-2, CONC-3 | 42400278173 (2026-11-07) |
+| `collab-ci.yml` (apt Agda, TLC v1.7.4 from 2026-11-17; v1.8.0 before) | CONC-1, CONC-2, CONC-3 | 42400278173 (2026-11-07) |
 
 **Agda strict profile (PROOF-POLICY §2.1).** `Compositing.agda` and `TileCRDT.agda` now
 carry `{-# OPTIONS --safe --without-K --cubical-compatible #-}`, and CI and

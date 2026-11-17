@@ -109,12 +109,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      # Pinned tla2tools + checksum. Re-pinned 2026-07-20 to the current official
-      # v1.8.0 release asset (the prior pin no longer matched the published jar,
-      # failing the verify step). SHA below was verified locally against the jar
-      # that successfully model-checks BurbleSession (TLC2 2026.07.18).
-      TLA_URL: 'https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar'
-      TLA_SHA256: 'e1f11b75c4b5bc4478ba0ac5cb6ae28e40a01b0016bc33e0aa97da22dfdbcd7f'
+      # Pinned tla2tools + checksum. v1.8.0 is tlaplus's rolling pre-release: its
+      # tla2tools.jar asset is rebuilt in place, so its checksum drifts (it broke
+      # this step on 2026-07-20 and again by 2026-11-17). v1.7.4 is an immutable
+      # stable release. Checked 2026-11-17: TLC2 2.19 (v1.7.4) model-checks
+      # BurbleSession.cfg with no error (193 states, 64 distinct), the same
+      # result as the current v1.8.0 build.
+      TLA_URL: 'https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar'
+      TLA_SHA256: '936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88'
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
