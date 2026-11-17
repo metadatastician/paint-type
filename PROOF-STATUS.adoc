@@ -109,8 +109,8 @@ Per estate proof discipline (memory: `feedback_proofs_must_check_and_cross_doc_e
 ```bash
 # Check Idris2 proofs (ABI bridge in src/interface, verified modules in verification/)
 # idris2 --check takes one file per invocation.
-(cd src/interface && for f in Abi/Types.idr Abi/Layout.idr Abi/Foreign.idr; do idris2 --check "$f"; done)
-(cd verification/proofs/idris2 && for f in ABI/Platform.idr ABI/Compliance.idr Pixel.idr TilePool.idr; do idris2 --check "$f"; done)
+(cd src/interface && for f in Abi/Types.idr Abi/Layout.idr Abi/Foreign.idr; do idris2 --check "$f" || exit 1; done)
+(cd verification/proofs/idris2 && for f in ABI/Platform.idr ABI/Compliance.idr Pixel.idr TilePool.idr; do idris2 --check "$f" || exit 1; done)
 
 # Check Lean4 proofs (TP-2 public API type safety, INV-2 undo monotonicity) — pure core Lean4
 lean verification/proofs/lean4/ApiTypes.lean
@@ -120,7 +120,7 @@ lean verification/proofs/lean4/UndoGraph.lean
 # --no-libraries avoids the broken global ~/.agda/libraries path; the files have
 # zero library dependencies. Or: STRICT=1 just proof-check-agda
 (cd verification/proofs/agda && for f in Compositing.agda TileCRDT.agda; do
-  agda --no-libraries --safe --without-K --cubical-compatible "$f"; done)
+  agda --no-libraries --safe --without-K --cubical-compatible "$f" || exit 1; done)
 
 # Run Zig FFI tests
 cd src/interface/ffi && zig build test
