@@ -49,7 +49,8 @@ what is *proven*, what is *implemented and tested*, and what is honestly
 |===
 
 The Agda proofs are builtin-only with no `postulate` / `{-# TERMINATING #-}` /
-`believe_me`, verified with `agda --no-libraries`. The TLA+ liveness property
+`believe_me`, checked with `agda --no-libraries --safe --without-K --cubical-compatible`
+(PROOF-POLICY §2.1), so the checker itself rejects any postulate. The TLA+ liveness property
 was adversarially probed: removing delivery fairness produces a TLC
 counter-example, confirming the property is not vacuous and that the Burble
 DataChannel's reliable delivery is the load-bearing assumption.

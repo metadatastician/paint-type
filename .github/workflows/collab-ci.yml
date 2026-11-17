@@ -4,11 +4,6 @@
 #
 # collab-ci.yml — v0.5.0 collaboration core (issue #15).
 #
-# NOTE (interim landing on paint-queue): this workflow lives under the
-# paint-type-collab/ prefix and is therefore INERT here — GitHub only runs
-# workflows at .github/workflows/ in the repo root. It is retained verbatim as
-# the paint-type artifact; it activates when this tree lands at paint-type root.
-#
 # Enforces the three things this milestone locks in, each actually run:
 #   * paint_collab Rust tests — CRDT merge, permission model, session, Groove,
 #     LLM gating, two-peer e2e, and the proptest convergence properties.
@@ -16,7 +11,8 @@
 #   * CONC-3 (TLA+/TLC)       — verification/proofs/tlaplus/BurbleSession.tla
 #
 # Self-contained and additive: it does not edit the shared proofs.yml. Agda is
-# built from Hackage (matching proofs.yml's pinned 2.8.0); TLC runs a
+# installed from apt, as in proofs.yml, and run with the PROOF-POLICY §2.1 flags
+# (--safe --without-K --cubical-compatible); TLC runs a
 # checksum-pinned tla2tools.jar. All `uses:` are SHA-pinned per repo policy.
 name: Collaboration core (v0.5.0)
 on:
@@ -96,7 +92,7 @@ jobs:
         run: |
           set -euo pipefail
           cd verification/proofs/agda
-          agda --no-libraries TileCRDT.agda
+          agda --no-libraries --safe --without-K --cubical-compatible TileCRDT.agda
       - name: Write summary
         if: always()
         run: |

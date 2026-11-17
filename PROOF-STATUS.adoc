@@ -4,37 +4,72 @@
 
 ## Summary
 
-| Category | Total | Done | In Progress | Blocked | Remaining |
-|----------|-------|------|-------------|---------|-----------|
-| ABI/FFI (ABI) | 5 | 5 | 0 | 0 | 0 |
-| Typing (TP) | 3 | 3 | 0 | 0 | 0 |
-| Invariant (INV) | 3 | 3 | 0 | 0 | 0 |
-| Security (SEC) | 2 | 0 | 0 | 0 | 2 |
-| Concurrency (CONC) | 3 | 3 | 0 | 0 | 0 |
-| Algorithm (ALG) | 0 | 0 | 0 | 0 | 0 |
-| Domain (DOM) | 0 | 0 | 0 | 0 | 0 |
-| **Total** | **16** | **14** | **0** | **0** | **2** |
+Status tokens are the closed vocabulary of standards `3-practice/PROOF-POLICY.adoc` §5:
+`proven` (kernel-checked, no escape hatch), `tested-only` (bounded check, such as
+model checking), `open` (not done). Censuses are counts with their denominator, never
+percentages (§8.4). Only rows with a CI-gated check count.
 
-**Overall**: 88% proven (14/16). **ABI, Typing, Invariant, and Concurrency categories fully closed** (CONC-1/2/3 landed with v0.5.0). The four unblocked obligations (TP-2, INV-1, INV-2, INV-3) were discharged 2026-06-14 across Idris2/Lean4/Agda. CONC-1/CONC-2 proved in `verification/proofs/agda/TileCRDT.agda` (Agda, builtin-only); CONC-3 modeled in `verification/proofs/tlaplus/BurbleSession.tla`. **Only 2 proofs remain** (both SEC): SEC-1/2 now unblocked by v0.4.0 plugin system completion. `idris2 --check` runs in CI per `.github/workflows/idris-ci.yml`; CI enforcement of Lean4/Agda proofs pending (proofs verify locally — see Verification Commands).
+| Category | Total | proven (CI-gated) | tested-only (CI-gated) | open |
+|----------|-------|-------------------|------------------------|------|
+| ABI/FFI (ABI) | 5 | 5 | 0 | 0 |
+| Typing (TP) | 3 | 3 | 0 | 0 |
+| Invariant (INV) | 3 | 3 | 0 | 0 |
+| Security (SEC) | 2 | 0 | 0 | 2 |
+| Concurrency (CONC) | 3 | 2 | 1 | 0 |
+| Algorithm (ALG) | 0 | 0 | 0 | 0 |
+| Domain (DOM) | 0 | 0 | 0 | 0 |
+| **Total** | **16** | **13** | **1** | **2** |
 
-## Proofs Done
+**Overall**: 14 of 16 obligations have a CI-gated check. 13 of 16 are `proven`
+(kernel-checked by Idris2, Lean4 or Agda in CI). 1 of 16 is `tested-only`: CONC-3 is a
+TLC model check bounded to 3 peers and 2 mutations (`BurbleSession.cfg`), which §5
+classes as tested, not proven. 2 of 16 are `open` (SEC-1, SEC-2).
 
-| ID | Proof | Prover | File | Date | Verified By |
-|----|-------|--------|------|------|-------------|
-| ABI-1 | Non-null pointer proofs | Idris2 | `src/interface/Abi/Types.idr` | 2026-05-11 | idris2 --check |
-| ABI-2 | Memory layout correctness | Idris2 | `src/interface/Abi/Layout.idr` | 2026-05-11 | idris2 --check |
-| ABI-3 | Platform type size proofs (per platform) | Idris2 | `verification/proofs/idris2/ABI/Platform.idr` | 2026-06-01 | idris2 --check + CI |
-| ABI-4 | FFI function return type proofs | Idris2 | `src/interface/Abi/Foreign.idr` | 2026-05-11 | idris2 --check |
-| ABI-5 | C ABI compliance + array packing | Idris2 | `verification/proofs/idris2/ABI/Compliance.idr` | 2026-06-01 | idris2 --check + CI |
-| TP-1 | Tile primitive type well-formedness | Idris2 | `src/interface/Abi/Types.idr` | 2026-05-11 | idris2 --check |
-| TP-3 | RGBA16F pixel format bounds + classifier | Idris2 | `verification/proofs/idris2/Pixel.idr` | 2026-06-01 | idris2 --check + CI |
-| TP-2 | Public API type safety (exported pt_ surface) | Lean4 | `verification/proofs/lean4/ApiTypes.lean` | 2026-06-14 | lean (local; CI wiring pending) |
-| INV-1 | Tile pool invariant (no double-free, no use-after-free) | Idris2 | `verification/proofs/idris2/TilePool.idr` | 2026-06-14 | idris2 --check (local; CI wiring pending) |
-| INV-2 | Undo graph monotonicity | Lean4 | `verification/proofs/lean4/UndoGraph.lean` | 2026-06-14 | lean (local; CI wiring pending) |
-| INV-3 | Compositing blend function totality | Agda | `verification/proofs/agda/Compositing.agda` | 2026-06-14 | agda --no-libraries (local; CI wiring pending) |
-| CONC-1 | CRDT tile merge commutativity | Agda | `verification/proofs/agda/TileCRDT.agda` | 2026-07-25 | agda --no-libraries |
-| CONC-2 | CRDT tile merge associativity | Agda | `verification/proofs/agda/TileCRDT.agda` | 2026-07-25 | agda --no-libraries |
-| CONC-3 | Session liveness | TLA+ | `verification/proofs/tlaplus/BurbleSession.tla` | 2026-07-25 | TLC model-check
+Before 2026-11-17 this file said "88% proven (14/16)". That figure counted CONC-3's
+model check as a proof, and the Agda rows were checked with plain `agda --no-libraries`
+rather than the §2.1 profile.
+
+**CI receipts** (latest run on `main` of each gating workflow, all `success`):
+
+| Workflow | Rows it gates | Latest `main` run |
+|----------|---------------|-------------------|
+| `idris-ci.yml` (Idris2 0.8.0) | ABI-1..5, TP-1, TP-3, INV-1 | 35948695247 (2026-09-24) |
+| `proofs.yml` (Lean 4.13.0, apt Agda) | TP-2, INV-2, INV-3; CONC-1/2 from 2026-11-17 | 36696604854 (2026-09-30) |
+| `collab-ci.yml` (apt Agda, TLC v1.8.0) | CONC-1, CONC-2, CONC-3 | 42400278173 (2026-11-07) |
+
+**Agda strict profile (PROOF-POLICY §2.1).** `Compositing.agda` and `TileCRDT.agda` now
+carry `{-# OPTIONS --safe --without-K --cubical-compatible #-}`, and CI and
+`just proof-check-agda` pass the same flags. With `--safe` the checker itself rejects
+any `postulate` or `TERMINATING` pragma, so "no postulates" no longer rests on a comment.
+Checked locally on 2026-11-17 with Agda 2.8.0.2: both modules exit 0.
+`TileCRDT.agda` reports three `UnsupportedIndexedMatch` warnings (`≤-trans`,
+`≤-antisym`, `<-irrefl`): those clauses would not compute on transports under full
+Cubical Agda. They do not weaken the `--without-K` proof, and no warning is suppressed.
+The earlier `--no-libraries`-only CI runs are historical evidence, not receipts for the
+§2.1 profile (§2.1); the first strict CI receipt is the run on the PR that introduced
+it. CI installs Agda from apt, so its version is not pinned (an open §2.1 item).
+
+`verification/proofs/agda/Properties.agda` is an unwired template, not an obligation.
+It imports agda-stdlib and does not check with `--no-libraries`. It is not counted.
+
+## Proofs Done (CI-gated)
+
+| ID | Proof | Prover | File | Date | Status | Checked by |
+|----|-------|--------|------|------|--------|------------|
+| ABI-1 | Non-null pointer proofs | Idris2 | `src/interface/Abi/Types.idr` | 2026-05-11 | proven | `idris2 --check`, idris-ci.yml |
+| ABI-2 | Memory layout correctness | Idris2 | `src/interface/Abi/Layout.idr` | 2026-05-11 | proven | `idris2 --check`, idris-ci.yml |
+| ABI-3 | Platform type size proofs (per platform) | Idris2 | `verification/proofs/idris2/ABI/Platform.idr` | 2026-06-01 | proven | `idris2 --check`, idris-ci.yml |
+| ABI-4 | FFI function return type proofs | Idris2 | `src/interface/Abi/Foreign.idr` | 2026-05-11 | proven | `idris2 --check`, idris-ci.yml |
+| ABI-5 | C ABI compliance + array packing | Idris2 | `verification/proofs/idris2/ABI/Compliance.idr` | 2026-06-01 | proven | `idris2 --check`, idris-ci.yml |
+| TP-1 | Tile primitive type well-formedness | Idris2 | `src/interface/Abi/Types.idr` | 2026-05-11 | proven | `idris2 --check`, idris-ci.yml |
+| TP-3 | RGBA16F pixel format bounds + classifier | Idris2 | `verification/proofs/idris2/Pixel.idr` | 2026-06-01 | proven | `idris2 --check`, idris-ci.yml |
+| TP-2 | Public API type safety (exported pt_ surface) | Lean4 | `verification/proofs/lean4/ApiTypes.lean` | 2026-06-14 | proven | `lean`, proofs.yml |
+| INV-1 | Tile pool invariant (no double-free, no use-after-free) | Idris2 | `verification/proofs/idris2/TilePool.idr` | 2026-06-14 | proven | `idris2 --check`, idris-ci.yml |
+| INV-2 | Undo graph monotonicity | Lean4 | `verification/proofs/lean4/UndoGraph.lean` | 2026-06-14 | proven | `lean`, proofs.yml |
+| INV-3 | Compositing blend function totality | Agda | `verification/proofs/agda/Compositing.agda` | 2026-06-14 | proven | `agda --safe --without-K --cubical-compatible`, proofs.yml |
+| CONC-1 | CRDT tile merge commutativity | Agda | `verification/proofs/agda/TileCRDT.agda` | 2026-07-25 | proven | `agda --safe --without-K --cubical-compatible`, proofs.yml + collab-ci.yml |
+| CONC-2 | CRDT tile merge associativity | Agda | `verification/proofs/agda/TileCRDT.agda` | 2026-07-25 | proven | `agda --safe --without-K --cubical-compatible`, proofs.yml + collab-ci.yml |
+| CONC-3 | Session liveness | TLA+ | `verification/proofs/tlaplus/BurbleSession.tla` | 2026-07-25 | tested-only | TLC model check, bounds Peers = 3, Mutations = 2; collab-ci.yml |
 
 ## Proofs In Progress
 
@@ -57,7 +92,7 @@ _None._ All design blockers resolved. v0.4.0 plugin system completed; v0.5.0 Bur
 
 Both SEC proofs now unblocked by v0.4.0 plugin system completion (issue #14).
 
-**Operational follow-up (not a proof gap):** wire the new proofs into CI. `idris-ci.yml` currently checks only the ABI Idris2 modules — add `TilePool.idr`, plus a Lean4 job (`lean ApiTypes.lean UndoGraph.lean`) and an Agda job. The Agda job must pass `--no-libraries` (or set a correct `AGDA_DIR`) to dodge the estate-wide broken global `~/.agda/libraries` path-drift; the proof itself has zero library dependencies.
+**CI wiring:** done. `idris-ci.yml` checks the ABI modules and `TilePool.idr`; `proofs.yml` runs the Lean4 job and the Agda job (Compositing and TileCRDT) on every pull request; `collab-ci.yml` runs TileCRDT and the TLC model check when the collaboration paths change. Agda runs with `--no-libraries` (the estate-wide global `~/.agda/libraries` path drift) plus the §2.1 flags; the proofs have zero library dependencies.
 
 ## Echo-types audit log
 
@@ -73,15 +108,19 @@ Per estate proof discipline (memory: `feedback_proofs_must_check_and_cross_doc_e
 
 ```bash
 # Check Idris2 proofs (ABI bridge in src/interface, verified modules in verification/)
-cd src/interface && idris2 --check Abi/Types.idr Abi/Layout.idr Abi/Foreign.idr
-cd ../../verification/proofs/idris2 && idris2 --check ABI/Platform.idr ABI/Compliance.idr Pixel.idr TilePool.idr
+# idris2 --check takes one file per invocation.
+(cd src/interface && for f in Abi/Types.idr Abi/Layout.idr Abi/Foreign.idr; do idris2 --check "$f"; done)
+(cd verification/proofs/idris2 && for f in ABI/Platform.idr ABI/Compliance.idr Pixel.idr TilePool.idr; do idris2 --check "$f"; done)
 
 # Check Lean4 proofs (TP-2 public API type safety, INV-2 undo monotonicity) — pure core Lean4
-lean verification/proofs/lean4/ApiTypes.lean verification/proofs/lean4/UndoGraph.lean
+lean verification/proofs/lean4/ApiTypes.lean
+lean verification/proofs/lean4/UndoGraph.lean
 
-# Check Agda proof (INV-3 compositing totality). --no-libraries avoids the broken
-# global ~/.agda/libraries path; the file has zero library dependencies.
-agda --no-libraries verification/proofs/agda/Compositing.agda
+# Check Agda proofs (INV-3, CONC-1, CONC-2) under the PROOF-POLICY §2.1 profile.
+# --no-libraries avoids the broken global ~/.agda/libraries path; the files have
+# zero library dependencies. Or: STRICT=1 just proof-check-agda
+(cd verification/proofs/agda && for f in Compositing.agda TileCRDT.agda; do
+  agda --no-libraries --safe --without-K --cubical-compatible "$f"; done)
 
 # Run Zig FFI tests
 cd src/interface/ffi && zig build test
@@ -104,8 +143,9 @@ just proof-check-all
 | Date | Change | By |
 |------|--------|-----|
 | 2026-05-11 | Initial proof status for paint-type — ABI bridge proofs marked done | Joshua Jewell |
-| 2026-06-01 | ABI-3 + TP-3 landed (PR #10); CI proof-check wired (PR #8); 38% proven | hyperpolymath |
-| 2026-06-01 | ABI-5 landed (PR #19); ABI category fully closed; 44% proven | hyperpolymath |
+| 2026-06-01 | ABI-3 + TP-3 landed (PR #10); CI proof-check wired (PR #8); 6 of 16 done | hyperpolymath |
+| 2026-06-01 | ABI-5 landed (PR #19); ABI category fully closed; 7 of 16 done | hyperpolymath |
 | 2026-06-01 | INV-3 surface grew by 7 ops (PR #27: lerp/multiply/screen/in/out/atop/xor) + brush engine (PR #29). No new proofs — Rust ground-truth for the Agda mechanisation expanded. | hyperpolymath |
-| 2026-06-14 | All 4 unblocked obligations discharged + adversarially verified: TP-2 (Lean4 `ApiTypes.lean`), INV-1 (Idris2 `TilePool.idr` — double-free/use-after-free not typeable), INV-2 (Lean4 `UndoGraph.lean`), INV-3 (Agda `Compositing.agda`). 7/16 → 11/16 (69%). Remaining 5 are design-blocked (SEC/CONC). CI wiring of the Lean4/Agda jobs pending. | hyperpolymath |
-| 2026-07-25 | CONC-1/2/3 completed for v0.5.0 collaboration (issue #36): CONC-1/CONC-2 proved in Agda (`TileCRDT.agda`, builtin-only, no postulates); CONC-3 modeled in TLA+ (`BurbleSession.tla` with weak fairness). 11/16 → 14/16 (88%). Only SEC-1/2 remain blocked (plugin system, v0.4.0). | hyperpolymath |
+| 2026-06-14 | All 4 unblocked obligations discharged + adversarially verified: TP-2 (Lean4 `ApiTypes.lean`), INV-1 (Idris2 `TilePool.idr` — double-free/use-after-free not typeable), INV-2 (Lean4 `UndoGraph.lean`), INV-3 (Agda `Compositing.agda`). 7 of 16 → 11 of 16. Remaining 5 are design-blocked (SEC/CONC). CI wiring of the Lean4/Agda jobs pending. | hyperpolymath |
+| 2026-07-25 | CONC-1/2/3 completed for v0.5.0 collaboration (issue #36): CONC-1/CONC-2 proved in Agda (`TileCRDT.agda`, builtin-only, no postulates); CONC-3 modeled in TLA+ (`BurbleSession.tla` with weak fairness). 11 of 16 → 14 of 16. Only SEC-1/2 remain blocked (plugin system, v0.4.0). | hyperpolymath |
+| 2026-11-17 | Agda proofs moved to the PROOF-POLICY §2.1 profile (`--safe --without-K --cubical-compatible`, as an OPTIONS pragma and in proofs.yml, collab-ci.yml and the Justfile); TileCRDT added to proofs.yml so CONC-1/2 are checked on every PR. Census restated without percentages: 13 of 16 `proven`, 1 of 16 `tested-only` (CONC-3, TLC bounded), 2 of 16 `open`. | survey fix |

@@ -107,7 +107,7 @@ cd ../../lean4
 lean ApiTypes.lean UndoGraph.lean
 
 cd ../agda
-agda --no-libraries Compositing.agda TileCRDT.agda
+for f in Compositing.agda TileCRDT.agda; do agda --no-libraries --safe --without-K --cubical-compatible "$f"; done
 ```
 
 If all commands succeed, your build is verified!

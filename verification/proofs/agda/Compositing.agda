@@ -32,11 +32,14 @@
 -- WITHOUT a {-# TERMINATING #-} pragma and WITHOUT any postulate IS, by the
 -- metatheory of Agda, a provably total function — it returns a Pixel for
 -- every input pair.  The mere fact that `agda Compositing.agda` exits 0 on
--- this file with no pragmas and no postulate discharges INV-3.
+-- this file with no TERMINATING pragma and no postulate discharges INV-3.
 --
 -- This file does NOT use:  postulate / {-# TERMINATING #-} / {-# NON_TERMINATING #-}.
 -- It depends ONLY on Agda.Builtin.*  (no agda-stdlib).  Verify with:
---     agda --no-libraries verification/proofs/agda/Compositing.agda
+--     agda --no-libraries --safe --without-K --cubical-compatible \
+--          verification/proofs/agda/Compositing.agda
+-- (PROOF-POLICY §2.1 strict profile; the OPTIONS pragma below also sets it,
+-- and --safe makes the checker itself reject any postulate or TERMINATING.)
 --
 -- ----------------------------------------------------------------------------
 -- MAKING TOTALITY A *STATED* THEOREM (not merely implicit)
@@ -68,6 +71,8 @@
 -- both the f16 representable ceiling and the explicit `.clamp(0.0,1.0)` calls
 -- in the Rust source.  The normalising divide `· / M` of the W3C/Porter-Duff
 -- closed forms is the builtin total division by the positive constant M.
+
+{-# OPTIONS --safe --without-K --cubical-compatible #-}
 
 module Compositing where
 
