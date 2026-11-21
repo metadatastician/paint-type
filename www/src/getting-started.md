@@ -101,13 +101,13 @@ idris2 --check src/interface/Abi/Foreign.idr
 
 # Check verification proofs (if Lean/Agda installed)
 cd verification/proofs/idris2
-idris2 --check ABI/Platform.idr ABI/Compliance.idr Pixel.idr TilePool.idr
+(for f in ABI/Platform.idr ABI/Compliance.idr Pixel.idr TilePool.idr; do idris2 --check "$f" || exit 1; done)
 
 cd ../../lean4
 lean ApiTypes.lean UndoGraph.lean
 
 cd ../agda
-agda --no-libraries Compositing.agda TileCRDT.agda
+(for f in Compositing.agda TileCRDT.agda; do agda --no-libraries --safe --without-K --cubical-compatible "$f" || exit 1; done)
 ```
 
 If all commands succeed, your build is verified!
