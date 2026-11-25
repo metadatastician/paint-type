@@ -55,7 +55,12 @@
 -- ----------------------------------------------------------------------------
 -- Builtin-only (Agda.Builtin.*); NO agda-stdlib.  NO postulate, NO
 -- {-# TERMINATING #-}, NO believe_me / assert_total.  Every law is proved.
---     agda --no-libraries verification/proofs/agda/TileCRDT.agda
+--     agda --no-libraries --safe --without-K --cubical-compatible \
+--          verification/proofs/agda/TileCRDT.agda
+-- (PROOF-POLICY §2.1 strict profile; the OPTIONS pragma below also sets it,
+-- and --safe makes the checker itself reject any postulate or TERMINATING.)
+
+{-# OPTIONS --safe --without-K --cubical-compatible #-}
 
 module TileCRDT where
 

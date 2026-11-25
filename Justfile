@@ -1446,7 +1446,7 @@ help-me:
 
 # Check all formal proofs (Idris2 + Lean4 + Agda).
 # Realises the `just proof-check-all` reference in PROOF-STATUS.adoc: enforces the
-# four discharged soundness obligations (INV-1, TP-2, INV-2, INV-3) locally with the
+# CI-gated obligations (INV-1, TP-2, INV-2, INV-3, CONC-1, CONC-2) locally with the
 # same curated file lists the CI workflows use. Exits non-zero on any prover failure.
 # A missing prover BINARY is a loud SKIP by default (dev ergonomics); set STRICT=1 to
 # make an absent prover a hard FAIL instead (the CI workflows install all provers, so
@@ -1530,9 +1530,11 @@ proof-check-lean:
     fi
     echo "PASS: All Lean4 proofs verified"
 
-# Check Agda proof (INV-3 compositing totality).
+# Check Agda proofs (INV-3 compositing totality; CONC-1/CONC-2 tile merge laws).
+# Flags are the PROOF-POLICY §2.1 profile: --safe --without-K --cubical-compatible.
+# Never weaken them to go green; a failure is an open obligation.
 # --no-libraries avoids the broken global ~/.agda/libraries path (a bare `agda`
-# invocation exits non-zero on it); Compositing.agda has zero library dependencies.
+# invocation exits non-zero on it); both files have zero library dependencies.
 # Properties.agda is an unwired template scaffold, so it is intentionally excluded.
 proof-check-agda:
     #!/usr/bin/env bash
@@ -1544,9 +1546,9 @@ proof-check-agda:
         exit 0
     fi
     ERRORS=0
-    for f in verification/proofs/agda/Compositing.agda; do
+    for f in verification/proofs/agda/Compositing.agda verification/proofs/agda/TileCRDT.agda; do
         echo -n "  Checking $f ... "
-        if ( cd verification/proofs/agda && agda --no-libraries "$(basename "$f")" ) >/dev/null 2>&1; then
+        if ( cd verification/proofs/agda && agda --no-libraries --safe --without-K --cubical-compatible "$(basename "$f")" ) >/dev/null 2>&1; then
             echo "OK"
         else
             echo "FAIL"

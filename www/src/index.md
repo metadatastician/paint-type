@@ -37,7 +37,7 @@ every undo operation is backed by machine-checked proofs.
 
 ### 🔒 Formal Verification
 
-- **14/16 proofs complete** (88% proven)
+- **14 of 16 obligations CI-checked**: 13 proven (Idris2, Lean4, Agda), 1 tested-only (CONC-3, TLC bounded), 2 open (SEC-1, SEC-2)
 - ABI/FFI boundary proofs (Idris2)
 - Typing proofs (Lean4)
 - Invariant proofs (Idris2, Lean4, Agda)
@@ -62,7 +62,7 @@ every undo operation is backed by machine-checked proofs.
 | Concurrency | 3 | 3 | 0 | 0 |
 | **Total** | **16** | **14** | **0** | **2** |
 
-**Overall: 88% proven** — ABI, Typing, Invariant, and Concurrency categories fully closed.
+**Overall:** 14 of 16 obligations have a CI-gated check; CONC-3 is a bounded TLC model check (tested-only), not a proof. See `PROOF-STATUS.adoc`.
 
 ## Screenshots
 
@@ -110,7 +110,7 @@ zig build
 # Run the type checker on proofs
 idris2 --check src/interface/Abi/Types.idr
 lean verification/proofs/lean4/UndoGraph.lean
-agda --no-libraries verification/proofs/agda/TileCRDT.agda
+agda --no-libraries --safe --without-K --cubical-compatible verification/proofs/agda/TileCRDT.agda
 ```
 
 ### Running

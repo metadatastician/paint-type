@@ -365,19 +365,19 @@ All formal proofs are located in `verification/proofs/`.
 - **INV-3**: `verification/proofs/agda/Compositing.agda`
   - Compositing blend function totality
   - Terminates on all inputs
-  - Verification: `agda --no-libraries`
+  - Verification: `agda --no-libraries --safe --without-K --cubical-compatible`
 
 #### Concurrency Proofs
 
 - **CONC-1, CONC-2**: `verification/proofs/agda/TileCRDT.agda`
   - CRDT tile merge commutativity and associativity
   - Join-semilattice laws
-  - Verification: `agda --no-libraries`
+  - Verification: `agda --no-libraries --safe --without-K --cubical-compatible`
 
 - **CONC-3**: `verification/proofs/tlaplus/BurbleSession.tla`
   - Session liveness
   - Every committed mutation eventually visible
-  - Verification: TLC model-check
+  - Verification: TLC model check (tested-only: bounded to 3 peers, 2 mutations)
 
 #### Security Proofs (Remaining)
 
@@ -423,7 +423,7 @@ All formal proofs are located in `verification/proofs/`.
 
 ## Verification Status
 
-### Completed Proofs (14/16)
+### CI-checked obligations (14 of 16: 13 proven, 1 tested-only)
 
 | ID | Proof | Tool | File | Date |
 |----|-------|------|------|------|

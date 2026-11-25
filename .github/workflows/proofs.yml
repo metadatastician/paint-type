@@ -8,6 +8,11 @@
 #   * TP-2  (Lean4)  verification/proofs/lean4/ApiTypes.lean   — public-API type safety
 #   * INV-2 (Lean4)  verification/proofs/lean4/UndoGraph.lean  — undo-graph monotonicity
 #   * INV-3 (Agda)   verification/proofs/agda/Compositing.agda — compositing totality
+#   * CONC-1/CONC-2 (Agda) verification/proofs/agda/TileCRDT.agda — tile merge laws
+#     (collab-ci.yml also runs it, path-filtered; here it runs on every PR)
+# Agda runs with the PROOF-POLICY §2.1 flags --safe --without-K
+# --cubical-compatible; --safe makes Agda itself reject postulates and
+# TERMINATING pragmas. Never weaken these flags to make a check green.
 # INV-1 (Idris2 TilePool.idr) is enforced by idris-ci.yml, not here.
 #
 # Toolchain installs use run-steps (elan for Lean, cabal for Agda) rather than
@@ -101,7 +106,12 @@ jobs:
         run: |
           set -euo pipefail
           cd verification/proofs/agda
-          agda --no-libraries Compositing.agda
+          agda --no-libraries --safe --without-K --cubical-compatible Compositing.agda
+      - name: Type-check Agda proof (CONC-1, CONC-2)
+        run: |
+          set -euo pipefail
+          cd verification/proofs/agda
+          agda --no-libraries --safe --without-K --cubical-compatible TileCRDT.agda
       - name: Write summary
         if: always()
         run: |
@@ -109,5 +119,7 @@ jobs:
             echo "## Agda Proof Results"
             echo ""
             echo "- **INV-3**: Compositing.agda (compositing totality)"
+            echo "- **CONC-1/CONC-2**: TileCRDT.agda (tile merge laws)"
+            echo "- **Flags**: --safe --without-K --cubical-compatible"
             echo "- **Agda version**: $(agda --version 2>/dev/null | head -1)"
           } >> "$GITHUB_STEP_SUMMARY"
