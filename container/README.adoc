@@ -25,8 +25,8 @@ Concretely, as of 2026-09-23:
   `REGISTRY`, so running it does not make this file buildable.
 * `entrypoint.sh` ends in a `TODO: Replace the command below with your
   application binary` — there is no such binary in this repository.
-* `deploy.self-validating.ncl` still carries `{{PROJECT_NAME}}`,
-  `{{SERVICE_NAME}}`, `{{VERSION}}`, `{{REGISTRY}}` and `{{PORT}}`.
+* `deploy.self-validating.ncl` still carries `paint-type`,
+  `paint-type`, `0.1.0`, `{{REGISTRY}}` and `{{PORT}}`.
 
 The working, digest-pinned, placeholder-free container definition lives at
 the repository root: link:../Containerfile[../Containerfile]. It builds and

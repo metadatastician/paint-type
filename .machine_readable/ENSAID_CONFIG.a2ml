@@ -89,7 +89,7 @@ version = "1.0.0"
 
 # Example: a custom portfolio for this project
 # [[portfolios.custom]]
-# id = "{{project}}-dev"
+# id = "paint_type-dev"
 # name = "paint-type Development"
 # description = "Panels for paint-type development"
 # panels = ["valence-shell", "editor-bridge", "build-dashboard"]
