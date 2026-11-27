@@ -48,7 +48,7 @@ help recipe="":
 
 # Show this project's info
 info:
-    @echo "Project: paint_type"
+    @echo "Project: {{project}}"
     @echo "Version: {{version}}"
     @echo "RSR Tier: {{tier}}"
     @echo "Recipes: $(just --summary | wc -w)"
@@ -594,7 +594,7 @@ verify:
 
 # Build the project (debug mode): Zig FFI library + Rust crate
 build *args:
-    @echo "Building paint_type (debug)..."
+    @echo "Building {{project}} (debug)..."
     cd src/interface/ffi && zig build {{args}}
     cargo build --manifest-path src/paint_core/Cargo.toml {{args}}
     cargo build --manifest-path src/host_core/Cargo.toml {{args}}
@@ -602,7 +602,7 @@ build *args:
 
 # Build in release mode with optimizations
 build-release *args:
-    @echo "Building paint_type (release)..."
+    @echo "Building {{project}} (release)..."
     cd src/interface/ffi && zig build -Doptimize=ReleaseFast {{args}}
     cargo build --release --manifest-path src/paint_core/Cargo.toml {{args}}
     @echo "Release build complete"
@@ -733,7 +733,7 @@ run-verbose *args: build
 
 # Install: publish the static library to a system prefix (set PREFIX env var or defaults to /usr/local)
 install: build-release
-    @echo "Installing paint_type..."
+    @echo "Installing {{project}}..."
     @mkdir -p "${PREFIX:-/usr/local}/lib"
     @cp src/interface/ffi/zig-out/lib/libpt.a "${PREFIX:-/usr/local}/lib/" 2>/dev/null || \
      cp src/interface/ffi/zig-out/lib/pt.lib "${PREFIX:-/usr/local}/lib/" 2>/dev/null || true
@@ -774,7 +774,7 @@ cookbook:
     #!/usr/bin/env bash
     mkdir -p docs
     OUTPUT="docs/just-cookbook.adoc"
-    echo "= paint_type Justfile Cookbook" > "$OUTPUT"
+    echo "= {{project}} Justfile Cookbook" > "$OUTPUT"
     echo ":toc: left" >> "$OUTPUT"
     echo ":toclevels: 3" >> "$OUTPUT"
     echo "" >> "$OUTPUT"
@@ -800,10 +800,10 @@ cookbook:
 man:
     #!/usr/bin/env bash
     mkdir -p docs/man
-    cat > docs/man/paint_type.1 << EOF
-    .TH paint_type 1 "$(date +%Y-%m-%d)" "{{version}}" "paint_type Manual"
+    cat > docs/man/{{project}}.1 << EOF
+    .TH {{project}} 1 "$(date +%Y-%m-%d)" "{{version}}" "{{project}} Manual"
     .SH NAME
-    paint_type \- RSR-compliant project
+    {{project}} \- RSR-compliant project
     .SH SYNOPSIS
     .B just
     [recipe] [args...]
@@ -812,7 +812,7 @@ man:
     .SH AUTHOR
     $(git config user.name 2>/dev/null || echo "Author") <$(git config user.email 2>/dev/null || echo "email")>
     EOF
-    echo "Generated: docs/man/paint_type.1"
+    echo "Generated: docs/man/{{project}}.1"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # CONTAINERS (stapeln ecosystem — Podman + Chainguard Wolfi)
@@ -842,8 +842,8 @@ container-init:
     fi
 
     # Prompt for container-specific values
-    read -rp "Service name (e.g. my-api) [paint_type]: " _SERVICE_NAME
-    SERVICE_NAME="${_SERVICE_NAME:-paint_type}"
+    read -rp "Service name (e.g. my-api) [{{project}}]: " _SERVICE_NAME
+    SERVICE_NAME="${_SERVICE_NAME:-{{project}}}"
 
     read -rp "Primary port [8080]: " _PORT
     PORT="${_PORT:-8080}"
@@ -892,9 +892,9 @@ container-build *args:
     if [ -f "container/ct-build.sh" ]; then
         cd container && ./ct-build.sh {{args}}
     elif [ -f "container/Containerfile" ]; then
-        podman build -t paint_type:latest -f container/Containerfile .
+        podman build -t {{project}}:latest -f container/Containerfile .
     elif [ -f "Containerfile" ]; then
-        podman build -t paint_type:latest -f Containerfile .
+        podman build -t {{project}}:latest -f Containerfile .
     else
         echo "No Containerfile found in container/ or project root"
         exit 1
@@ -956,12 +956,12 @@ container-push:
         cd container && ./ct-build.sh --push
     else
         echo "No container/ct-build.sh found — falling back to podman push"
-        podman push paint_type:latest
+        podman push {{project}}:latest
     fi
 
 # Run container interactively (for debugging)
 container-run *args:
-    podman run --rm -it paint_type:latest {{args}}
+    podman run --rm -it {{project}}:latest {{args}}
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # CI & AUTOMATION
@@ -1261,7 +1261,7 @@ assail:
 
 # Self-diagnostic — checks dependencies, permissions, paths
 doctor:
-    @echo "Running diagnostics for paint_type..."
+    @echo "Running diagnostics for {{project}}..."
     @echo "Checking required tools..."
     @command -v just >/dev/null 2>&1 && echo "  [OK] just" || echo "  [FAIL] just not found"
     @command -v git >/dev/null 2>&1 && echo "  [OK] git" || echo "  [FAIL] git not found"
@@ -1271,7 +1271,7 @@ doctor:
 
 # Guided tour of key features
 tour:
-    @echo "=== paint_type Tour ==="
+    @echo "=== {{project}} Tour ==="
     @echo ""
     @echo "1. Project structure:"
     @ls -la
@@ -1286,7 +1286,7 @@ tour:
 
 # Open feedback channel with diagnostic context
 help-me:
-    @echo "=== paint_type Help ==="
+    @echo "=== {{project}} Help ==="
     @echo "Platform: $(uname -s) $(uname -m)"
     @echo "Shell: $SHELL"
     @echo ""
